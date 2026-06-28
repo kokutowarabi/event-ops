@@ -1,0 +1,264 @@
+{
+  "members": [
+    {
+      "id": "1",
+      "name": "田中 太郎",
+      "email": "tanaka.taro@event.local",
+      "department": "本部運営",
+      "role": "統括責任者"
+    },
+    {
+      "id": "2",
+      "name": "佐藤 花子",
+      "email": "sato.hanako@event.local",
+      "department": "受付",
+      "role": "受付リーダー"
+    },
+    {
+      "id": "3",
+      "name": "鈴木 一郎",
+      "email": "suzuki.ichiro@event.local",
+      "department": "会場誘導",
+      "role": "導線管理"
+    },
+    {
+      "id": "4",
+      "name": "高橋 美咲",
+      "email": "takahashi.misaki@event.local",
+      "department": "ステージ",
+      "role": "進行ディレクター"
+    },
+    {
+      "id": "5",
+      "name": "伊藤 健",
+      "email": "ito.ken@event.local",
+      "department": "音響・照明",
+      "role": "音響担当"
+    },
+    {
+      "id": "6",
+      "name": "渡辺 由美",
+      "email": "watanabe.yumi@event.local",
+      "department": "出展者対応",
+      "role": "団体窓口"
+    },
+    {
+      "id": "7",
+      "name": "山本 翔",
+      "email": "yamamoto.sho@event.local",
+      "department": "警備",
+      "role": "巡回担当"
+    },
+    {
+      "id": "8",
+      "name": "中村 葵",
+      "email": "nakamura.aoi@event.local",
+      "department": "救護",
+      "role": "救護担当"
+    },
+    {
+      "id": "9",
+      "name": "小林 優",
+      "email": "kobayashi.yu@event.local",
+      "department": "受付",
+      "role": "チケット確認"
+    },
+    {
+      "id": "10",
+      "name": "加藤 直人",
+      "email": "kato.naoto@event.local",
+      "department": "広報",
+      "role": "SNS記録"
+    },
+    {
+      "id": "11",
+      "name": "吉田 紗希",
+      "email": "yoshida.saki@event.local",
+      "department": "備品・搬入",
+      "role": "備品管理"
+    },
+    {
+      "id": "12",
+      "name": "山田 陸",
+      "email": "yamada.riku@event.local",
+      "department": "会場誘導",
+      "role": "入口誘導"
+    },
+    {
+      "id": "13",
+      "name": "松本 凛",
+      "email": "matsumoto.rin@event.local",
+      "department": "音響・照明",
+      "role": "照明担当"
+    },
+    {
+      "id": "14",
+      "name": "井上 大輔",
+      "email": "inoue.daisuke@event.local",
+      "department": "出展者対応",
+      "role": "控室対応"
+    },
+    {
+      "id": "15",
+      "name": "木村 菜月",
+      "email": "kimura.natsuki@event.local",
+      "department": "企画運営",
+      "role": "ワークショップ担当"
+    },
+    {
+      "id": "16",
+      "name": "林 拓海",
+      "email": "hayashi.takumi@event.local",
+      "department": "ステージ",
+      "role": "転換補助"
+    },
+    {
+      "id": "17",
+      "name": "清水 結衣",
+      "email": "shimizu.yui@event.local",
+      "department": "本部運営",
+      "role": "連絡係"
+    },
+    {
+      "id": "18",
+      "name": "斎藤 悠真",
+      "email": "saito.yuma@event.local",
+      "department": "備品・搬入",
+      "role": "設営担当"
+    },
+    {
+      "id": "19",
+      "name": "森 美月",
+      "email": "mori.mizuki@event.local",
+      "department": "救護",
+      "role": "迷子対応"
+    },
+    {
+      "id": "20",
+      "name": "池田 蓮",
+      "email": "ikeda.ren@event.local",
+      "department": "広報",
+      "role": "撮影担当"
+    }
+  ],
+  "organizations": [
+    {
+      "id": "org-1",
+      "name": "青空ワークショップ",
+      "category": "体験",
+      "department": "教室",
+      "representative": "岡田 玲奈",
+      "contact": "aosora@example.com",
+      "status": "承認済み",
+      "booth": "A-01",
+      "note": "電源 2 口、長机 2 台"
+    },
+    {
+      "id": "org-2",
+      "name": "北町フードクラブ",
+      "category": "飲食",
+      "department": "模擬店",
+      "representative": "宮本 航",
+      "contact": "kitamachi-food@example.com",
+      "status": "確認中",
+      "booth": "F-03",
+      "note": "保健所書類確認中"
+    },
+    {
+      "id": "org-3",
+      "name": "学生演劇サークル灯",
+      "category": "ステージ",
+      "department": "屋外ステージ",
+      "representative": "長谷川 葵",
+      "contact": "tomoshibi@example.com",
+      "status": "承認済み",
+      "booth": "STAGE",
+      "note": "転換 10 分、マイク 3 本"
+    },
+    {
+      "id": "org-4",
+      "name": "まちの写真部",
+      "category": "展示",
+      "department": "教室",
+      "representative": "石井 悠",
+      "contact": "photo-town@example.com",
+      "status": "要対応",
+      "booth": "B-06",
+      "note": "展示パネル枚数を再確認"
+    },
+    {
+      "id": "org-5",
+      "name": "こども科学ラボ",
+      "category": "体験",
+      "department": "教室",
+      "representative": "藤原 真央",
+      "contact": "science-lab@example.com",
+      "status": "申請中",
+      "booth": "A-05",
+      "note": "水場利用希望あり"
+    }
+  ],
+  "projects": [
+    {
+      "id": "project-1",
+      "title": "開場受付",
+      "organizationName": "運営本部",
+      "department": "教室",
+      "venue": "正面入口",
+      "startTime": "9:00",
+      "endTime": "11:00",
+      "owner": "受付",
+      "status": "確定",
+      "note": "チケット確認、パンフレット配布"
+    },
+    {
+      "id": "project-2",
+      "title": "こども実験教室",
+      "organizationName": "こども科学ラボ",
+      "department": "教室",
+      "venue": "体験エリア A",
+      "startTime": "11:30",
+      "endTime": "13:00",
+      "owner": "企画運営",
+      "status": "要確認",
+      "note": "水場利用と安全導線を確認"
+    },
+    {
+      "id": "project-3",
+      "title": "演劇ショーケース",
+      "organizationName": "学生演劇サークル灯",
+      "department": "屋外ステージ",
+      "venue": "メインステージ",
+      "startTime": "14:00",
+      "endTime": "14:45",
+      "owner": "ステージ",
+      "status": "確定",
+      "note": "転換補助 2 名"
+    },
+    {
+      "id": "project-4",
+      "title": "地域グルメ販売",
+      "organizationName": "北町フードクラブ",
+      "department": "模擬店",
+      "venue": "飲食エリア F",
+      "startTime": "10:00",
+      "endTime": "16:00",
+      "owner": "出展者対応",
+      "status": "準備中",
+      "note": "火気使用なし"
+    },
+    {
+      "id": "project-5",
+      "title": "クロージング誘導",
+      "organizationName": "運営本部",
+      "department": "屋外ステージ",
+      "venue": "全館",
+      "startTime": "17:00",
+      "endTime": "18:00",
+      "owner": "会場誘導",
+      "status": "当日対応",
+      "note": "出口案内、落とし物確認"
+    }
+  ],
+  "updatedAt": "2026-06-28T00:03:25.005Z"
+}

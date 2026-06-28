@@ -1,0 +1,225 @@
+"use client"
+
+import { useMemo, useState } from "react"
+import {
+  Download,
+  Plus,
+  Trash2,
+  Users,
+} from "lucide-react"
+import { exportToCsv, memberDepartments, memberRoles, type Member, type SortKey, type SortOrder } from "../lib/members"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { SearchHeader, SelectHeader } from "@/components/table-column-header"
+import { EditableSelectCell, EditableTextCell } from "@/components/editable-cell"
+
+type RosterManagerProps = {
+  members: Member[]
+  onMembersChange: (members: Member[] | ((prev: Member[]) => Member[])) => void
+  onDeleteMember: (id: string) => void
+}
+
+export function RosterManager({ members, onMembersChange, onDeleteMember }: RosterManagerProps) {
+  const [filters, setFilters] = useState<Record<SortKey, string>>({ name: "", email: "", department: "", role: "" })
+  const [departmentFilter, setDepartmentFilter] = useState("all")
+  const [sortKey, setSortKey] = useState<SortKey>("name")
+  const [sortOrder, setSortOrder] = useState<SortOrder>("asc")
+  const [draft, setDraft] = useState<Omit<Member, "id">>({ name: "", email: "", department: memberDepartments[0], role: memberRoles[0] })
+  const [adding, setAdding] = useState(false)
+
+  const departments = memberDepartments
+
+  const headerOptions = useMemo(
+    () => ({
+      name: members.map((member) => member.name),
+      email: members.map((member) => member.email),
+      department: members.map((member) => member.department),
+      role: members.map((member) => member.role),
+    }),
+    [members],
+  )
+
+  const visibleMembers = useMemo(() => {
+    const normalizedFilters = {
+      name: filters.name.trim().toLowerCase(),
+      email: filters.email.trim().toLowerCase(),
+      role: filters.role.trim().toLowerCase(),
+    }
+    const filtered = members.filter((m) => {
+      const matchesName = !normalizedFilters.name || m.name.toLowerCase().includes(normalizedFilters.name)
+      const matchesEmail = !normalizedFilters.email || m.email.toLowerCase().includes(normalizedFilters.email)
+      const matchesRole = !normalizedFilters.role || m.role.toLowerCase().includes(normalizedFilters.role)
+      const matchesDept = departmentFilter === "all" || m.department === departmentFilter
+      return matchesName && matchesEmail && matchesRole && matchesDept
+    })
+    return filtered.sort((a, b) => {
+      const result = a[sortKey].localeCompare(b[sortKey], "ja")
+      return sortOrder === "asc" ? result : -result
+    })
+  }, [members, filters, departmentFilter, sortKey, sortOrder])
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortOrder((prev: SortOrder) => (prev === "asc" ? "desc" : "asc"))
+    } else {
+      setSortKey(key)
+      setSortOrder("asc")
+    }
+  }
+
+  const handleDelete = (id: string) => {
+    onDeleteMember(id)
+  }
+
+  const updateFilter = (key: SortKey, value: string) => setFilters((prev) => ({ ...prev, [key]: value }))
+
+  const updateMember = (id: string, update: Partial<Omit<Member, "id">>) => {
+    onMembersChange((prev) => prev.map((member) => (member.id === id ? { ...member, ...update } : member)))
+  }
+
+  const addMember = () => {
+    if (!draft.name.trim() || !draft.email.trim()) return
+    onMembersChange((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        name: draft.name.trim(),
+        email: draft.email.trim(),
+        department: draft.department.trim(),
+        role: draft.role.trim(),
+      },
+    ])
+    setDraft({ name: "", email: "", department: memberDepartments[0], role: memberRoles[0] })
+    setAdding(false)
+  }
+
+  return (
+    <div className="mx-auto flex h-[calc(100svh-5.5rem)] max-w-6xl flex-col px-4 py-5 md:py-6">
+      <header className="mb-4 flex shrink-0 items-center gap-2">
+          <Users className="size-5 text-muted-foreground" />
+          <h1 className="text-2xl font-semibold tracking-tight text-balance md:text-3xl">名簿</h1>
+          <Button type="button" size="icon" className="ml-2 size-8" onClick={adding ? addMember : () => setAdding(true)} disabled={adding && (!draft.name.trim() || !draft.email.trim())} aria-label={adding ? "メンバーを追加" : "追加欄を開く"}>
+            <Plus className="size-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-2"
+            onClick={() => exportToCsv(visibleMembers)}
+            disabled={visibleMembers.length === 0}
+          >
+            <Download className="size-4" />
+            CSV
+          </Button>
+      </header>
+
+      <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-card">
+        <Table>
+          <TableHeader className="sticky top-0 z-10 bg-card">
+            <TableRow className="bg-muted/40 hover:bg-muted/40">
+              <TableHead className="min-w-56">
+                {adding ? (
+                  <Input value={draft.name} onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))} placeholder="氏名" className="h-8 bg-background" />
+                ) : (
+                  <SearchHeader label="氏名" column="name" value={filters.name} options={headerOptions.name} onChange={(value) => updateFilter("name", value)} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
+                )}
+              </TableHead>
+              <TableHead className="hidden min-w-64 md:table-cell">
+                {adding ? (
+                  <Input value={draft.email} onChange={(event) => setDraft((prev) => ({ ...prev, email: event.target.value }))} placeholder="メール" className="h-8 bg-background" />
+                ) : (
+                  <SearchHeader label="メールアドレス" column="email" value={filters.email} options={headerOptions.email} onChange={(value) => updateFilter("email", value)} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
+                )}
+              </TableHead>
+              <TableHead className="min-w-44">
+                {adding ? (
+                  <select value={draft.department} onChange={(event) => setDraft((prev) => ({ ...prev, department: event.target.value }))} className="h-8 w-full rounded-lg border border-input bg-background px-2 text-sm">
+                    {memberDepartments.map((department) => <option key={department} value={department}>{department}</option>)}
+                  </select>
+                ) : (
+                  <SelectHeader label="所属局" column="department" value={departmentFilter} allValue="all" options={departments} onChange={setDepartmentFilter} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
+                )}
+              </TableHead>
+              <TableHead className="hidden min-w-44 sm:table-cell">
+                {adding ? (
+                  <select value={draft.role} onChange={(event) => setDraft((prev) => ({ ...prev, role: event.target.value }))} className="h-8 w-full rounded-lg border border-input bg-background px-2 text-sm">
+                    {memberRoles.map((role) => <option key={role} value={role}>{role}</option>)}
+                  </select>
+                ) : (
+                  <SearchHeader label="役職" column="role" value={filters.role} options={headerOptions.role} onChange={(value) => updateFilter("role", value)} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
+                )}
+              </TableHead>
+              <TableHead className="w-22">
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {visibleMembers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
+                  該当するメンバーがいません。
+                </TableCell>
+              </TableRow>
+            ) : (
+              visibleMembers.map((member) => (
+                <TableRow key={member.id}>
+                  <TableCell className="font-medium">
+                    <EditableTextCell value={member.name} placeholder="氏名" onCommit={(value) => updateMember(member.id, { name: value })}>
+                      <>
+                        {member.name}
+                        <span className="mt-0.5 block text-xs text-muted-foreground md:hidden">{member.email}</span>
+                      </>
+                    </EditableTextCell>
+                  </TableCell>
+                  <TableCell className="hidden text-muted-foreground md:table-cell">
+                    <EditableTextCell value={member.email} placeholder="メール" onCommit={(value) => updateMember(member.id, { email: value })} />
+                  </TableCell>
+                  <TableCell>
+                    <EditableSelectCell value={member.department} options={memberDepartments} onCommit={(value) => updateMember(member.id, { department: value })}>
+                      {member.department ? (
+                        <Badge variant="secondary" className="font-normal">
+                          {member.department}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </EditableSelectCell>
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell text-muted-foreground">
+                    <EditableSelectCell value={member.role} options={memberRoles} onCommit={(value) => updateMember(member.id, { role: value })} />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDelete(member.id)}
+                        aria-label={`${member.name}を削除`}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <p className="mt-2 shrink-0 text-right text-xs text-muted-foreground">
+        {visibleMembers.length} 件表示中
+      </p>
+    </div>
+  )
+}
