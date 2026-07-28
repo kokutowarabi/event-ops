@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import {
   Download,
+  Info,
   Plus,
   Trash2,
   Users,
@@ -21,22 +22,31 @@ import {
 } from "@/components/ui/table"
 import { SearchHeader, SelectHeader } from "@/components/table-column-header"
 import { EditableSelectCell, EditableTextCell } from "@/components/editable-cell"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 
 type RosterManagerProps = {
   members: Member[]
+  departments?: string[]
+  roles?: string[]
   onMembersChange: (members: Member[] | ((prev: Member[]) => Member[])) => void
   onDeleteMember: (id: string) => void
 }
 
-export function RosterManager({ members, onMembersChange, onDeleteMember }: RosterManagerProps) {
+export function RosterManager({ members, departments = memberDepartments, roles = memberRoles, onMembersChange, onDeleteMember }: RosterManagerProps) {
   const [filters, setFilters] = useState<Record<SortKey, string>>({ name: "", email: "", department: "", role: "" })
   const [departmentFilter, setDepartmentFilter] = useState("all")
   const [sortKey, setSortKey] = useState<SortKey>("name")
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc")
-  const [draft, setDraft] = useState<Omit<Member, "id">>({ name: "", email: "", department: memberDepartments[0], role: memberRoles[0] })
+  const [draft, setDraft] = useState<Omit<Member, "id">>({ name: "", email: "", department: departments[0] ?? "", role: roles[0] ?? "" })
   const [adding, setAdding] = useState(false)
-
-  const departments = memberDepartments
+  const [detailDraft, setDetailDraft] = useState<Member | null>(null)
 
   const headerOptions = useMemo(
     () => ({
@@ -98,9 +108,29 @@ export function RosterManager({ members, onMembersChange, onDeleteMember }: Rost
         role: draft.role.trim(),
       },
     ])
-    setDraft({ name: "", email: "", department: memberDepartments[0], role: memberRoles[0] })
+    setDraft({ name: "", email: "", department: departments[0] ?? "", role: roles[0] ?? "" })
     setAdding(false)
   }
+
+  const saveDetailDraft = () => {
+    if (!detailDraft) return
+    updateMember(detailDraft.id, {
+      name: detailDraft.name.trim(),
+      email: detailDraft.email.trim(),
+      department: detailDraft.department,
+      role: detailDraft.role,
+    })
+    setDetailDraft(null)
+  }
+
+  const initials = (name: string) =>
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase()
 
   return (
     <div className="mx-auto flex h-[calc(100svh-5.5rem)] max-w-6xl flex-col px-4 py-5 md:py-6">
@@ -143,7 +173,7 @@ export function RosterManager({ members, onMembersChange, onDeleteMember }: Rost
               <TableHead className="min-w-44">
                 {adding ? (
                   <select value={draft.department} onChange={(event) => setDraft((prev) => ({ ...prev, department: event.target.value }))} className="h-8 w-full rounded-lg border border-input bg-background px-2 text-sm">
-                    {memberDepartments.map((department) => <option key={department} value={department}>{department}</option>)}
+                    {departments.map((department) => <option key={department} value={department}>{department}</option>)}
                   </select>
                 ) : (
                   <SelectHeader label="所属局" column="department" value={departmentFilter} allValue="all" options={departments} onChange={setDepartmentFilter} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
@@ -152,7 +182,7 @@ export function RosterManager({ members, onMembersChange, onDeleteMember }: Rost
               <TableHead className="hidden min-w-44 sm:table-cell">
                 {adding ? (
                   <select value={draft.role} onChange={(event) => setDraft((prev) => ({ ...prev, role: event.target.value }))} className="h-8 w-full rounded-lg border border-input bg-background px-2 text-sm">
-                    {memberRoles.map((role) => <option key={role} value={role}>{role}</option>)}
+                    {roles.map((role) => <option key={role} value={role}>{role}</option>)}
                   </select>
                 ) : (
                   <SearchHeader label="役職" column="role" value={filters.role} options={headerOptions.role} onChange={(value) => updateFilter("role", value)} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
@@ -173,18 +203,29 @@ export function RosterManager({ members, onMembersChange, onDeleteMember }: Rost
               visibleMembers.map((member) => (
                 <TableRow key={member.id}>
                   <TableCell className="font-medium">
-                    <EditableTextCell value={member.name} placeholder="氏名" onCommit={(value) => updateMember(member.id, { name: value })}>
-                      <>
-                        {member.name}
-                        <span className="mt-0.5 block text-xs text-muted-foreground md:hidden">{member.email}</span>
-                      </>
-                    </EditableTextCell>
+                    <div className="flex items-center gap-2">
+                      <EditableTextCell value={member.name} placeholder="氏名" onCommit={(value) => updateMember(member.id, { name: value })}>
+                        <>
+                          {member.name}
+                          <span className="mt-0.5 block text-xs text-muted-foreground md:hidden">{member.email}</span>
+                        </>
+                      </EditableTextCell>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() => setDetailDraft(member)}
+                        aria-label={`${member.name}の詳細`}
+                      >
+                        <Info className="size-3.5" />
+                      </Button>
+                    </div>
                   </TableCell>
                   <TableCell className="hidden text-muted-foreground md:table-cell">
                     <EditableTextCell value={member.email} placeholder="メール" onCommit={(value) => updateMember(member.id, { email: value })} />
                   </TableCell>
                   <TableCell>
-                    <EditableSelectCell value={member.department} options={memberDepartments} onCommit={(value) => updateMember(member.id, { department: value })}>
+                    <EditableSelectCell value={member.department} options={departments} onCommit={(value) => updateMember(member.id, { department: value })}>
                       {member.department ? (
                         <Badge variant="secondary" className="font-normal">
                           {member.department}
@@ -195,7 +236,7 @@ export function RosterManager({ members, onMembersChange, onDeleteMember }: Rost
                     </EditableSelectCell>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell text-muted-foreground">
-                    <EditableSelectCell value={member.role} options={memberRoles} onCommit={(value) => updateMember(member.id, { role: value })} />
+                    <EditableSelectCell value={member.role} options={roles} onCommit={(value) => updateMember(member.id, { role: value })} />
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end">
@@ -220,6 +261,82 @@ export function RosterManager({ members, onMembersChange, onDeleteMember }: Rost
       <p className="mt-2 shrink-0 text-right text-xs text-muted-foreground">
         {visibleMembers.length} 件表示中
       </p>
+
+      <Dialog open={detailDraft !== null} onOpenChange={(open) => !open && setDetailDraft(null)}>
+        <DialogContent className="sm:max-w-lg">
+          {detailDraft ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>メンバー詳細</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-5 py-2">
+                <div className="flex items-center gap-4">
+                  <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-sky-200 via-emerald-100 to-amber-100 text-2xl font-bold text-slate-700 ring-1 ring-border">
+                    {initials(detailDraft.name)}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="truncate text-lg font-semibold">{detailDraft.name || "名前未設定"}</div>
+                    <div className="mt-1 truncate text-sm text-muted-foreground">{detailDraft.email}</div>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="detail-name">氏名</Label>
+                    <Input
+                      id="detail-name"
+                      value={detailDraft.name}
+                      onChange={(event) => setDetailDraft((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="detail-email">メール</Label>
+                    <Input
+                      id="detail-email"
+                      type="email"
+                      value={detailDraft.email}
+                      onChange={(event) => setDetailDraft((prev) => (prev ? { ...prev, email: event.target.value } : prev))}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="detail-department">所属</Label>
+                    <select
+                      id="detail-department"
+                      value={detailDraft.department}
+                      onChange={(event) => setDetailDraft((prev) => (prev ? { ...prev, department: event.target.value } : prev))}
+                      className="h-8 rounded-lg border border-input bg-background px-2 text-sm"
+                    >
+                      {departments.map((department) => (
+                        <option key={department} value={department}>{department}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="detail-role">役職</Label>
+                    <select
+                      id="detail-role"
+                      value={detailDraft.role}
+                      onChange={(event) => setDetailDraft((prev) => (prev ? { ...prev, role: event.target.value } : prev))}
+                      className="h-8 rounded-lg border border-input bg-background px-2 text-sm"
+                    >
+                      {roles.map((role) => (
+                        <option key={role} value={role}>{role}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setDetailDraft(null)}>
+                  キャンセル
+                </Button>
+                <Button type="button" onClick={saveDetailDraft}>
+                  保存
+                </Button>
+              </DialogFooter>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

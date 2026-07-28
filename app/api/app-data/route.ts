@@ -3,6 +3,7 @@ import path from "node:path"
 import { NextResponse } from "next/server"
 import { initialOrganizations, initialProjects } from "@/lib/event-data"
 import { initialMembers } from "@/lib/members"
+import { defaultPermissionSettings } from "@/lib/permissions"
 
 const dataPath = path.join(process.cwd(), "data", "app-data.json")
 
@@ -15,6 +16,8 @@ async function readData() {
       members: initialMembers,
       organizations: initialOrganizations,
       projects: initialProjects,
+      shiftDataByAccount: {},
+      permissionSettings: defaultPermissionSettings,
       updatedAt: new Date().toISOString(),
     }
     await mkdir(path.dirname(dataPath), { recursive: true })

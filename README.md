@@ -1,37 +1,99 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EventOps
 
-## Getting Started
+EventOps は、学園祭・イベント運営向けの統合管理アプリです。シフト、名簿、参加団体、企画、投票、権限、DTP、カンバン、キャンパスゲームを 1 つの Next.js アプリとして扱います。
 
-First, run the development server:
+## 主な機能
+
+- シフト管理: シフトシート作成、横型/縦型タイムライン、ドラッグ作成、検索絞り込み
+- 名簿管理: メンバー追加、CSV 出力、詳細モーダル編集、所属/役職編集
+- 権限管理: 役職別・メンバー別の画面権限、所属/役職マスタ編集
+- 団体/企画管理: テーブル編集、検索、ソート、状態管理
+- DTP Studio: 参加団体・企画データからパンフレットを作成、レイアウト編集、HTML 出力、印刷/PDF
+- カンバン: Trello 風の企画ステータス管理
+- キャンパスゲーム: 3D キャンパス移動、開催時間タイマー、空腹ゲージ、模擬店での食事
+- カメラ: スマホ向け撮影、内外カメラ切替、フィルタ
+
+## セットアップ
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+ブラウザで `http://localhost:3000` を開きます。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+初期管理者:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- メール: `ops.admin@example.invalid`
+- パスワード: `EventOps-2026!Local`
 
-## Learn More
+## 開発コマンド
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run dev       # 開発サーバー
+npm run build     # 本番ビルド
+npm run lint      # ESLint
+npm test          # Vitest
+npm run test:watch
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## データ保存
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+現状は `app/api/app-data/route.ts` が `data/app-data.json` を読み書きするローカル永続化です。
 
-## Deploy on Vercel
+保存対象:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- members
+- organizations
+- projects
+- shiftDataByAccount
+- permissionSettings
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# event-ops
+本番運用では DB と認証サービスへ移行する前提です。
+
+## 操作メモ
+
+### シフト
+
+1. 管理者でログインします。
+2. シフト画面で「シート新規作成」を押します。
+3. シート名、期間、招待メンバーを設定します。
+4. タイムライン上をドラッグしてシフトを作成します。
+5. 現在のシート名をクリックすると名前を編集できます。
+6. シート名右横の検索アイコンからシートを検索・切替できます。
+
+### 名簿
+
+- メンバー名の右横の詳細ボタンからモーダルを開き、氏名・メール・所属・役職を編集できます。
+- 顔画像欄は丸形アバターとして表示します。
+
+### 権限
+
+- 役職ごとに表示可能ページを設定できます。
+- メンバー個別の権限は役職設定より優先されます。
+- 所属と役職の候補もこの画面で編集できます。
+
+### DTP
+
+- 左の編集パネルでタイトル、サブタイトル、テーマ、段組、余白、文字サイズを調整します。
+- 企画ごとの掲載文を編集できます。
+- 「印刷/PDF」でブラウザ印刷、「HTML出力」で単体 HTML を保存できます。
+
+## ドキュメント
+
+- [ER図](docs/er.md)
+- [システム構成図](docs/system-architecture.md)
+
+## CI
+
+GitHub Actions で `lint`、`test`、`build` を実行します。
+
+設定: `.github/workflows/ci.yml`
+
+## 推奨アーキテクチャ移行方針
+
+- 認証: Auth.js または Supabase Auth
+- DB: Supabase Postgres
+- ORM: Drizzle ORM または Prisma
+
+詳細な選定理由は実装者メモや設計レビューで管理してください。

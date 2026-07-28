@@ -1,7 +1,7 @@
 "use client"
 
 import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react"
-import { CalendarDays, Eye, Plus, Trash2 } from "lucide-react"
+import { CalendarDays, Eye, ListFilter, Plus, Search, Trash2 } from "lucide-react"
 import type { Member } from "../lib/members"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -27,20 +27,22 @@ type AccountRole = "admin" | "viewer"
 type ShiftKind = "morning" | "day" | "evening" | "full"
 type ShiftTemplateId = string
 
-type ShiftTemplate = {
+export type ShiftTemplate = {
   label: string
   kind: ShiftKind
   defaultMinutes: number
   note: string
 }
 
-type ShiftPage = {
+export type ShiftSheet = {
+  id: string
+  name: string
   memberIds: string[]
   startDate: string
   endDate: string
 }
 
-type Shift = {
+export type Shift = {
   id: string
   memberId: string
   date: string
@@ -64,14 +66,6 @@ type DraftShiftTemplate = {
   label: string
   kind: ShiftKind
   defaultMinutes: number
-  note: string
-}
-
-type QuickShiftDraft = {
-  memberId: string
-  templateId: ShiftTemplateId
-  start: number
-  end: number
   note: string
 }
 
@@ -102,6 +96,14 @@ type MovingShift = {
   previewMemberId: string
 }
 
+type SearchPickerProps = {
+  label: string
+  value: string
+  options: string[]
+  allValue?: string
+  onChange: (value: string) => void
+}
+
 const ALL_DEPARTMENTS = "すべてのセクション"
 const START_MINUTES = 6 * 60
 const END_MINUTES = 22 * 60
@@ -111,6 +113,11 @@ const TIMELINE_PADDING_SLOTS = 2
 const TIMELINE_PADDING_WIDTH = TIMELINE_PADDING_SLOTS * SLOT_WIDTH
 const TIMELINE_WIDTH = ((END_MINUTES - START_MINUTES) / SLOT_MINUTES) * SLOT_WIDTH
 const TIMELINE_TRACK_WIDTH = TIMELINE_WIDTH + TIMELINE_PADDING_WIDTH * 2
+const MOBILE_SLOT_HEIGHT = 14
+const MOBILE_TIMELINE_PADDING_SLOTS = 2
+const MOBILE_TIMELINE_PADDING_HEIGHT = MOBILE_TIMELINE_PADDING_SLOTS * MOBILE_SLOT_HEIGHT
+const MOBILE_TIMELINE_HEIGHT = ((END_MINUTES - START_MINUTES) / SLOT_MINUTES) * MOBILE_SLOT_HEIGHT
+const MOBILE_TIMELINE_TRACK_HEIGHT = MOBILE_TIMELINE_HEIGHT + MOBILE_TIMELINE_PADDING_HEIGHT * 2
 
 const accounts = [
   { id: "admin", name: "管理者", role: "admin" },
@@ -152,7 +159,13 @@ const shiftTemplates: Record<ShiftTemplateId, ShiftTemplate> = {
   setup: { label: "設営・撤収", kind: "evening", defaultMinutes: 120, note: "備品搬入・撤収確認" },
 }
 
-const initialShifts: Shift[] = [
+export type ShiftData = {
+  sheets: ShiftSheet[]
+  shifts: Shift[]
+  customShiftTemplates: Record<ShiftTemplateId, ShiftTemplate>
+}
+
+export const initialShifts: Shift[] = [
   { id: "s1", memberId: "1", date: "2026-06-26", start: 9 * 60, end: 17 * 60, templateId: "guide", kind: "day", note: "本部連絡・導線確認" },
   { id: "s2", memberId: "2", date: "2026-06-26", start: 7 * 60, end: 12 * 60, templateId: "reception", kind: "morning", note: "受付設営・来場者対応" },
   { id: "s3", memberId: "3", date: "2026-06-26", start: 15 * 60, end: 21 * 60, templateId: "security", kind: "evening", note: "混雑対応・巡回" },
@@ -287,43 +300,125 @@ function getMemberIdFromPointer(event: PointerEvent<HTMLElement>) {
   return null
 }
 
-type ShiftManagerProps = {
-  members: Member[]
+function uniqueSearchOptions(options: string[], query: string) {
+  const normalizedQuery = query.trim().toLowerCase()
+  return Array.from(new Set(options.filter(Boolean)))
+    .filter((option) => !normalizedQuery || option.toLowerCase().includes(normalizedQuery))
+    .sort((a, b) => a.localeCompare(b, "ja"))
 }
 
-export function ShiftManager({ members }: ShiftManagerProps) {
+function SearchPicker({ label, value, options, allValue, onChange }: SearchPickerProps) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState("")
+  const searchableOptions = allValue ? [allValue, ...options] : options
+  const visibleOptions = uniqueSearchOptions(searchableOptions, query)
+  const displayValue = allValue && value === allValue ? label : value || label
+
+  return (
+    <div className="relative">
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full justify-between"
+        onClick={() => {
+          setQuery("")
+          setOpen((prev) => !prev)
+        }}
+      >
+        <span className="truncate">{displayValue}</span>
+        <Search className="size-4 text-muted-foreground" />
+      </Button>
+      {open ? (
+        <div className="absolute left-0 top-[calc(100%+0.25rem)] z-50 w-full rounded-md border bg-popover p-2 shadow-lg">
+          <Input
+            autoFocus
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+            placeholder={label}
+            className="h-8 bg-background"
+          />
+          <div className="mt-2 max-h-56 overflow-y-auto overscroll-contain">
+            {!allValue && value ? (
+              <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  onChange("")
+                  setOpen(false)
+                }}
+                className="block w-full rounded px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                検索を解除
+              </button>
+            ) : null}
+            {visibleOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  onChange(option)
+                  setOpen(false)
+                }}
+                className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+              >
+                {option}
+              </button>
+            ))}
+            {visibleOptions.length === 0 ? (
+              <div className="px-2 py-6 text-center text-sm text-muted-foreground">該当なし</div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+type ShiftManagerProps = {
+  members: Member[]
+  initialShiftData: ShiftData
+  onShiftDataChange: (data: ShiftData) => void
+}
+
+export const emptyShiftData: ShiftData = {
+  sheets: [],
+  shifts: initialShifts,
+  customShiftTemplates: {},
+}
+
+export function ShiftManager({ members, initialShiftData, onShiftDataChange }: ShiftManagerProps) {
   const defaultStartDate = todayKey()
   const [accountId, setAccountId] = useState(accounts[0].id)
-  const [pageDraft, setPageDraft] = useState<ShiftPage>({
+  const [sheetDraft, setSheetDraft] = useState<Omit<ShiftSheet, "id">>({
+    name: "",
     memberIds: members.slice(0, 6).map((member) => member.id),
     startDate: defaultStartDate,
     endDate: addDays(defaultStartDate, 6),
   })
-  const [shiftPages, setShiftPages] = useState<ShiftPage[]>([])
-  const [selectedPageIndex, setSelectedPageIndex] = useState(0)
-  const [shiftPage, setShiftPage] = useState<ShiftPage | null>(null)
-  const [selectedDate, setSelectedDate] = useState(defaultStartDate)
-  const [departmentFilter, setDepartmentFilter] = useState(ALL_DEPARTMENTS)
+  const [shiftSheets, setShiftSheets] = useState<ShiftSheet[]>(initialShiftData.sheets)
+  const [shiftSheet, setShiftSheet] = useState<ShiftSheet | null>(() => initialShiftData.sheets[0] ?? null)
+  const [editingSheetName, setEditingSheetName] = useState(false)
+  const [sheetSearchOpen, setSheetSearchOpen] = useState(false)
+  const [sheetSearchQuery, setSheetSearchQuery] = useState("")
+  const [selectedDate, setSelectedDate] = useState(initialShiftData.sheets[0]?.startDate ?? defaultStartDate)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [shiftFilter, setShiftFilter] = useState("")
   const [memberSearch, setMemberSearch] = useState("")
-  const [shifts, setShifts] = useState<Shift[]>(initialShifts)
-  const [customShiftTemplates, setCustomShiftTemplates] = useState<Record<ShiftTemplateId, ShiftTemplate>>({})
+  const [departmentFilter, setDepartmentFilter] = useState(ALL_DEPARTMENTS)
+  const [roleFilter, setRoleFilter] = useState("すべての役職")
+  const [sheetMemberSearch, setSheetMemberSearch] = useState("")
+  const [shifts, setShifts] = useState<Shift[]>(initialShiftData.shifts)
+  const [customShiftTemplates, setCustomShiftTemplates] = useState<Record<ShiftTemplateId, ShiftTemplate>>(initialShiftData.customShiftTemplates)
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null)
   const [draftShift, setDraftShift] = useState<DraftShift | null>(null)
-  const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
   const [templateDraft, setTemplateDraft] = useState<DraftShiftTemplate>({
     label: "",
     kind: "day",
     defaultMinutes: 60,
     note: "",
   })
-  const [quickShiftDraft, setQuickShiftDraft] = useState<QuickShiftDraft>({
-    memberId: members[0]?.id ?? "",
-    templateId: DEFAULT_SHIFT_TEMPLATE_ID,
-    start: 10 * 60,
-    end: 11 * 60,
-    note: "",
-  })
-  const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [moving, setMoving] = useState<MovingShift | null>(null)
   const [resizing, setResizing] = useState<ResizingShift | null>(null)
   const [hoveredSlot, setHoveredSlot] = useState<{ memberId: string; slot: number } | null>(null)
@@ -335,6 +430,10 @@ export function ShiftManager({ members }: ShiftManagerProps) {
   const resizeInitialShiftsRef = useRef<Shift[] | null>(null)
   const didMoveShiftRef = useRef(false)
   const didResizeShiftRef = useRef(false)
+
+  useEffect(() => {
+    onShiftDataChange({ sheets: shiftSheets, shifts, customShiftTemplates })
+  }, [customShiftTemplates, onShiftDataChange, shiftSheets, shifts])
 
   const account = accounts.find((item) => item.id === accountId) ?? accounts[0]
   const isAdmin = account.role === "admin"
@@ -349,37 +448,59 @@ export function ShiftManager({ members }: ShiftManagerProps) {
   const departments = useMemo(() => {
     return Array.from(new Set(members.map((member) => member.department).filter(Boolean))).sort()
   }, [members])
+  const roles = useMemo(() => {
+    return Array.from(new Set(members.map((member) => member.role).filter(Boolean))).sort()
+  }, [members])
 
   const dateTabs = useMemo(() => {
-    if (!shiftPage) return []
-    return Array.from({ length: dateDiff(shiftPage.startDate, shiftPage.endDate) + 1 }, (_, index) =>
-      addDays(shiftPage.startDate, index),
+    if (!shiftSheet) return []
+    return Array.from({ length: dateDiff(shiftSheet.startDate, shiftSheet.endDate) + 1 }, (_, index) =>
+      addDays(shiftSheet.startDate, index),
     )
-  }, [shiftPage])
+  }, [shiftSheet])
 
   const draftMembers = useMemo(() => {
-    if (!showSelectedMembersOnly) return members
-    return members.filter((member) => pageDraft.memberIds.includes(member.id))
-  }, [members, pageDraft.memberIds, showSelectedMembersOnly])
+    const baseMembers = showSelectedMembersOnly ? members.filter((member) => sheetDraft.memberIds.includes(member.id)) : members
+    const query = sheetMemberSearch.trim().toLowerCase()
+    if (!query) return baseMembers
+    return baseMembers.filter((member) =>
+      [member.name, member.email, member.department, member.role].some((value) => value.toLowerCase().includes(query)),
+    )
+  }, [members, sheetDraft.memberIds, sheetMemberSearch, showSelectedMembersOnly])
 
   const invitedMembers = useMemo(() => {
-    if (!shiftPage) return []
+    if (!shiftSheet) return []
     const query = memberSearch.trim().toLowerCase()
-    const invited = members.filter((member) => shiftPage.memberIds.includes(member.id))
+    const invited = members.filter((member) => shiftSheet.memberIds.includes(member.id))
     const filteredByDepartment =
       departmentFilter === ALL_DEPARTMENTS ? invited : invited.filter((member) => member.department === departmentFilter)
-    if (!query) return filteredByDepartment
-    return filteredByDepartment.filter((member) =>
+    const filteredByRole = roleFilter === "すべての役職" ? filteredByDepartment : filteredByDepartment.filter((member) => member.role === roleFilter)
+    if (!query) return filteredByRole
+    return filteredByRole.filter((member) =>
       [member.name, member.department, member.role].some((value) => value.toLowerCase().includes(query)),
     )
-  }, [departmentFilter, memberSearch, members, shiftPage])
+  }, [departmentFilter, memberSearch, members, roleFilter, shiftSheet])
 
   const selectedDateShifts = useMemo(() => {
-    if (!shiftPage) return []
+    if (!shiftSheet) return []
     return shifts.filter(
-      (shift) => shift.date === selectedDate && shiftPage.memberIds.includes(shift.memberId) && memberIds.has(shift.memberId),
+      (shift) => shift.date === selectedDate && shiftSheet.memberIds.includes(shift.memberId) && memberIds.has(shift.memberId),
     )
-  }, [memberIds, selectedDate, shiftPage, shifts])
+  }, [memberIds, selectedDate, shiftSheet, shifts])
+  const visibleSelectedDateShifts = useMemo(() => {
+    const query = shiftFilter.trim().toLowerCase()
+    if (!query) return selectedDateShifts
+    return selectedDateShifts.filter((shift) => {
+      const template = allShiftTemplates[shift.templateId]
+      return [template?.label, shift.note].some((value) => value?.toLowerCase().includes(query))
+    })
+  }, [allShiftTemplates, selectedDateShifts, shiftFilter])
+  const shiftFilterOptions = useMemo(() => {
+    return [
+      ...Object.values(allShiftTemplates).map((template) => template.label),
+      ...selectedDateShifts.map((shift) => shift.note),
+    ].filter(Boolean)
+  }, [allShiftTemplates, selectedDateShifts])
 
   const selectedMember = selectedShift
     ? members.find((member) => member.id === selectedShift.memberId)
@@ -388,12 +509,12 @@ export function ShiftManager({ members }: ShiftManagerProps) {
   const selectedTemplate = selectedShift ? allShiftTemplates[selectedShift.templateId] : null
   const draftTemplate = draftShift ? allShiftTemplates[draftShift.templateId] : null
   const movingShift = moving ? shifts.find((shift) => shift.id === moving.id) ?? null : null
-  const selectedDateIsStart = shiftPage?.startDate === selectedDate
-  const selectedDateIsEnd = shiftPage?.endDate === selectedDate
-  const selectedDateIsMiddle = Boolean(shiftPage && !selectedDateIsStart && !selectedDateIsEnd)
+  const selectedDateIsStart = shiftSheet?.startDate === selectedDate
+  const selectedDateIsEnd = shiftSheet?.endDate === selectedDate
+  const selectedDateIsMiddle = Boolean(shiftSheet && !selectedDateIsStart && !selectedDateIsEnd)
 
   const toggleInvitedMember = (memberId: string) => {
-    setPageDraft((prev) => {
+    setSheetDraft((prev) => {
       const memberIds = prev.memberIds.includes(memberId)
         ? prev.memberIds.filter((id) => id !== memberId)
         : [...prev.memberIds, memberId]
@@ -401,26 +522,35 @@ export function ShiftManager({ members }: ShiftManagerProps) {
     })
   }
 
-  const createShiftPage = () => {
-    const startDate = pageDraft.startDate
-    const endDate = pageDraft.endDate < startDate ? startDate : pageDraft.endDate
-    const activeMemberIds = pageDraft.memberIds.filter((id) => memberIds.has(id))
-    const memberIdsForPage = activeMemberIds.length > 0 ? activeMemberIds : members[0] ? [members[0].id] : []
-    const nextPage = { memberIds: memberIdsForPage, startDate, endDate }
-    setShiftPages((prev) => {
-      setSelectedPageIndex(prev.length)
-      return [...prev, nextPage]
-    })
-    setShiftPage(nextPage)
+  const createShiftSheet = () => {
+    const name = sheetDraft.name.trim()
+    if (!name) return
+    const startDate = sheetDraft.startDate
+    const endDate = sheetDraft.endDate < startDate ? startDate : sheetDraft.endDate
+    const activeMemberIds = sheetDraft.memberIds.filter((id) => memberIds.has(id))
+    const memberIdsForSheet = activeMemberIds.length > 0 ? activeMemberIds : members[0] ? [members[0].id] : []
+    const nextSheet = { id: crypto.randomUUID(), name, memberIds: memberIdsForSheet, startDate, endDate }
+    setShiftSheets((prev) => [...prev, nextSheet])
+    setShiftSheet(nextSheet)
     setSelectedDate(startDate)
     setDepartmentFilter(ALL_DEPARTMENTS)
+    setRoleFilter("すべての役職")
+    setSheetDraft((prev) => ({ ...prev, name: "" }))
   }
 
-  const openShiftPage = (page: ShiftPage, index: number) => {
-    setSelectedPageIndex(index)
-    setShiftPage(page)
-    setSelectedDate(page.startDate)
+  const openShiftSheet = (sheet: ShiftSheet) => {
+    setShiftSheet(sheet)
+    setSelectedDate(sheet.startDate)
     setDepartmentFilter(ALL_DEPARTMENTS)
+    setRoleFilter("すべての役職")
+  }
+
+  const renameCurrentSheet = (name: string) => {
+    if (!shiftSheet) return
+    const nextName = name.trim() || shiftSheet.name
+    const nextSheet = { ...shiftSheet, name: nextName }
+    setShiftSheet(nextSheet)
+    setShiftSheets((prev) => prev.map((sheet) => (sheet.id === shiftSheet.id ? nextSheet : sheet)))
   }
 
   const getSlotFromPointer = (event: PointerEvent<HTMLButtonElement>) => {
@@ -428,6 +558,38 @@ export function ShiftManager({ members }: ShiftManagerProps) {
     return Math.min(
       Math.max(Math.floor((event.clientX - rect.left) / SLOT_WIDTH), 0),
       timeSlots.length - 1,
+    )
+  }
+
+  const getMobileSlotFromPointer = (event: PointerEvent<HTMLButtonElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    return Math.min(
+      Math.max(Math.floor((event.clientY - rect.top) / MOBILE_SLOT_HEIGHT), 0),
+      timeSlots.length - 1,
+    )
+  }
+
+  const beginCreateMobileShift = (memberId: string, event: PointerEvent<HTMLButtonElement>) => {
+    if (!isAdmin || !shiftSheet) return
+    const slot = getMobileSlotFromPointer(event)
+    if (isSlotOccupied(shiftsRef.current, memberId, selectedDate, slot)) {
+      setHoveredSlot(null)
+      return
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setHoveredSlot({ memberId, slot })
+    setCreatingShift({ memberId, startSlot: slot, currentSlot: slot })
+  }
+
+  const moveCreateMobileShift = (memberId: string, event: PointerEvent<HTMLButtonElement>) => {
+    if (!isAdmin) return
+    const slot = getMobileSlotFromPointer(event)
+    const occupied = isSlotOccupied(shiftsRef.current, memberId, selectedDate, slot)
+    setHoveredSlot(occupied ? null : { memberId, slot })
+    setCreatingShift((prev) =>
+      prev && prev.memberId === memberId
+        ? { ...prev, currentSlot: getAllowedCreateSlot(shiftsRef.current, memberId, selectedDate, prev.startSlot, slot) }
+        : prev,
     )
   }
 
@@ -488,7 +650,7 @@ export function ShiftManager({ members }: ShiftManagerProps) {
   }
 
   const beginCreateShift = (memberId: string, event: PointerEvent<HTMLButtonElement>) => {
-    if (!isAdmin || !shiftPage) return
+    if (!isAdmin || !shiftSheet) return
     const slot = getSlotFromPointer(event)
     if (isSlotOccupied(shiftsRef.current, memberId, selectedDate, slot)) {
       setHoveredSlot(null)
@@ -546,6 +708,18 @@ export function ShiftManager({ members }: ShiftManagerProps) {
     }
   }
 
+  const getMobileCreatePreview = (memberId: string) => {
+    if (!creatingShift || creatingShift.memberId !== memberId) return null
+    const startSlot = Math.min(creatingShift.startSlot, creatingShift.currentSlot)
+    const endSlot = Math.max(creatingShift.startSlot, creatingShift.currentSlot) + 1
+    return {
+      top: MOBILE_TIMELINE_PADDING_HEIGHT + startSlot * MOBILE_SLOT_HEIGHT,
+      height: Math.max((endSlot - startSlot) * MOBILE_SLOT_HEIGHT, MOBILE_SLOT_HEIGHT),
+      start: START_MINUTES + startSlot * SLOT_MINUTES,
+      end: START_MINUTES + endSlot * SLOT_MINUTES,
+    }
+  }
+
   const createDraftShift = () => {
     if (!draftShift) return
     const template = allShiftTemplates[draftShift.templateId]
@@ -563,41 +737,31 @@ export function ShiftManager({ members }: ShiftManagerProps) {
     setDraftShift(null)
   }
 
-  const createQuickShift = () => {
-    const template = allShiftTemplates[quickShiftDraft.templateId]
-    if (!template || !quickShiftDraft.memberId || !shiftPage) return
-    const start = quickShiftDraft.start
-    const end = clampShiftEnd(quickShiftDraft.end, start)
-    const shift: Shift = {
-      id: crypto.randomUUID(),
-      memberId: quickShiftDraft.memberId,
-      date: selectedDate,
-      start,
-      end,
-      templateId: quickShiftDraft.templateId,
-      kind: template.kind,
-      note: quickShiftDraft.note.trim() || template.note,
-    }
-    recordShiftsChange((prev) => [...prev, shift])
-    setQuickShiftDraft((prev) => ({ ...prev, note: "" }))
-    setQuickAddOpen(false)
-  }
-
   const createShiftTemplate = () => {
     const label = templateDraft.label.trim()
     if (!label) return
     const id = `custom-${crypto.randomUUID()}`
+    const template = {
+      label,
+      kind: templateDraft.kind,
+      defaultMinutes: templateDraft.defaultMinutes,
+      note: templateDraft.note.trim() || label,
+    }
     setCustomShiftTemplates((prev) => ({
       ...prev,
-      [id]: {
-        label,
-        kind: templateDraft.kind,
-        defaultMinutes: templateDraft.defaultMinutes,
-        note: templateDraft.note.trim() || label,
-      },
+      [id]: template,
     }))
+    setDraftShift((prev) =>
+      prev
+        ? {
+          ...prev,
+          templateId: id,
+          end: clampShiftEnd(prev.start + template.defaultMinutes, prev.start),
+          note: template.note,
+        }
+        : prev,
+    )
     setTemplateDraft({ label: "", kind: "day", defaultMinutes: 60, note: "" })
-    setTemplateDialogOpen(false)
   }
 
   const getResizeBounds = (shift: Shift, currentShifts = shiftsRef.current) => {
@@ -788,7 +952,7 @@ export function ShiftManager({ members }: ShiftManagerProps) {
       <header className="mb-4 flex shrink-0 flex-wrap items-center gap-2">
         <CalendarDays className="size-5 text-muted-foreground" />
         <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">シフト管理</h1>
-        {shiftPage ? (
+        {shiftSheet ? (
           <>
             <Select value={accountId} onValueChange={(value) => value !== null && setAccountId(value)}>
               <SelectTrigger className="h-8 w-36">
@@ -806,7 +970,7 @@ export function ShiftManager({ members }: ShiftManagerProps) {
               <SelectTrigger className="h-8 w-auto max-w-full bg-background">
                 <div className="flex min-w-0 items-center gap-1 text-sm">
                   <span className={selectedDateIsStart ? "font-semibold text-foreground" : "text-muted-foreground"}>
-                    {formatDate(shiftPage.startDate)}
+                    {formatDate(shiftSheet.startDate)}
                   </span>
                   {selectedDateIsMiddle ? (
                     <>
@@ -816,7 +980,7 @@ export function ShiftManager({ members }: ShiftManagerProps) {
                   ) : null}
                   <span className="text-muted-foreground">〜</span>
                   <span className={selectedDateIsEnd ? "font-semibold text-foreground" : "text-muted-foreground"}>
-                    {formatDate(shiftPage.endDate)}
+                    {formatDate(shiftSheet.endDate)}
                   </span>
                 </div>
               </SelectTrigger>
@@ -828,82 +992,110 @@ export function ShiftManager({ members }: ShiftManagerProps) {
                 ))}
               </SelectContent>
             </Select>
-            {shiftPages.map((page, index) => (
-              <Button key={`${page.startDate}-${page.endDate}-${index}`} type="button" size="sm" variant={index === selectedPageIndex ? "default" : "outline"} onClick={() => openShiftPage(page, index)}>
-                {index + 1}
-              </Button>
-            ))}
-            {isAdmin ? (
-              <Button type="button" size="sm" variant="outline" onClick={() => setTemplateDialogOpen(true)}>
-                種類追加
-              </Button>
-            ) : null}
-            {quickAddOpen ? (
-              <div className="grid w-full gap-2 lg:w-auto lg:grid-cols-[10rem_10rem_7rem_7rem_12rem]">
-                <Select value={quickShiftDraft.memberId} onValueChange={(value) => value !== null && setQuickShiftDraft((prev) => ({ ...prev, memberId: value }))}>
-                  <SelectTrigger className="h-8 w-full"><SelectValue>{memberName(quickShiftDraft.memberId) || "メンバー"}</SelectValue></SelectTrigger>
-                  <SelectContent>{members.map((member) => <SelectItem key={`header-quick-member-${member.id}`} value={member.id}>{member.name}</SelectItem>)}</SelectContent>
-                </Select>
-                <Select value={quickShiftDraft.templateId} onValueChange={(value) => value !== null && setQuickShiftDraft((prev) => ({ ...prev, templateId: value as ShiftTemplateId }))}>
-                  <SelectTrigger className="h-8 w-full"><SelectValue>{allShiftTemplates[quickShiftDraft.templateId]?.label ?? "種類"}</SelectValue></SelectTrigger>
-                  <SelectContent>{Object.keys(allShiftTemplates).map((templateId) => <SelectItem key={`header-quick-template-${templateId}`} value={templateId}>{allShiftTemplates[templateId].label}</SelectItem>)}</SelectContent>
-                </Select>
-                <Select value={formatTime(quickShiftDraft.start)} onValueChange={(value) => {
-                  if (value !== null) {
-                    const start = parseTime(value)
-                    setQuickShiftDraft((prev) => ({ ...prev, start, end: clampShiftEnd(Math.max(prev.end, start + SLOT_MINUTES), start) }))
-                  }
-                }}>
-                  <SelectTrigger className="h-8 w-full"><SelectValue>{formatTime(quickShiftDraft.start)}</SelectValue></SelectTrigger>
-                  <SelectContent>{timeOptions.slice(0, -1).map((option) => <SelectItem key={`header-quick-start-${option.value}`} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
-                </Select>
-                <Select value={formatTime(quickShiftDraft.end)} onValueChange={(value) => value !== null && setQuickShiftDraft((prev) => ({ ...prev, end: clampShiftEnd(parseTime(value), prev.start) }))}>
-                  <SelectTrigger className="h-8 w-full"><SelectValue>{formatTime(quickShiftDraft.end)}</SelectValue></SelectTrigger>
-                  <SelectContent>{timeOptions.slice(1).map((option) => <SelectItem key={`header-quick-end-${option.value}`} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
-                </Select>
-                <Input value={quickShiftDraft.note} onChange={(event) => setQuickShiftDraft((prev) => ({ ...prev, note: event.target.value }))} placeholder="業務・メモ" className="h-8" />
+            <div className="flex min-w-0 items-center gap-1">
+              {editingSheetName ? (
+                <Input
+                  autoFocus
+                  defaultValue={shiftSheet.name}
+                  onBlur={(event) => {
+                    renameCurrentSheet(event.target.value)
+                    setEditingSheetName(false)
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      renameCurrentSheet(event.currentTarget.value)
+                      setEditingSheetName(false)
+                    }
+                    if (event.key === "Escape") setEditingSheetName(false)
+                  }}
+                  className="h-8 w-48 bg-background"
+                />
+              ) : (
+                <Button type="button" size="sm" variant="default" className="max-w-48 truncate" onClick={() => setEditingSheetName(true)}>
+                  {shiftSheet.name}
+                </Button>
+              )}
+              <div className="relative">
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="outline"
+                  onClick={() => {
+                    setSheetSearchQuery("")
+                    setSheetSearchOpen((prev) => !prev)
+                  }}
+                  aria-label="シフトシートを検索"
+                >
+                  <Search className="size-4" />
+                </Button>
+                {sheetSearchOpen ? (
+                  <div className="absolute left-0 top-[calc(100%+0.25rem)] z-50 w-64 rounded-md border bg-popover p-2 shadow-lg">
+                    <Input
+                      autoFocus
+                      value={sheetSearchQuery}
+                      onChange={(event) => setSheetSearchQuery(event.target.value)}
+                      onBlur={() => window.setTimeout(() => setSheetSearchOpen(false), 120)}
+                      placeholder="シート検索"
+                      className="h-8 bg-background"
+                    />
+                    <div className="mt-2 max-h-56 overflow-y-auto overscroll-contain">
+                      {shiftSheets
+                        .map((sheet) => ({ sheet }))
+                        .filter(({ sheet }) => !sheetSearchQuery.trim() || sheet.name.toLowerCase().includes(sheetSearchQuery.trim().toLowerCase()))
+                        .map(({ sheet }) => (
+                          <button
+                            key={sheet.id}
+                            type="button"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => {
+                              openShiftSheet(sheet)
+                              setSheetSearchOpen(false)
+                            }}
+                            className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+                          >
+                            {sheet.name}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-            <Select value={departmentFilter} onValueChange={(value) => value !== null && setDepartmentFilter(value)}>
-              <SelectTrigger className="h-8 w-full md:w-44">
-                <SelectValue>{departmentFilter}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_DEPARTMENTS}>{ALL_DEPARTMENTS}</SelectItem>
-                {departments.map((department) => (
-                  <SelectItem key={department} value={department}>
-                    {department}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {isAdmin ? (
-              <Button type="button" size="sm" onClick={quickAddOpen ? createQuickShift : () => setQuickAddOpen(true)} disabled={quickAddOpen && !quickShiftDraft.memberId}>
-                {quickAddOpen ? "作成" : "シフト追加"}
-              </Button>
-            ) : null}
-            <Button type="button" size="sm" className="bg-black text-white hover:bg-black/80" onClick={() => setShiftPage(null)}>
+            </div>
+            <Button type="button" size="sm" variant="outline" onClick={() => setFiltersOpen(true)}>
+              <ListFilter className="size-4" />
+              絞り込み
+            </Button>
+            <Button type="button" size="sm" className="bg-black text-white hover:bg-black/80" onClick={() => setShiftSheet(null)}>
               <Plus className="size-4" />
-              ページ新規作成
+              シート新規作成
             </Button>
           </>
         ) : null}
       </header>
 
-      {!shiftPage ? (
+      {!shiftSheet ? (
         <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card">
           <div className="flex min-h-0 flex-1 flex-col p-4">
             <div className="w-full max-w-4xl shrink-0">
-              <h2 className="text-lg font-medium">シフトページ作成</h2>
+              <h2 className="text-lg font-medium">シフトシート作成</h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="page-start">開始日</Label>
+                <div className="grid gap-1.5 sm:col-span-2">
+                  <Label htmlFor="sheet-name">シート名</Label>
                   <Input
-                    id="page-start"
+                    id="sheet-name"
+                    value={sheetDraft.name}
+                    onChange={(event) => setSheetDraft((prev) => ({ ...prev, name: event.target.value }))}
+                    placeholder="例: 明大祭1日目 本部シフト"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="sheet-start">開始日</Label>
+                  <Input
+                    id="sheet-start"
                     type="date"
-                    value={pageDraft.startDate}
+                    value={sheetDraft.startDate}
                     onChange={(event) =>
-                      setPageDraft((prev) => ({
+                      setSheetDraft((prev) => ({
                         ...prev,
                         startDate: event.target.value,
                         endDate: prev.endDate < event.target.value ? event.target.value : prev.endDate,
@@ -912,24 +1104,32 @@ export function ShiftManager({ members }: ShiftManagerProps) {
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="page-end">終了日</Label>
+                  <Label htmlFor="sheet-end">終了日</Label>
                   <Input
-                    id="page-end"
+                    id="sheet-end"
                     type="date"
-                    value={pageDraft.endDate}
-                    min={pageDraft.startDate}
-                    onChange={(event) => setPageDraft((prev) => ({ ...prev, endDate: event.target.value }))}
+                    value={sheetDraft.endDate}
+                    min={sheetDraft.startDate}
+                    onChange={(event) => setSheetDraft((prev) => ({ ...prev, endDate: event.target.value }))}
                   />
                 </div>
               </div>
             </div>
 
             <div className="mt-5 flex min-h-0 flex-1 flex-col">
-              <Label className="shrink-0">招待するメンバー</Label>
+              <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <Label>招待するメンバー</Label>
+                <Input
+                  value={sheetMemberSearch}
+                  onChange={(event) => setSheetMemberSearch(event.target.value)}
+                  placeholder="メンバー検索"
+                  className="h-8 sm:w-64"
+                />
+              </div>
               <div className="mt-3 min-h-0 flex-1 overflow-auto pr-1">
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 {draftMembers.map((member) => {
-                  const selected = pageDraft.memberIds.includes(member.id)
+                  const selected = sheetDraft.memberIds.includes(member.id)
                   return (
                     <button
                       key={member.id}
@@ -955,143 +1155,154 @@ export function ShiftManager({ members }: ShiftManagerProps) {
               onClick={() => setShowSelectedMembersOnly((prev) => !prev)}
               className="cursor-pointer rounded-md px-2 py-1 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
             >
-              {pageDraft.memberIds.length}名を選択中
+              {sheetDraft.memberIds.length}名を選択中
             </button>
-            <Button type="button" className="bg-black text-white hover:bg-black/80" onClick={createShiftPage}>
+            <Button type="button" className="bg-black text-white hover:bg-black/80" onClick={createShiftSheet}>
               <Plus className="size-4" />
-              ページ新規作成
+              シート新規作成
             </Button>
           </div>
         </section>
       ) : (
         <>
-          <section className="hidden">
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-              {isAdmin ? (
-                <Button type="button" variant="outline" onClick={() => setTemplateDialogOpen(true)}>
-                  種類追加
-                </Button>
-              ) : null}
-              {quickAddOpen ? (
-                <div className="grid gap-2 lg:grid-cols-[10rem_10rem_7rem_7rem_12rem]">
-                  <Select
-                    value={quickShiftDraft.memberId}
-                    onValueChange={(value) => {
-                      if (value !== null) setQuickShiftDraft((prev) => ({ ...prev, memberId: value }))
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue>{memberName(quickShiftDraft.memberId) || "メンバー"}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {members.map((member) => (
-                        <SelectItem key={`quick-member-${member.id}`} value={member.id}>
-                          {member.name}
-                        </SelectItem>
+          <div className="min-h-0 flex-1 space-y-3 overflow-auto select-none md:hidden">
+            <Button type="button" variant="outline" className="w-full justify-start" onClick={() => setFiltersOpen(true)}>
+              <ListFilter className="size-4" />
+              絞り込み
+            </Button>
+            {invitedMembers.map((member) => {
+              const memberShifts = visibleSelectedDateShifts
+                .filter((shift) => shift.memberId === member.id)
+                .sort((left, right) => left.start - right.start)
+              const allMemberShifts = selectedDateShifts.filter((shift) => shift.memberId === member.id)
+              const createPreview = getMobileCreatePreview(member.id)
+              return (
+                <section key={`mobile-member-${member.id}`} className="rounded-lg border bg-card p-3">
+                  <div className="mb-3">
+                    <div className="font-medium">{member.name}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      {member.department} / {member.role}
+                    </div>
+                  </div>
+                  <div className="relative" style={{ height: MOBILE_TIMELINE_TRACK_HEIGHT }}>
+                    {timeOptions
+                      .filter((slot) => (slot.minutes - START_MINUTES) % 120 === 0)
+                      .map((slot) => (
+                        <div
+                          key={`mobile-time-${member.id}-${slot.value}`}
+                          className="absolute left-0 right-0 border-t border-dashed border-border/70"
+                          style={{ top: MOBILE_TIMELINE_PADDING_HEIGHT + ((slot.minutes - START_MINUTES) / SLOT_MINUTES) * MOBILE_SLOT_HEIGHT }}
+                        >
+                          <span className="-mt-2.5 inline-block w-12 bg-card pr-2 text-xs text-muted-foreground">
+                            {slot.label}
+                          </span>
+                        </div>
                       ))}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={quickShiftDraft.templateId}
-                    onValueChange={(value) => {
-                      if (value !== null) setQuickShiftDraft((prev) => ({ ...prev, templateId: value as ShiftTemplateId }))
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue>{allShiftTemplates[quickShiftDraft.templateId]?.label ?? "種類"}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.keys(allShiftTemplates).map((templateId) => (
-                        <SelectItem key={`quick-template-${templateId}`} value={templateId}>
-                          {allShiftTemplates[templateId].label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={formatTime(quickShiftDraft.start)}
-                    onValueChange={(value) => {
-                      if (value !== null) {
-                        const start = parseTime(value)
-                        setQuickShiftDraft((prev) => ({ ...prev, start, end: clampShiftEnd(Math.max(prev.end, start + SLOT_MINUTES), start) }))
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue>{formatTime(quickShiftDraft.start)}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timeOptions.slice(0, -1).map((option) => (
-                        <SelectItem key={`quick-start-${option.value}`} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={formatTime(quickShiftDraft.end)}
-                    onValueChange={(value) => {
-                      if (value !== null) setQuickShiftDraft((prev) => ({ ...prev, end: clampShiftEnd(parseTime(value), prev.start) }))
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue>{formatTime(quickShiftDraft.end)}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timeOptions.slice(1).map((option) => (
-                        <SelectItem key={`quick-end-${option.value}`} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    value={quickShiftDraft.note}
-                    onChange={(event) => setQuickShiftDraft((prev) => ({ ...prev, note: event.target.value }))}
-                    placeholder="業務・メモ"
-                  />
-                </div>
-              ) : null}
-              <Select
-                value={departmentFilter}
-                onValueChange={(value) => {
-                  if (value !== null) setDepartmentFilter(value)
-                }}
-              >
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue>{departmentFilter}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL_DEPARTMENTS}>{ALL_DEPARTMENTS}</SelectItem>
-                  {departments.map((department) => (
-                    <SelectItem key={department} value={department}>
-                      {department}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {isAdmin ? (
-                <Button
-                  type="button"
-                  onClick={quickAddOpen ? createQuickShift : () => setQuickAddOpen(true)}
-                  disabled={quickAddOpen && !quickShiftDraft.memberId}
-                >
-                  <Plus className="size-4" />
-                  追加
-                </Button>
-              ) : null}
-            </div>
-          </section>
+                    <button
+                      type="button"
+                      disabled={!isAdmin}
+                      data-shift-member-id={member.id}
+                      onPointerDown={(event) => beginCreateMobileShift(member.id, event)}
+                      onPointerMove={(event) => moveCreateMobileShift(member.id, event)}
+                      onPointerUp={() => finishCreateShift(member.id)}
+                      onPointerCancel={cancelCreateShift}
+                      onPointerLeave={() => {
+                        if (!creatingShift || creatingShift.memberId !== member.id) {
+                          setHoveredSlot(null)
+                        }
+                      }}
+                      className="absolute left-14 right-0 rounded-lg border border-dashed border-border/80 text-left transition enabled:cursor-copy enabled:hover:bg-muted/30 disabled:cursor-default"
+                      style={{
+                        top: MOBILE_TIMELINE_PADDING_HEIGHT,
+                        height: MOBILE_TIMELINE_HEIGHT,
+                        backgroundImage:
+                          "repeating-linear-gradient(to bottom, transparent 0, transparent 13px, color-mix(in oklch, var(--border), transparent 35%) 13px, color-mix(in oklch, var(--border), transparent 35%) 14px)",
+                      }}
+                      aria-label={`${member.name}のシフトを追加`}
+                    >
+                      {allMemberShifts.map((shift) => {
+                        const blockedTop = ((shift.start - START_MINUTES) / SLOT_MINUTES) * MOBILE_SLOT_HEIGHT
+                        const blockedHeight = ((shift.end - shift.start) / SLOT_MINUTES) * MOBILE_SLOT_HEIGHT
+                        return (
+                          <span
+                            key={`mobile-blocked-slot-${shift.id}`}
+                            className="absolute inset-x-0 cursor-not-allowed"
+                            style={{ top: blockedTop, height: blockedHeight }}
+                            onPointerDown={(event) => event.stopPropagation()}
+                            onPointerEnter={() => setHoveredSlot(null)}
+                            onPointerMove={(event) => event.stopPropagation()}
+                            onPointerUp={(event) => event.stopPropagation()}
+                            aria-hidden="true"
+                          />
+                        )
+                      })}
+                      {hoveredSlot?.memberId === member.id ? (
+                        <span
+                          className="pointer-events-none absolute inset-x-0 border-b bg-muted"
+                          style={{
+                            top: hoveredSlot.slot * MOBILE_SLOT_HEIGHT,
+                            height: MOBILE_SLOT_HEIGHT,
+                            borderBottomColor: "color-mix(in oklch, var(--border), transparent 35%)",
+                          }}
+                        />
+                      ) : null}
+                    </button>
+                    <div className="absolute bottom-7 left-14 top-7 border-l border-border" />
+                    {memberShifts.length === 0 ? (
+                      <div className="pointer-events-none absolute left-16 right-0 top-11 rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                        この日のシフトはありません
+                      </div>
+                    ) : null}
+                    {createPreview ? (
+                      <div
+                        className={`pointer-events-none absolute left-16 right-1 box-border overflow-hidden rounded-md border px-3 py-2 text-left shadow-sm ${shiftKinds.day.className}`}
+                        style={{
+                          top: createPreview.top,
+                          height: Math.max(createPreview.height, 44),
+                        }}
+                      >
+                        <span className="block truncate text-sm font-medium">
+                          {formatTime(createPreview.start)}-{formatTime(createPreview.end)}
+                        </span>
+                        <span className="block truncate text-xs opacity-80">
+                          {allShiftTemplates[DEFAULT_SHIFT_TEMPLATE_ID].label}
+                        </span>
+                      </div>
+                    ) : null}
+                    {memberShifts.map((shift) => {
+                      const top = MOBILE_TIMELINE_PADDING_HEIGHT + ((shift.start - START_MINUTES) / SLOT_MINUTES) * MOBILE_SLOT_HEIGHT
+                      const height = Math.max(((shift.end - shift.start) / SLOT_MINUTES) * MOBILE_SLOT_HEIGHT, 44)
+                      const template = allShiftTemplates[shift.templateId]
+                      return (
+                        <button
+                          key={`mobile-shift-${shift.id}`}
+                          type="button"
+                          onClick={() => openShiftDetail(shift.id)}
+                          className={`absolute left-16 right-0 rounded-md border px-3 py-2 text-left shadow-sm ${shiftKinds[shift.kind].className}`}
+                          style={{ top, height }}
+                        >
+                          <span className="block text-sm font-medium">
+                            {formatTime(shift.start)}-{formatTime(shift.end)}
+                          </span>
+                          <span className="mt-0.5 block truncate text-xs opacity-80">
+                            {shift.note || template.label}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </section>
+              )
+            })}
+          </div>
 
-          <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-card">
+          <div className="hidden min-h-0 flex-1 select-none overflow-auto rounded-lg border bg-card md:block">
             <div className="grid min-w-300 grid-cols-[15rem_1fr]">
               <div className="sticky left-0 top-0 z-30 border-b border-r bg-card p-3">
-                <Input
-                  value={memberSearch}
-                  onChange={(event) => setMemberSearch(event.target.value)}
-                  placeholder="名前検索"
-                  className="h-8 bg-background"
-                />
+                <Button type="button" variant="outline" size="sm" className="w-full justify-start" onClick={() => setFiltersOpen(true)}>
+                  <ListFilter className="size-4" />
+                  絞り込み
+                </Button>
               </div>
               <div className="sticky top-0 z-20 border-b bg-card py-3">
                 <div className="relative h-10" style={{ width: TIMELINE_TRACK_WIDTH }}>
@@ -1124,7 +1335,8 @@ export function ShiftManager({ members }: ShiftManagerProps) {
                 const movingPreviewShift = moving
                   ? selectedDateShifts.find((shift) => shift.id === moving.id) ?? null
                   : null
-                const memberShifts = selectedDateShifts.filter((shift) => shift.memberId === member.id)
+                const memberShifts = visibleSelectedDateShifts.filter((shift) => shift.memberId === member.id)
+                const allMemberShifts = selectedDateShifts.filter((shift) => shift.memberId === member.id)
                 const visibleMemberShifts =
                   movingPreviewShift && moving?.previewMemberId === member.id && movingPreviewShift.memberId !== member.id
                     ? [...memberShifts, { ...movingPreviewShift, memberId: member.id }]
@@ -1162,7 +1374,7 @@ export function ShiftManager({ members }: ShiftManagerProps) {
                           }}
                           aria-label={`${member.name}のシフトを追加`}
                         >
-                          {memberShifts.map((shift) => {
+                          {allMemberShifts.map((shift) => {
                             const blockedLeft = ((shift.start - START_MINUTES) / SLOT_MINUTES) * SLOT_WIDTH
                             const blockedWidth = ((shift.end - shift.start) / SLOT_MINUTES) * SLOT_WIDTH
                             return (
@@ -1327,76 +1539,45 @@ export function ShiftManager({ members }: ShiftManagerProps) {
         </div>
       ) : null}
 
-      <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+      <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>シフト種類作成</DialogTitle>
-            <DialogDescription>作成した種類はシフト作成時のプルダウンに追加されます。</DialogDescription>
+            <DialogTitle>シフト絞り込み</DialogTitle>
+            <DialogDescription>表示するメンバーとシフトを条件で絞り込みます。</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-1.5">
-              <Label htmlFor="template-label">種類名</Label>
-              <Input
-                id="template-label"
-                value={templateDraft.label}
-                onChange={(event) => setTemplateDraft((prev) => ({ ...prev, label: event.target.value }))}
-                placeholder="例: 受付ヘルプ"
-              />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="grid gap-1.5">
-                <Label>色カテゴリ</Label>
-                <Select
-                  value={templateDraft.kind}
-                  onValueChange={(value) => {
-                    if (value !== null) setTemplateDraft((prev) => ({ ...prev, kind: value as ShiftKind }))
-                  }}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue>{shiftKinds[templateDraft.kind].label}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(shiftKinds) as ShiftKind[]).map((kind) => (
-                      <SelectItem key={`template-kind-${kind}`} value={kind}>
-                        {shiftKinds[kind].label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="template-duration">標準時間（分）</Label>
-                <Input
-                  id="template-duration"
-                  type="number"
-                  min={15}
-                  step={15}
-                  value={templateDraft.defaultMinutes}
-                  onChange={(event) =>
-                    setTemplateDraft((prev) => ({
-                      ...prev,
-                      defaultMinutes: Math.max(15, Math.round(Number(event.target.value || 15) / 15) * 15),
-                    }))
-                  }
-                />
-              </div>
+              <Label>シフト名</Label>
+              <SearchPicker label="シフト名" value={shiftFilter} options={shiftFilterOptions} onChange={setShiftFilter} />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="template-note">標準メモ</Label>
-              <Input
-                id="template-note"
-                value={templateDraft.note}
-                onChange={(event) => setTemplateDraft((prev) => ({ ...prev, note: event.target.value }))}
-                placeholder="例: 受付対応"
-              />
+              <Label>メンバー名</Label>
+              <SearchPicker label="メンバー名" value={memberSearch} options={members.map((member) => member.name)} onChange={setMemberSearch} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>所属</Label>
+              <SearchPicker label="所属" value={departmentFilter} allValue={ALL_DEPARTMENTS} options={departments} onChange={setDepartmentFilter} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>役職</Label>
+              <SearchPicker label="役職" value={roleFilter} allValue="すべての役職" options={roles} onChange={setRoleFilter} />
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setTemplateDialogOpen(false)}>
-              キャンセル
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShiftFilter("")
+                setMemberSearch("")
+                setDepartmentFilter(ALL_DEPARTMENTS)
+                setRoleFilter("すべての役職")
+              }}
+            >
+              クリア
             </Button>
-            <Button type="button" onClick={createShiftTemplate} disabled={!templateDraft.label.trim()}>
-              作成
+            <Button type="button" onClick={() => setFiltersOpen(false)}>
+              適用
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1444,6 +1625,56 @@ export function ShiftManager({ members }: ShiftManagerProps) {
                       ))}
                     </SelectContent>
                   </Select>
+                  <div className="grid gap-3 rounded-md border border-primary/30 bg-primary/5 p-3">
+                    <div className="text-sm font-medium">新しいシフト種類を追加</div>
+                    <Input
+                      value={templateDraft.label}
+                      onChange={(event) => setTemplateDraft((prev) => ({ ...prev, label: event.target.value }))}
+                      placeholder="種類名"
+                    />
+                    <div className="grid gap-2 sm:grid-cols-[1fr_8rem]">
+                      <Select
+                        value={templateDraft.kind}
+                        onValueChange={(value) => {
+                          if (value !== null) setTemplateDraft((prev) => ({ ...prev, kind: value as ShiftKind }))
+                        }}
+                      >
+                        <SelectTrigger className="w-full bg-background">
+                          <SelectValue>{shiftKinds[templateDraft.kind].label}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Object.keys(shiftKinds) as ShiftKind[]).map((kind) => (
+                            <SelectItem key={`template-kind-${kind}`} value={kind}>
+                              {shiftKinds[kind].label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number"
+                        min={15}
+                        step={15}
+                        value={templateDraft.defaultMinutes}
+                        onChange={(event) =>
+                          setTemplateDraft((prev) => ({
+                            ...prev,
+                            defaultMinutes: Math.max(15, Math.round(Number(event.target.value || 15) / 15) * 15),
+                          }))
+                        }
+                        aria-label="標準時間（分）"
+                      />
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                      <Input
+                        value={templateDraft.note}
+                        onChange={(event) => setTemplateDraft((prev) => ({ ...prev, note: event.target.value }))}
+                        placeholder="標準メモ"
+                      />
+                      <Button type="button" onClick={createShiftTemplate} disabled={!templateDraft.label.trim()}>
+                        追加
+                      </Button>
+                    </div>
+                  </div>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="grid gap-1.5">

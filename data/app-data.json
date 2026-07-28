@@ -4,141 +4,141 @@
       "id": "1",
       "name": "田中 太郎",
       "email": "tanaka.taro@event.local",
-      "department": "本部運営",
-      "role": "統括責任者"
+      "department": "執行部",
+      "role": "委員長"
     },
     {
       "id": "2",
       "name": "佐藤 花子",
       "email": "sato.hanako@event.local",
-      "department": "受付",
-      "role": "受付リーダー"
+      "department": "執行部",
+      "role": "副委員長"
     },
     {
       "id": "3",
       "name": "鈴木 一郎",
       "email": "suzuki.ichiro@event.local",
-      "department": "会場誘導",
-      "role": "導線管理"
+      "department": "運営局・第1部門",
+      "role": "局長・役員"
     },
     {
       "id": "4",
       "name": "高橋 美咲",
       "email": "takahashi.misaki@event.local",
-      "department": "ステージ",
-      "role": "進行ディレクター"
+      "department": "演出局・第1部門",
+      "role": "局長・役員"
     },
     {
       "id": "5",
       "name": "伊藤 健",
       "email": "ito.ken@event.local",
-      "department": "音響・照明",
-      "role": "音響担当"
+      "department": "開発局・第1部門",
+      "role": "局長・役員"
     },
     {
       "id": "6",
       "name": "渡辺 由美",
       "email": "watanabe.yumi@event.local",
-      "department": "出展者対応",
-      "role": "団体窓口"
+      "department": "参加団体局・第1部門",
+      "role": "局長・役員"
     },
     {
       "id": "7",
       "name": "山本 翔",
       "email": "yamamoto.sho@event.local",
-      "department": "警備",
-      "role": "巡回担当"
+      "department": "運営局・第1部門",
+      "role": "副局長"
     },
     {
       "id": "8",
       "name": "中村 葵",
       "email": "nakamura.aoi@event.local",
-      "department": "救護",
-      "role": "救護担当"
+      "department": "渉外局・第1部門",
+      "role": "副局長"
     },
     {
       "id": "9",
       "name": "小林 優",
       "email": "kobayashi.yu@event.local",
-      "department": "受付",
-      "role": "チケット確認"
+      "department": "総務局・第1部門",
+      "role": "副局長"
     },
     {
       "id": "10",
       "name": "加藤 直人",
       "email": "kato.naoto@event.local",
-      "department": "広報",
-      "role": "SNS記録"
+      "department": "広報局・第1部門",
+      "role": "局長・役員"
     },
     {
       "id": "11",
       "name": "吉田 紗希",
       "email": "yoshida.saki@event.local",
-      "department": "備品・搬入",
-      "role": "備品管理"
+      "department": "制作局・第1部門",
+      "role": "局長・役員"
     },
     {
       "id": "12",
       "name": "山田 陸",
       "email": "yamada.riku@event.local",
-      "department": "会場誘導",
-      "role": "入口誘導"
+      "department": "運営局・第1部門",
+      "role": "3年会"
     },
     {
       "id": "13",
       "name": "松本 凛",
       "email": "matsumoto.rin@event.local",
-      "department": "音響・照明",
-      "role": "照明担当"
+      "department": "演出局・第1部門",
+      "role": "部門長"
     },
     {
       "id": "14",
       "name": "井上 大輔",
       "email": "inoue.daisuke@event.local",
-      "department": "出展者対応",
-      "role": "控室対応"
+      "department": "参加団体局・第1部門",
+      "role": "2年継続"
     },
     {
       "id": "15",
       "name": "木村 菜月",
       "email": "kimura.natsuki@event.local",
-      "department": "企画運営",
-      "role": "ワークショップ担当"
+      "department": "開発局・第1部門",
+      "role": "部門長"
     },
     {
       "id": "16",
       "name": "林 拓海",
       "email": "hayashi.takumi@event.local",
-      "department": "ステージ",
-      "role": "転換補助"
+      "department": "演出局・第1部門",
+      "role": "2年継続"
     },
     {
       "id": "17",
       "name": "清水 結衣",
       "email": "shimizu.yui@event.local",
-      "department": "本部運営",
-      "role": "連絡係"
+      "department": "総務局・第1部門",
+      "role": "2年継続"
     },
     {
       "id": "18",
       "name": "斎藤 悠真",
       "email": "saito.yuma@event.local",
-      "department": "備品・搬入",
-      "role": "設営担当"
+      "department": "制作局・第1部門",
+      "role": "1年新規"
     },
     {
       "id": "19",
       "name": "森 美月",
       "email": "mori.mizuki@event.local",
-      "department": "救護",
-      "role": "迷子対応"
+      "department": "財務局・第1部門",
+      "role": "1年新規"
     },
     {
       "id": "20",
       "name": "池田 蓮",
       "email": "ikeda.ren@event.local",
-      "department": "広報",
-      "role": "撮影担当"
+      "department": "広報局・第1部門",
+      "role": "1年新規"
     }
   ],
   "organizations": [
@@ -220,7 +220,7 @@
       "startTime": "11:30",
       "endTime": "13:00",
       "owner": "企画運営",
-      "status": "要確認",
+      "status": "当日対応",
       "note": "水場利用と安全導線を確認"
     },
     {
@@ -232,7 +232,7 @@
       "startTime": "14:00",
       "endTime": "14:45",
       "owner": "ステージ",
-      "status": "確定",
+      "status": "準備中",
       "note": "転換補助 2 名"
     },
     {
@@ -256,9 +256,195 @@
       "startTime": "17:00",
       "endTime": "18:00",
       "owner": "会場誘導",
-      "status": "当日対応",
+      "status": "確定",
       "note": "出口案内、落とし物確認"
     }
   ],
-  "updatedAt": "2026-06-28T00:03:25.005Z"
+  "shiftDataByAccount": {
+    "admin": {
+      "sheets": [
+        {
+          "id": "d1923371-d52a-4468-9d6d-d1b0a34a4458",
+          "name": "明大祭1日目",
+          "memberIds": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6"
+          ],
+          "startDate": "2026-06-28",
+          "endDate": "2026-07-04"
+        }
+      ],
+      "shifts": [
+        {
+          "id": "s1",
+          "memberId": "1",
+          "date": "2026-06-26",
+          "start": 540,
+          "end": 1020,
+          "templateId": "guide",
+          "kind": "day",
+          "note": "本部連絡・導線確認"
+        },
+        {
+          "id": "s2",
+          "memberId": "2",
+          "date": "2026-06-26",
+          "start": 420,
+          "end": 720,
+          "templateId": "reception",
+          "kind": "morning",
+          "note": "受付設営・来場者対応"
+        },
+        {
+          "id": "s3",
+          "memberId": "3",
+          "date": "2026-06-26",
+          "start": 900,
+          "end": 1260,
+          "templateId": "security",
+          "kind": "evening",
+          "note": "混雑対応・巡回"
+        },
+        {
+          "id": "s4",
+          "memberId": "5",
+          "date": "2026-06-27",
+          "start": 600,
+          "end": 1080,
+          "templateId": "stage",
+          "kind": "full",
+          "note": "音響確認・転換補助"
+        }
+      ],
+      "customShiftTemplates": {}
+    }
+  },
+  "permissionSettings": {
+    "departments": [
+      "執行部",
+      "運営局・第1部門",
+      "運営局・第2部門",
+      "運営局・第3部門",
+      "演出局・第1部門",
+      "演出局・第2部門",
+      "演出局・第3部門",
+      "参加団体局・第1部門",
+      "参加団体局・第2部門",
+      "参加団体局・第3部門",
+      "開発局・第1部門",
+      "開発局・第2部門",
+      "開発局・第3部門",
+      "制作局・第1部門",
+      "制作局・第2部門",
+      "制作局・第3部門",
+      "財務局・第1部門",
+      "財務局・第2部門",
+      "財務局・第3部門",
+      "総務局・第1部門",
+      "総務局・第2部門",
+      "総務局・第3部門",
+      "渉外局・第1部門",
+      "渉外局・第2部門",
+      "渉外局・第3部門",
+      "広報局・第1部門",
+      "広報局・第2部門",
+      "広報局・第3部門"
+    ],
+    "roles": [
+      "委員長",
+      "副委員長",
+      "局長・役員",
+      "副局長",
+      "3年会",
+      "部門長",
+      "2年継続",
+      "1年新規"
+    ],
+    "rolePermissions": {
+      "委員長": [
+        "official",
+        "shift",
+        "roster",
+        "organizations",
+        "projects",
+        "permissions",
+        "dtp",
+        "kanban",
+        "vote",
+        "campus",
+        "camera"
+      ],
+      "副委員長": [
+        "official",
+        "shift",
+        "roster",
+        "organizations",
+        "projects",
+        "permissions",
+        "dtp",
+        "kanban",
+        "vote",
+        "campus",
+        "camera"
+      ],
+      "局長・役員": [
+        "official",
+        "shift",
+        "roster",
+        "organizations",
+        "projects",
+        "dtp",
+        "kanban",
+        "vote",
+        "campus",
+        "camera"
+      ],
+      "副局長": [
+        "official",
+        "shift",
+        "organizations",
+        "projects",
+        "kanban",
+        "vote",
+        "campus",
+        "camera"
+      ],
+      "3年会": [
+        "official",
+        "shift",
+        "kanban",
+        "vote",
+        "campus",
+        "camera"
+      ],
+      "部門長": [
+        "official",
+        "shift",
+        "kanban",
+        "vote",
+        "campus",
+        "camera"
+      ],
+      "2年継続": [
+        "official",
+        "shift",
+        "vote",
+        "campus",
+        "camera"
+      ],
+      "1年新規": [
+        "official",
+        "shift",
+        "vote",
+        "campus",
+        "camera"
+      ]
+    },
+    "memberPermissions": {}
+  },
+  "updatedAt": "2026-07-28T10:01:11.578Z"
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Camera, RotateCcw, Smartphone } from "lucide-react"
+import { Camera, RefreshCcw, RotateCcw, Smartphone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export function MobileCamera() {
@@ -13,16 +13,29 @@ export function MobileCamera() {
   )
   const [photo, setPhoto] = useState<string | null>(null)
   const [filter, setFilter] = useState("none")
+  const [facingMode, setFacingMode] = useState<"environment" | "user">("environment")
 
   useEffect(() => {
     return () => streamRef.current?.getTracks().forEach((track) => track.stop())
   }, [])
 
-  const startCamera = async () => {
+  const stopCamera = () => {
+    streamRef.current?.getTracks().forEach((track) => track.stop())
+    streamRef.current = null
+  }
+
+  const startCamera = async (mode = facingMode) => {
     if (!navigator.mediaDevices?.getUserMedia) return
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
+    stopCamera()
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode }, audio: false })
     streamRef.current = stream
     if (videoRef.current) videoRef.current.srcObject = stream
+  }
+
+  const switchCamera = () => {
+    const nextMode = facingMode === "environment" ? "user" : "environment"
+    setFacingMode(nextMode)
+    startCamera(nextMode).catch(() => undefined)
   }
 
   const capture = () => {
@@ -70,8 +83,11 @@ export function MobileCamera() {
           ))}
         </div>
         <div className="flex items-center justify-center gap-5">
-          <Button type="button" variant="secondary" size="icon" onClick={startCamera}>
+          <Button type="button" variant="secondary" size="icon" onClick={() => startCamera()}>
             <RotateCcw className="size-4" />
+          </Button>
+          <Button type="button" variant="secondary" size="icon" onClick={switchCamera} aria-label="内外カメラを切り替え">
+            <RefreshCcw className="size-4" />
           </Button>
           <button type="button" onClick={capture} className="grid size-16 place-items-center rounded-full border-4 border-white bg-white/20">
             <Camera className="size-7" />

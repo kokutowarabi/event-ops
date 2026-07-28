@@ -158,7 +158,7 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
         </Button>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-visible rounded-lg border bg-card">
+      <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-card">
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-card">
             <TableRow className="bg-muted/40 hover:bg-muted/40">

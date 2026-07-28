@@ -1,36 +1,58 @@
 "use client"
 
-import { useEffect, useMemo, useState, type TouchEvent } from "react"
-import { Building2, CalendarDays, Camera, ClipboardList, Copy, Globe2, LogOut, Map, Users, Vote } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Building2, CalendarDays, Camera, Check, ClipboardList, Columns3, Copy, FileText, Globe2, LogOut, Map, ShieldCheck, Users, Vote } from "lucide-react"
 import { CampusGame } from "@/components/campus-game"
+import { DtpStudio } from "@/components/dtp-studio"
+import { KanbanBoard } from "@/components/kanban-board"
 import { MobileCamera } from "@/components/mobile-camera"
 import { OrganizationManager } from "@/components/organization-manager"
 import { OfficialSite } from "@/components/official-site"
+import { PermissionManager } from "@/components/permission-manager"
 import { ProjectManager } from "@/components/project-manager"
 import { ProjectVote } from "@/components/project-vote"
 import { RosterManager } from "@/components/roster-manager"
-import { ShiftManager } from "@/components/shift-manager"
+import { emptyShiftData, ShiftManager, type ShiftData } from "@/components/shift-manager"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { initialOrganizations, initialProjects } from "@/lib/event-data"
 import type { EventOrganization, EventProject } from "@/lib/event-data"
 import { initialMembers, type Member } from "@/lib/members"
+import {
+  defaultPermissionSettings,
+  getAllowedViewsForAccount,
+  normalizePermissionSettings,
+  type AppView,
+  type PermissionSettings,
+} from "@/lib/permissions"
 
-type View = "shift" | "roster" | "organizations" | "projects" | "campus" | "vote" | "official" | "camera"
+type View = AppView
 type Role = "admin" | "member"
 type Account = { id: string; name: string; email: string; password: string; role: Role }
+type StoredAccount = Omit<Account, "password">
 const loginCookieKey = "event-ops-current-account"
 
 const adminAccount: Account = {
   id: "admin",
   name: "開発管理者",
-  email: "admin@event.local",
-  password: "admin1234",
+  email: "ops.admin@example.invalid",
+  password: "EventOps-2026!Local",
   role: "admin",
 }
 
-const memberViews: View[] = ["official", "shift", "vote", "campus", "camera"]
-const adminViews: View[] = ["official", "shift", "roster", "organizations", "projects", "vote", "campus", "camera"]
+const viewLabels: Record<View, string> = {
+  official: "公式サイト",
+  shift: "シフト",
+  roster: "名簿",
+  organizations: "団体",
+  projects: "企画",
+  permissions: "権限",
+  dtp: "DTP",
+  kanban: "カンバン",
+  vote: "投票",
+  campus: "キャンパス",
+  camera: "カメラ",
+}
 
 function getStoredAccount() {
   if (typeof document === "undefined") return null
@@ -40,7 +62,9 @@ function getStoredAccount() {
   const savedAccount = cookie ? decodeURIComponent(cookie.split("=").slice(1).join("=")) : null
   if (!savedAccount) return null
   try {
-    return JSON.parse(savedAccount) as Account
+    const account = JSON.parse(savedAccount) as Partial<Account>
+    if (!account.id || !account.name || !account.email || !account.role) return null
+    return { id: account.id, name: account.name, email: account.email, role: account.role } as StoredAccount
   } catch {
     clearStoredAccount()
     return null
@@ -48,7 +72,13 @@ function getStoredAccount() {
 }
 
 function saveStoredAccount(account: Account) {
-  document.cookie = `${loginCookieKey}=${encodeURIComponent(JSON.stringify(account))}; path=/; max-age=2592000; SameSite=Lax`
+  const storedAccount: StoredAccount = {
+    id: account.id,
+    name: account.name,
+    email: account.email,
+    role: account.role,
+  }
+  document.cookie = `${loginCookieKey}=${encodeURIComponent(JSON.stringify(storedAccount))}; path=/; max-age=2592000; SameSite=Lax`
 }
 
 function clearStoredAccount() {
@@ -61,12 +91,24 @@ export default function Page() {
   const [members, setMembers] = useState<Member[]>(initialMembers)
   const [organizations, setOrganizations] = useState<EventOrganization[]>(initialOrganizations)
   const [projects, setProjects] = useState<EventProject[]>(initialProjects)
-  const [accounts, setAccounts] = useState<Account[]>(() => storedAccount && storedAccount.id !== adminAccount.id ? [adminAccount, storedAccount] : [adminAccount])
-  const [currentAccount, setCurrentAccount] = useState<Account | null>(() => storedAccount)
+  const [shiftDataByAccount, setShiftDataByAccount] = useState<Record<string, ShiftData>>({})
+  const [permissionSettings, setPermissionSettings] = useState<PermissionSettings>(defaultPermissionSettings)
+  const [accounts, setAccounts] = useState<Account[]>([adminAccount])
+  const [currentAccount, setCurrentAccount] = useState<StoredAccount | null>(() => storedAccount)
   const [authDraft, setAuthDraft] = useState({ name: "", email: "", password: "" })
   const [authMode, setAuthMode] = useState<"login" | "signup">("login")
-  const allowedViews = useMemo(() => (currentAccount?.role === "admin" ? adminViews : memberViews), [currentAccount])
+  const [copiedCredential, setCopiedCredential] = useState<"email" | "password" | null>(null)
+  const [appDataLoaded, setAppDataLoaded] = useState(false)
+  const latestDataRef = useRef({ members, organizations, projects, shiftDataByAccount, permissionSettings })
+  const allowedViews = useMemo(
+    () => getAllowedViewsForAccount(currentAccount, members, permissionSettings),
+    [currentAccount, members, permissionSettings],
+  )
   const effectiveView = allowedViews.includes(view) ? view : allowedViews[0]
+
+  useEffect(() => {
+    latestDataRef.current = { members, organizations, projects, shiftDataByAccount, permissionSettings }
+  }, [members, organizations, projects, shiftDataByAccount, permissionSettings])
 
   useEffect(() => {
     fetch("/api/app-data")
@@ -75,22 +117,28 @@ export default function Page() {
         if (Array.isArray(data.members)) setMembers(data.members)
         if (Array.isArray(data.organizations)) setOrganizations(data.organizations)
         if (Array.isArray(data.projects)) setProjects(data.projects)
+        if (data.shiftDataByAccount && typeof data.shiftDataByAccount === "object") setShiftDataByAccount(data.shiftDataByAccount)
+        setPermissionSettings(normalizePermissionSettings(data.permissionSettings))
       })
       .catch(() => undefined)
+      .finally(() => setAppDataLoaded(true))
   }, [])
 
-  const persistData = (next: { members?: Member[]; organizations?: EventOrganization[]; projects?: EventProject[] }) => {
+  const persistData = useCallback((next: { members?: Member[]; organizations?: EventOrganization[]; projects?: EventProject[]; shiftDataByAccount?: Record<string, ShiftData>; permissionSettings?: PermissionSettings }) => {
+    const current = latestDataRef.current
     const payload = {
-      members: next.members ?? members,
-      organizations: next.organizations ?? organizations,
-      projects: next.projects ?? projects,
+      members: next.members ?? current.members,
+      organizations: next.organizations ?? current.organizations,
+      projects: next.projects ?? current.projects,
+      shiftDataByAccount: next.shiftDataByAccount ?? current.shiftDataByAccount,
+      permissionSettings: next.permissionSettings ?? current.permissionSettings,
     }
     fetch("/api/app-data", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }).catch(() => undefined)
-  }
+  }, [])
 
   const changeMembers = (updater: Member[] | ((prev: Member[]) => Member[])) => {
     setMembers((prev) => {
@@ -116,6 +164,20 @@ export default function Page() {
     })
   }
 
+  const changeShiftData = useCallback((data: ShiftData) => {
+    if (!currentAccount || !appDataLoaded) return
+    setShiftDataByAccount((prev) => {
+      const next = { ...prev, [currentAccount.id]: data }
+      persistData({ shiftDataByAccount: next })
+      return next
+    })
+  }, [appDataLoaded, currentAccount, persistData])
+
+  const changePermissionSettings = (settings: PermissionSettings) => {
+    setPermissionSettings(settings)
+    persistData({ permissionSettings: settings })
+  }
+
   const submitAuth = () => {
     const email = authDraft.email.trim()
     const password = authDraft.password
@@ -129,13 +191,13 @@ export default function Page() {
         role: "member",
       }
       setAccounts((prev) => [...prev, account])
-      setCurrentAccount(account)
+      setCurrentAccount({ id: account.id, name: account.name, email: account.email, role: account.role })
       saveStoredAccount(account)
       return
     }
     const account = accounts.find((item) => item.email === email && item.password === password)
     if (account) {
-      setCurrentAccount(account)
+      setCurrentAccount({ id: account.id, name: account.name, email: account.email, role: account.role })
       saveStoredAccount(account)
     }
   }
@@ -145,7 +207,8 @@ export default function Page() {
     setCurrentAccount(null)
   }
 
-  const copyText = (value: string) => {
+  const copyText = async (kind: "email" | "password", value: string) => {
+    let copied = false
     const input = document.createElement("input")
     input.value = value
     input.setAttribute("readonly", "")
@@ -161,27 +224,21 @@ export default function Page() {
     input.select()
     input.setSelectionRange(0, value.length)
 
-    const copied = document.execCommand("copy")
+    copied = document.execCommand("copy")
     document.body.removeChild(input)
 
     if (!copied && navigator.clipboard) {
-      navigator.clipboard.writeText(value).catch(() => undefined)
+      try {
+        await navigator.clipboard.writeText(value)
+        copied = true
+      } catch {
+        copied = false
+      }
     }
-  }
-
-  const submitAuthFromTouch = (event: TouchEvent<HTMLButtonElement>) => {
-    event.preventDefault()
-    submitAuth()
-  }
-
-  const toggleAuthModeFromTouch = (event: TouchEvent<HTMLButtonElement>) => {
-    event.preventDefault()
-    setAuthMode((prev) => (prev === "login" ? "signup" : "login"))
-  }
-
-  const copyTextFromTouch = (event: TouchEvent<HTMLButtonElement>, value: string) => {
-    event.preventDefault()
-    copyText(value)
+    if (copied) {
+      setCopiedCredential(kind)
+      window.setTimeout(() => setCopiedCredential(null), 1600)
+    }
   }
 
   const deleteMember = (id: string) => {
@@ -194,7 +251,18 @@ export default function Page() {
   }
 
   const renderView = () => {
-    if (effectiveView === "roster") return <RosterManager members={members} onMembersChange={changeMembers} onDeleteMember={deleteMember} />
+    if (effectiveView === "permissions") return <PermissionManager members={members} settings={permissionSettings} onSettingsChange={changePermissionSettings} />
+    if (effectiveView === "roster") {
+      return (
+        <RosterManager
+          members={members}
+          departments={permissionSettings.departments}
+          roles={permissionSettings.roles}
+          onMembersChange={changeMembers}
+          onDeleteMember={deleteMember}
+        />
+      )
+    }
     if (effectiveView === "organizations") {
       return (
         <OrganizationManager
@@ -205,11 +273,21 @@ export default function Page() {
       )
     }
     if (effectiveView === "projects") return <ProjectManager projects={projects} onProjectsChange={changeProjects} />
+    if (effectiveView === "dtp") return <DtpStudio organizations={organizations} projects={projects} />
+    if (effectiveView === "kanban") return <KanbanBoard projects={projects} onProjectsChange={changeProjects} />
     if (effectiveView === "campus") return <CampusGame />
     if (effectiveView === "vote") return <ProjectVote projects={projects} />
     if (effectiveView === "official") return <OfficialSite projects={projects} />
     if (effectiveView === "camera") return <MobileCamera />
-    return <ShiftManager members={members} />
+    if (!appDataLoaded) return <div className="grid h-full place-items-center text-sm text-muted-foreground">読み込み中</div>
+    return (
+      <ShiftManager
+        key={currentAccount?.id}
+        members={members}
+        initialShiftData={currentAccount ? shiftDataByAccount[currentAccount.id] ?? emptyShiftData : emptyShiftData}
+        onShiftDataChange={changeShiftData}
+      />
+    )
   }
 
   if (!currentAccount) {
@@ -223,22 +301,22 @@ export default function Page() {
             ) : null}
             <Input value={authDraft.email} onChange={(event) => setAuthDraft((prev) => ({ ...prev, email: event.target.value }))} placeholder="メール" />
             <Input type="password" value={authDraft.password} onChange={(event) => setAuthDraft((prev) => ({ ...prev, password: event.target.value }))} placeholder="パスワード" />
-            <Button type="button" onClick={submitAuth} onTouchEnd={submitAuthFromTouch}>{authMode === "login" ? "ログイン" : "アカウント作成"}</Button>
-            <Button type="button" variant="ghost" onClick={() => setAuthMode((prev) => (prev === "login" ? "signup" : "login"))} onTouchEnd={toggleAuthModeFromTouch}>
+            <Button type="button" onClick={submitAuth}>{authMode === "login" ? "ログイン" : "アカウント作成"}</Button>
+            <Button type="button" variant="ghost" onClick={() => setAuthMode((prev) => (prev === "login" ? "signup" : "login"))}>
               {authMode === "login" ? "アカウントを作成" : "ログインへ戻る"}
             </Button>
           </div>
           <div className="mt-4 grid gap-2 text-xs text-muted-foreground">
             <div className="flex items-center justify-between gap-2">
               <span>管理者メール: {adminAccount.email}</span>
-              <Button type="button" variant="ghost" size="icon-xs" onClick={() => copyText(adminAccount.email)} onTouchEnd={(event) => copyTextFromTouch(event, adminAccount.email)} aria-label="管理者メールをコピー">
-                <Copy className="size-3" />
+              <Button type="button" variant="ghost" size="icon-xs" onClick={() => copyText("email", adminAccount.email)} aria-label="管理者メールをコピー">
+                {copiedCredential === "email" ? <Check className="size-3" /> : <Copy className="size-3" />}
               </Button>
             </div>
             <div className="flex items-center justify-between gap-2">
               <span>管理者パスワード: {adminAccount.password}</span>
-              <Button type="button" variant="ghost" size="icon-xs" onClick={() => copyText(adminAccount.password)} onTouchEnd={(event) => copyTextFromTouch(event, adminAccount.password)} aria-label="管理者パスワードをコピー">
-                <Copy className="size-3" />
+              <Button type="button" variant="ghost" size="icon-xs" onClick={() => copyText("password", adminAccount.password)} aria-label="管理者パスワードをコピー">
+                {copiedCredential === "password" ? <Check className="size-3" /> : <Copy className="size-3" />}
               </Button>
             </div>
           </div>
@@ -249,8 +327,21 @@ export default function Page() {
 
   return (
     <main className="flex h-svh flex-col overflow-hidden bg-background">
-      <nav className="flex h-16 shrink-0 items-center gap-2 overflow-x-auto border-b px-4">
+      <nav className="flex h-16 shrink-0 items-center gap-2 border-b px-3 md:px-4">
         <div className="mr-4 shrink-0 text-lg font-semibold">Event Ops</div>
+        <select
+          value={effectiveView}
+          onChange={(event) => setView(event.target.value as View)}
+          className="h-8 min-w-0 flex-1 rounded-lg border border-input bg-background px-2 text-sm md:hidden"
+          aria-label="画面を選択"
+        >
+          {allowedViews.map((item) => (
+            <option key={item} value={item}>
+              {viewLabels[item]}
+            </option>
+          ))}
+        </select>
+        <div className="hidden min-w-0 flex-1 items-center gap-2 overflow-x-auto md:flex">
         {allowedViews.includes("official") ? <Button
           type="button"
           variant={effectiveView === "official" ? "default" : "ghost"}
@@ -275,6 +366,14 @@ export default function Page() {
           <Users className="size-4" />
           名簿
         </Button> : null}
+        {allowedViews.includes("permissions") ? <Button
+          type="button"
+          variant={effectiveView === "permissions" ? "default" : "ghost"}
+          onClick={() => setView("permissions")}
+        >
+          <ShieldCheck className="size-4" />
+          権限
+        </Button> : null}
         {allowedViews.includes("organizations") ? <Button
           type="button"
           variant={effectiveView === "organizations" ? "default" : "ghost"}
@@ -290,6 +389,22 @@ export default function Page() {
         >
           <ClipboardList className="size-4" />
           企画
+        </Button> : null}
+        {allowedViews.includes("dtp") ? <Button
+          type="button"
+          variant={effectiveView === "dtp" ? "default" : "ghost"}
+          onClick={() => setView("dtp")}
+        >
+          <FileText className="size-4" />
+          DTP
+        </Button> : null}
+        {allowedViews.includes("kanban") ? <Button
+          type="button"
+          variant={effectiveView === "kanban" ? "default" : "ghost"}
+          onClick={() => setView("kanban")}
+        >
+          <Columns3 className="size-4" />
+          カンバン
         </Button> : null}
         {allowedViews.includes("vote") ? <Button
           type="button"
@@ -315,9 +430,10 @@ export default function Page() {
           <Camera className="size-4" />
           カメラ
         </Button> : null}
-        <Button type="button" variant="ghost" onClick={logout} className="ml-auto">
+        </div>
+        <Button type="button" variant="ghost" onClick={logout} className="ml-auto shrink-0">
           <LogOut className="size-4" />
-          {currentAccount.name}
+          <span className="hidden sm:inline">ログアウト</span>
         </Button>
       </nav>
       <div className="min-h-0 flex-1">{renderView()}</div>
