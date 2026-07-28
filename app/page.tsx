@@ -1,13 +1,17 @@
 "use client"
 
-import { useCallback, useEffect, useState, type ComponentType } from "react"
+import { useCallback, useEffect, useState, type ComponentType, type FormEvent } from "react"
 import {
   BarChart3,
   Building2,
   CalendarDays,
+  Check,
   ClipboardList,
   Columns3,
+  Copy,
   Globe2,
+  LogIn,
+  LogOut,
   RotateCcw,
   Users,
 } from "lucide-react"
@@ -19,6 +23,7 @@ import { ProjectVote } from "@/components/project-vote"
 import { RosterManager } from "@/components/roster-manager"
 import { ShiftManager, type ShiftData } from "@/components/shift-manager"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   clearDemoState,
   createInitialDemoState,
@@ -27,7 +32,7 @@ import {
 } from "@/lib/demo-storage"
 import type { EventOrganization, EventProject } from "@/lib/event-data"
 import type { Member } from "@/lib/members"
-import { siteConfig } from "@/lib/site-config"
+import { demoAdminAccount, siteConfig } from "@/lib/site-config"
 
 type View = "organizations" | "projects" | "kanban" | "roster" | "shift" | "vote" | "official"
 
@@ -48,6 +53,7 @@ const viewItems: ViewItem[] = [
 ]
 
 const initialDemoData = createInitialDemoState()
+const demoAuthStorageKey = "hoshihama-eventops-demo-authenticated"
 
 export default function Page() {
   const [view, setView] = useState<View>("kanban")
@@ -59,6 +65,14 @@ export default function Page() {
   const [storageReady, setStorageReady] = useState(false)
   const [resetVersion, setResetVersion] = useState(0)
   const [resetComplete, setResetComplete] = useState(false)
+  const [authReady, setAuthReady] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [authDraft, setAuthDraft] = useState({
+    email: demoAdminAccount.email,
+    password: demoAdminAccount.password,
+  })
+  const [authError, setAuthError] = useState("")
+  const [copiedCredential, setCopiedCredential] = useState<"email" | "password" | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -71,6 +85,8 @@ export default function Page() {
       setShiftData(saved.shiftData)
       setVotedProjectIds(saved.votedProjectIds)
       setStorageReady(true)
+      setIsAuthenticated(window.sessionStorage.getItem(demoAuthStorageKey) === "true")
+      setAuthReady(true)
     })
     return () => {
       cancelled = true
@@ -111,6 +127,32 @@ export default function Page() {
     setVotedProjectIds((prev) =>
       prev.includes(projectId) ? prev.filter((id) => id !== projectId) : [...prev, projectId],
     )
+  }
+
+  const submitAuth = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const emailMatches = authDraft.email.trim().toLowerCase() === demoAdminAccount.email
+    const passwordMatches = authDraft.password === demoAdminAccount.password
+
+    if (!emailMatches || !passwordMatches) {
+      setAuthError("メールアドレスまたはパスワードが違います。")
+      return
+    }
+
+    window.sessionStorage.setItem(demoAuthStorageKey, "true")
+    setAuthError("")
+    setIsAuthenticated(true)
+  }
+
+  const logout = () => {
+    window.sessionStorage.removeItem(demoAuthStorageKey)
+    setIsAuthenticated(false)
+  }
+
+  const copyCredential = async (kind: "email" | "password", value: string) => {
+    await navigator.clipboard.writeText(value)
+    setCopiedCredential(kind)
+    window.setTimeout(() => setCopiedCredential(null), 1600)
   }
 
   const resetDemo = () => {
@@ -177,6 +219,85 @@ export default function Page() {
     return <KanbanBoard projects={projects} onProjectsChange={changeProjects} />
   }
 
+  if (!authReady) {
+    return (
+      <main className="flex h-svh items-center justify-center bg-background p-4">
+        <p className="text-sm text-muted-foreground">{siteConfig.appName} を読み込んでいます…</p>
+      </main>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <main className="flex min-h-svh items-center justify-center bg-muted/30 p-4">
+        <section className="w-full max-w-md rounded-xl border bg-card p-6 shadow-sm" aria-labelledby="login-title">
+          <div className="text-xs font-bold tracking-[0.16em] text-muted-foreground">{siteConfig.universityName}</div>
+          <h1 id="login-title" className="mt-1 text-2xl font-bold">{siteConfig.appName}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            実行委員向け管理画面のデモ用ログインです。
+          </p>
+
+          <form className="mt-6 grid gap-4" onSubmit={submitAuth}>
+            <label className="grid gap-1.5 text-sm font-medium">
+              メールアドレス
+              <Input
+                type="email"
+                autoComplete="username"
+                value={authDraft.email}
+                onChange={(event) => setAuthDraft((prev) => ({ ...prev, email: event.target.value }))}
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm font-medium">
+              パスワード
+              <Input
+                type="password"
+                autoComplete="current-password"
+                value={authDraft.password}
+                onChange={(event) => setAuthDraft((prev) => ({ ...prev, password: event.target.value }))}
+              />
+            </label>
+            {authError ? <p className="text-sm text-destructive" role="alert">{authError}</p> : null}
+            <Button type="submit" className="w-full">
+              <LogIn className="size-4" />
+              デモへログイン
+            </Button>
+          </form>
+
+          <div className="mt-6 rounded-lg border bg-muted/40 p-3 text-xs">
+            <div className="mb-2 font-semibold">デモ用アカウント</div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate">メール: {demoAdminAccount.email}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                onClick={() => copyCredential("email", demoAdminAccount.email)}
+                aria-label="デモ用メールアドレスをコピー"
+              >
+                {copiedCredential === "email" ? <Check className="size-3" /> : <Copy className="size-3" />}
+              </Button>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span>パスワード: {demoAdminAccount.password}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                onClick={() => copyCredential("password", demoAdminAccount.password)}
+                aria-label="デモ用パスワードをコピー"
+              >
+                {copiedCredential === "password" ? <Check className="size-3" /> : <Copy className="size-3" />}
+              </Button>
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            ポートフォリオ用の簡易デモです。実際の認証・認可は行いません。
+          </p>
+        </section>
+      </main>
+    )
+  }
+
   return (
     <main className="flex h-svh flex-col overflow-hidden bg-background">
       <nav className="flex h-16 shrink-0 items-center gap-2 border-b px-3 md:px-4" aria-label="管理画面">
@@ -223,6 +344,10 @@ export default function Page() {
           <Button type="button" variant="outline" size="sm" onClick={resetDemo} aria-label="デモデータを初期化">
             <RotateCcw className="size-4" />
             <span className="hidden sm:inline">初期化</span>
+          </Button>
+          <Button type="button" variant="ghost" size="sm" onClick={logout} aria-label="デモからログアウト">
+            <LogOut className="size-4" />
+            <span className="hidden 2xl:inline">ログアウト</span>
           </Button>
         </div>
       </nav>

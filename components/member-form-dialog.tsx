@@ -86,7 +86,7 @@ export function MemberFormDialog({ open, onOpenChange, onSubmit, initialValue }:
                 type="email"
                 value={form.email}
                 onChange={update("email")}
-                placeholder="taro@example.com"
+                placeholder="taro@hoshihama.example"
               />
               {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
             </div>
