@@ -9,9 +9,3 @@ export const siteConfig = {
   appName: "星浜祭 EventOps",
   tagline: "ひらめきが、街と出会う3日間。",
 } as const
-
-export const demoAdminAccount = {
-  name: "星浜祭実行委員会 管理者",
-  email: "festival.admin@hoshihama.example",
-  password: "Hoshihama38!",
-} as const
