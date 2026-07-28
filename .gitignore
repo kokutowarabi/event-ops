@@ -18,7 +18,6 @@
 /out/
 
 # production
-/build
 /dist
 /.wrangler
 
