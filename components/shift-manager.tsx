@@ -1085,7 +1085,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                     id="sheet-name"
                     value={sheetDraft.name}
                     onChange={(event) => setSheetDraft((prev) => ({ ...prev, name: event.target.value }))}
-                    placeholder="例: 明大祭1日目 本部シフト"
+                    placeholder="例: 星浜祭1日目 本部シフト"
                   />
                 </div>
                 <div className="grid gap-1.5">

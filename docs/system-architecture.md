@@ -1,37 +1,28 @@
-# システム構成図
+# システム構成
 
 ```mermaid
-flowchart TB
-  Browser[Browser / Mobile Browser]
+flowchart LR
+  Visitor[来場者]
+  Staff[実行委員]
   Next[Next.js App Router]
   UI[React Client Components]
-  API[app/api/app-data route]
-  JSON[(data/app-data.json)]
-  FutureAuth[Auth Service]
-  FutureDB[(Postgres DB)]
+  Storage[(Browser localStorage)]
 
-  Browser --> Next
+  Visitor -->|公式サイト・投票| Next
+  Staff -->|管理画面| Next
   Next --> UI
-  UI --> API
-  API --> JSON
-
-  subgraph FutureProduction[Production Migration]
-    FutureAuth
-    FutureDB
-  end
-
-  Next -. auth migration .-> FutureAuth
-  API -. persistence migration .-> FutureDB
+  UI -->|自動保存・初期化| Storage
 ```
 
-## 現状
+## デモ版の設計
 
-- 認証はローカルの簡易ログインです。
-- 永続化は JSON ファイルです。
-- UI はクライアントコンポーネント中心です。
+- Next.js の静的エクスポートとして配信する。
+- 参加団体、企画、名簿、シフト、投票履歴は同一ブラウザの `localStorage` に保存する。
+- 管理画面で編集した企画情報を、公式サイトと投票結果へ即時反映する。
+- 「初期化」操作でシードデータへ戻せる。
 
-## 移行後の想定
+## 本運用へ拡張する場合
 
-- 認証サービスでセッション管理を行う。
-- Supabase Postgres 等にデータを正規化して保存する。
-- API Route / Server Actions から DB にアクセスする。
+- Auth.js や Supabase Auth で実行委員と来場者を識別する。
+- PostgreSQL へイベントデータと投票を保存する。
+- API または Server Actions で認可、入力検証、集計を行う。

@@ -66,8 +66,33 @@ export function KanbanBoard({ projects, onProjectsChange }: KanbanBoardProps) {
                       <Badge variant="secondary">{project.startTime}-{project.endTime}</Badge>
                     </div>
                     <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">{project.note || project.venue}</p>
+                    <label className="mt-3 grid gap-1 text-xs text-muted-foreground">
+                      ステータス
+                      <select
+                        value={project.status}
+                        onChange={(event) =>
+                          onProjectsChange((prev) =>
+                            moveProjectToStatus(prev, project.id, event.target.value as ProjectStatus),
+                          )
+                        }
+                        onPointerDown={(event) => event.stopPropagation()}
+                        className="h-8 rounded-md border bg-background px-2 text-sm text-foreground"
+                        aria-label={`${project.title}のステータス`}
+                      >
+                        {groups.map((option) => (
+                          <option key={option.status} value={option.status}>
+                            {option.status}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   </article>
                 ))}
+                {group.projects.length === 0 ? (
+                  <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                    企画をここへ移動
+                  </div>
+                ) : null}
               </div>
             </section>
           ))}

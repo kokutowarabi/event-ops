@@ -1,14 +1,7 @@
-# ER図
+# データモデル
 
 ```mermaid
 erDiagram
-  ACCOUNT {
-    string id PK
-    string name
-    string email
-    string role
-  }
-
   MEMBER {
     string id PK
     string name
@@ -44,7 +37,6 @@ erDiagram
 
   SHIFT_SHEET {
     string id PK
-    string accountId FK
     string name
     string startDate
     string endDate
@@ -52,7 +44,6 @@ erDiagram
 
   SHIFT {
     string id PK
-    string sheetId FK
     string memberId FK
     string date
     int start
@@ -62,16 +53,14 @@ erDiagram
     string note
   }
 
-  PERMISSION_SETTING {
-    string id PK
-    json departments
-    json roles
-    json rolePermissions
-    json memberPermissions
+  LOCAL_VOTE {
+    string projectId FK
   }
 
   ORGANIZATION ||--o{ PROJECT : owns
   MEMBER ||--o{ SHIFT : assigned
-  ACCOUNT ||--o{ SHIFT_SHEET : owns
   SHIFT_SHEET ||--o{ SHIFT : contains
+  PROJECT ||--o| LOCAL_VOTE : selected
 ```
+
+デモ版では上記をブラウザ内の単一データセットとして保存しています。本番化する場合はID参照へ正規化し、投票者と投票日時を追加します。
