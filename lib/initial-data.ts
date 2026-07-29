@@ -14,6 +14,8 @@ export type AppState = {
   shiftData: ShiftData
 }
 
+export type DashboardState = Omit<AppState, "shiftData">
+
 const workTemplateIds = [
   "reception",
   "guide",
@@ -124,11 +126,21 @@ const initialShiftData: ShiftData = {
   customShiftTemplates: {},
 }
 
-export function createInitialAppState(): AppState {
+export function createInitialDashboardState(): DashboardState {
   return {
     members: structuredClone(initialMembers),
     organizations: structuredClone(initialOrganizations),
     projects: structuredClone(initialProjects),
-    shiftData: structuredClone(initialShiftData),
+  }
+}
+
+export function createInitialShiftData(): ShiftData {
+  return structuredClone(initialShiftData)
+}
+
+export function createInitialAppState(): AppState {
+  return {
+    ...createInitialDashboardState(),
+    shiftData: createInitialShiftData(),
   }
 }

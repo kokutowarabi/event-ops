@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { createInitialAppState } from "@/lib/initial-data"
+import {
+  createInitialAppState,
+  createInitialDashboardState,
+  createInitialShiftData,
+} from "@/lib/initial-data"
 
 describe("initial app data", () => {
   const state = createInitialAppState()
@@ -31,5 +35,14 @@ describe("initial app data", () => {
       expect(shifts).toHaveLength(3)
       expect(shifts.filter((shift) => shift.templateId === "break")).toHaveLength(1)
     }
+  })
+
+  it("can create dashboard and shift payloads independently", () => {
+    const dashboardState = createInitialDashboardState()
+    const shiftData = createInitialShiftData()
+
+    expect(dashboardState).not.toHaveProperty("shiftData")
+    expect(dashboardState.members).toHaveLength(20)
+    expect(shiftData.shifts).toHaveLength(600)
   })
 })
