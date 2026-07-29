@@ -93,8 +93,11 @@ export function SitePreview({
         <MonitorSmartphone className="size-5 text-muted-foreground" />
         <div className="mr-auto">
           <h1 className="font-semibold">サイトプレビュー</h1>
-          <p className="text-xs text-muted-foreground">CMSではありません。表示と投票導線だけを確認できます。</p>
+          <p className="text-xs text-muted-foreground">企画管理の変更内容と投票導線を、そのままサイト表示で確認できます。</p>
         </div>
+        <Badge variant="outline" className="bg-primary/5">
+          企画管理と連動・{projects.length}企画
+        </Badge>
         <label className="flex items-center gap-2 text-xs font-medium">
           <CalendarClock className="size-4 text-muted-foreground" />
           プレビュー日時
@@ -182,14 +185,20 @@ export function SitePreview({
                 const voteEligible = /^project-(?:[1-9]|[1-3]\d|40)$/.test(project.id)
                 return (
                   <article key={project.id} className="flex flex-col rounded-2xl border border-slate-900/10 bg-white p-5 shadow-sm">
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="secondary">{project.department}</Badge>
+                      <Badge variant="outline">{project.status}</Badge>
                       <span className="text-xs text-slate-500">{project.startTime}〜{project.endTime}</span>
                     </div>
                     <h3 className="mt-4 text-lg font-black text-slate-950">{project.title}</h3>
                     <p className="mt-1 text-sm font-medium text-cyan-800">{project.organizationName}</p>
-                    <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">{project.note}</p>
-                    <p className="mt-3 text-xs text-slate-500">{project.venue}</p>
+                    <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">
+                      {project.note || "企画紹介は準備中です。"}
+                    </p>
+                    <div className="mt-3 space-y-1 text-xs text-slate-500">
+                      <p>会場: {project.venue || "未定"}</p>
+                      <p>担当: {project.owner || "未定"}</p>
+                    </div>
                     <Button
                       type="button"
                       className="mt-5 w-full"

@@ -1,6 +1,15 @@
 "use client"
 
-import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react"
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type PointerEvent,
+} from "react"
 import { CalendarDays, Eye, Layers3, ListFilter, Plus, Search, Trash2, Users } from "lucide-react"
 import type { Member } from "../lib/members"
 import { Badge } from "@/components/ui/badge"
@@ -99,6 +108,7 @@ type MovingShift = {
   start: number
   end: number
   previewMemberId: string
+  canDrop: boolean
 }
 
 type SearchPickerProps = {
@@ -126,27 +136,30 @@ const MOBILE_TIMELINE_TRACK_HEIGHT = MOBILE_TIMELINE_HEIGHT + MOBILE_TIMELINE_PA
 // MVPでは既存シフトの編集に限定し、新規作成の導線を閉じる。
 const SHIFT_CREATION_ENABLED = false
 
-const shiftKinds: Record<ShiftKind, { label: string; className: string; dotClassName: string }> = {
-  morning: {
-    label: "オレンジ",
-    className: "border-amber-300/50 bg-amber-400/20 text-amber-950 dark:text-amber-100",
-    dotClassName: "bg-amber-400",
-  },
-  day: {
-    label: "ブルー",
-    className: "border-sky-300/50 bg-sky-400/20 text-sky-950 dark:text-sky-100",
-    dotClassName: "bg-sky-400",
-  },
-  evening: {
-    label: "グリーン",
-    className: "border-teal-300/50 bg-teal-400/20 text-teal-950 dark:text-teal-100",
-    dotClassName: "bg-teal-400",
-  },
-  full: {
-    label: "パープル",
-    className: "border-violet-300/50 bg-violet-400/20 text-violet-950 dark:text-violet-100",
-    dotClassName: "bg-violet-400",
-  },
+const shiftKinds: Record<ShiftKind, { label: string }> = {
+  morning: { label: "オレンジ" },
+  day: { label: "ブルー" },
+  evening: { label: "グリーン" },
+  full: { label: "パープル" },
+}
+
+type ShiftTemplateColor = {
+  blockStyle: CSSProperties
+  dotStyle: CSSProperties
+}
+
+export function createShiftTemplateColor(index: number): ShiftTemplateColor {
+  const hue = Math.round((210 + index * 137.508) % 360)
+  return {
+    blockStyle: {
+      borderColor: `hsl(${hue} 72% 42% / 0.45)`,
+      backgroundColor: `hsl(${hue} 86% 90% / 0.94)`,
+      color: `hsl(${hue} 68% 22%)`,
+    },
+    dotStyle: {
+      backgroundColor: `hsl(${hue} 72% 48%)`,
+    },
+  }
 }
 
 const DEFAULT_SHIFT_TEMPLATE_ID = "tentative"
@@ -263,7 +276,7 @@ function isSlotOccupied(shifts: Shift[], memberId: string, date: string, slot: n
   )
 }
 
-function canPlaceShift(
+export function canPlaceShift(
   shifts: Shift[],
   memberId: string,
   date: string,
@@ -489,6 +502,18 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     () => ({ ...shiftTemplates, ...customShiftTemplates }),
     [customShiftTemplates],
   )
+  const shiftTemplateColors = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.keys(allShiftTemplates).map((templateId, index) => [
+          templateId,
+          createShiftTemplateColor(index),
+        ]),
+      ) as Record<ShiftTemplateId, ShiftTemplateColor>,
+    [allShiftTemplates],
+  )
+  const getShiftTemplateColor = (templateId: ShiftTemplateId) =>
+    shiftTemplateColors[templateId] ?? createShiftTemplateColor(0)
   const memberName = (memberId: string) => members.find((member) => member.id === memberId)?.name ?? ""
 
   const departments = useMemo(() => {
@@ -905,6 +930,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       start: shift.start,
       end: shift.end,
       previewMemberId: shift.memberId,
+      canDrop: true,
     })
   }
 
@@ -943,7 +969,8 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
           ...prev,
           pointerX: event.clientX,
           pointerY: event.clientY,
-          previewMemberId: canPlaceCandidate ? candidateMemberId : prev.previewMemberId,
+          previewMemberId: candidateMemberId,
+          canDrop: canPlaceCandidate,
         }
         : prev,
     )
@@ -951,6 +978,15 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
 
   const stopMove = () => {
     if (moving) {
+      if (!moving.canDrop) {
+        if (moveInitialShiftsRef.current) {
+          setShiftsWithoutHistory(moveInitialShiftsRef.current)
+        }
+        moveInitialShiftsRef.current = null
+        didMoveShiftRef.current = true
+        setMoving(null)
+        return
+      }
       const shift = shiftsRef.current.find((item) => item.id === moving.id)
       const memberId = moving.previewMemberId
       if (shift && memberId && memberId !== shift.memberId) {
@@ -1316,7 +1352,10 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                 {assignmentCoverage.map((group) => (
                   <section key={`coverage-${group.templateId}`} className="rounded-xl border bg-background p-4">
                     <div className="flex flex-wrap items-start gap-3">
-                      <div className={`mt-1 size-3 shrink-0 rounded-full ${shiftKinds[group.template.kind].dotClassName}`} />
+                      <div
+                        className="mt-1 size-3 shrink-0 rounded-full"
+                        style={getShiftTemplateColor(group.templateId).dotStyle}
+                      />
                       <div>
                         <h3 className="font-semibold">{group.template.label}</h3>
                         <p className="mt-1 text-xs text-muted-foreground">
@@ -1387,7 +1426,8 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                         <button
                           key={`coverage-assignment-${shift.id}`}
                           type="button"
-                          className={`rounded-lg border px-2.5 py-2 text-left text-xs transition hover:ring-2 hover:ring-ring/30 ${shiftKinds[shift.kind].className}`}
+                          className="rounded-lg border px-2.5 py-2 text-left text-xs transition hover:ring-2 hover:ring-ring/30"
+                          style={getShiftTemplateColor(shift.templateId).blockStyle}
                           onClick={() => openShiftDetail(shift.id)}
                         >
                           <span className="font-semibold">{memberName(shift.memberId)}</span>
@@ -1504,10 +1544,11 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                     ) : null}
                     {createPreview ? (
                       <div
-                        className={`pointer-events-none absolute left-16 right-1 box-border overflow-hidden rounded-md border px-3 py-2 text-left shadow-sm ${shiftKinds.day.className}`}
+                        className="pointer-events-none absolute left-16 right-1 box-border overflow-hidden rounded-md border px-3 py-2 text-left shadow-sm"
                         style={{
                           top: createPreview.top,
                           height: Math.max(createPreview.height, 44),
+                          ...getShiftTemplateColor(DEFAULT_SHIFT_TEMPLATE_ID).blockStyle,
                         }}
                       >
                         <span className="block truncate text-sm font-medium">
@@ -1527,8 +1568,8 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                           key={`mobile-shift-${shift.id}`}
                           type="button"
                           onClick={() => openShiftDetail(shift.id)}
-                          className={`absolute left-16 right-0 rounded-md border px-3 py-2 text-left shadow-sm ${shiftKinds[shift.kind].className}`}
-                          style={{ top, height }}
+                          className="absolute left-16 right-0 rounded-md border px-3 py-2 text-left shadow-sm"
+                          style={{ top, height, ...getShiftTemplateColor(shift.templateId).blockStyle }}
                         >
                           <span className="block text-sm font-medium">
                             {formatTime(shift.start)}-{formatTime(shift.end)}
@@ -1664,12 +1705,13 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                         </button>
                         {createPreview ? (
                           <div
-                            className={`pointer-events-none absolute top-2 box-border h-12 overflow-hidden rounded-md border text-left ${createPreview.width === SLOT_WIDTH ? "px-0" : "px-3 shadow-sm"} ${shiftKinds.day.className}`}
+                            className={`pointer-events-none absolute top-2 box-border h-12 overflow-hidden rounded-md border text-left ${createPreview.width === SLOT_WIDTH ? "px-0" : "px-3 shadow-sm"}`}
                             style={{
                               left: createPreview.left,
                               width: createPreview.width,
                               minWidth: createPreview.width,
                               maxWidth: createPreview.width,
+                              ...getShiftTemplateColor(DEFAULT_SHIFT_TEMPLATE_ID).blockStyle,
                             }}
                           >
                             {createPreview.width > SLOT_WIDTH ? (
@@ -1728,9 +1770,15 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                   cancelResize()
                                 }}
                                 aria-label={`${member.name} ${formatTime(shift.start)}-${formatTime(shift.end)}の詳細`}
-                                className={`${isMovingAlias ? "pointer-events-none" : "pointer-events-auto"} absolute top-2 box-border h-12 select-none overflow-hidden rounded-md border text-left transition hover:z-30 hover:ring-2 hover:ring-inset hover:ring-ring/40 ${isHiddenMovingSource ? "opacity-0" : ""} ${isMovingAlias || isMovingSourceAlias ? "opacity-40 ring-2 ring-inset ring-ring/30" : ""} ${isSingleSlotShift ? "px-0" : "px-3 shadow-sm"} ${shiftKinds[shift.kind].className} ${isAdmin && !isMovingAlias ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
+                                className={`${isMovingAlias ? "pointer-events-none" : "pointer-events-auto"} absolute top-2 box-border h-12 select-none overflow-hidden rounded-md border text-left transition hover:z-30 hover:ring-2 hover:ring-inset hover:ring-ring/40 ${isHiddenMovingSource ? "opacity-0" : ""} ${isMovingAlias || isMovingSourceAlias ? "opacity-40 ring-2 ring-inset ring-ring/30" : ""} ${isSingleSlotShift ? "px-0" : "px-3 shadow-sm"} ${isAdmin && !isMovingAlias ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
                                   }`}
-                                style={{ left, width: visualWidth, minWidth: visualWidth, maxWidth: visualWidth }}
+                                style={{
+                                  left,
+                                  width: visualWidth,
+                                  minWidth: visualWidth,
+                                  maxWidth: visualWidth,
+                                  ...getShiftTemplateColor(shift.templateId).blockStyle,
+                                }}
                               >
                                 {isSingleSlotShift ? null : (
                                   <>
@@ -1780,11 +1828,12 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
 
       {moving && movingShift ? (
         <div
-          className={`pointer-events-none fixed z-50 box-border h-12 select-none overflow-hidden rounded-md border text-left opacity-90 shadow-lg ${movingShift.end - movingShift.start === SLOT_MINUTES ? "px-0" : "px-3"} ${shiftKinds[movingShift.kind].className}`}
+          className={`pointer-events-none fixed z-50 box-border h-12 select-none overflow-hidden rounded-md border text-left opacity-90 shadow-lg ${moving.canDrop ? "" : "ring-2 ring-destructive"} ${movingShift.end - movingShift.start === SLOT_MINUTES ? "px-0" : "px-3"}`}
           style={{
             left: moving.pointerX - moving.pointerOffsetX,
             top: moving.pointerY - 24,
             width: ((movingShift.end - movingShift.start) / SLOT_MINUTES) * SLOT_WIDTH + 1,
+            ...getShiftTemplateColor(movingShift.templateId).blockStyle,
           }}
         >
           {movingShift.end - movingShift.start === SLOT_MINUTES ? null : (

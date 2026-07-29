@@ -23,8 +23,8 @@ import {
 import { SearchHeader, SelectHeader } from "@/components/table-column-header"
 import { EditableSelectCell, EditableTextCell } from "@/components/editable-cell"
 import { type EventDepartment, type EventOrganization, type OrganizationStatus } from "@/lib/event-data"
+import { matchesSelectedValues } from "@/lib/table-filters"
 
-const ALL_STATUSES = "すべての状態"
 const EVENT_DEPARTMENTS: EventDepartment[] = ["模擬店", "屋外ステージ", "教室"]
 const statusVariants: Record<OrganizationStatus, "default" | "secondary" | "destructive" | "outline"> = {
   承認済み: "default",
@@ -58,16 +58,15 @@ export function OrganizationManager({
   onOrganizationsChange,
   onDeleteOrganization,
 }: OrganizationManagerProps) {
-  const [statusFilter, setStatusFilter] = useState<string>(ALL_STATUSES)
-  const [filters, setFilters] = useState<Record<OrganizationSortKey, string>>({
-    name: "",
-    category: "",
-    department: "",
-    representative: "",
-    contact: "",
-    status: "",
-    booth: "",
-    note: "",
+  const [filters, setFilters] = useState<Record<OrganizationSortKey, string[]>>({
+    name: [],
+    category: [],
+    department: [],
+    representative: [],
+    contact: [],
+    status: [],
+    booth: [],
+    note: [],
   })
   const [sortKey, setSortKey] = useState<OrganizationSortKey>("name")
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc")
@@ -88,24 +87,19 @@ export function OrganizationManager({
   )
 
   const visibleOrganizations = useMemo(() => {
-    const normalizedFilters = Object.fromEntries(
-      Object.entries(filters).map(([key, value]) => [key, value.trim().toLowerCase()]),
-    ) as Record<OrganizationSortKey, string>
     return organizations
       .filter((organization) => {
-      const matchesQuery = (["name", "category", "department", "representative", "contact", "booth", "note"] as OrganizationSortKey[]).every(
-        (key) => !normalizedFilters[key] || organization[key].toLowerCase().includes(normalizedFilters[key]),
-      )
-      const matchesStatus = statusFilter === ALL_STATUSES || organization.status === statusFilter
-      return matchesQuery && matchesStatus
-    })
+        return (Object.keys(filters) as OrganizationSortKey[]).every((key) =>
+          matchesSelectedValues([organization[key]], filters[key]),
+        )
+      })
       .sort((a, b) => {
         const result = a[sortKey].localeCompare(b[sortKey], "ja")
         return sortOrder === "asc" ? result : -result
       })
-  }, [organizations, filters, statusFilter, sortKey, sortOrder])
+  }, [organizations, filters, sortKey, sortOrder])
 
-  const updateFilter = (key: OrganizationSortKey, value: string) => setFilters((prev) => ({ ...prev, [key]: value }))
+  const updateFilter = (key: OrganizationSortKey, value: string[]) => setFilters((prev) => ({ ...prev, [key]: value }))
 
   const updateOrganization = (id: string, update: Partial<Omit<EventOrganization, "id">>) => {
     onOrganizationsChange((prev) =>
@@ -215,7 +209,7 @@ export function OrganizationManager({
                     </SelectContent>
                   </Select>
                 ) : (
-                  <SelectHeader label="状態" column="status" value={statusFilter} allValue={ALL_STATUSES} options={["申請中", "確認中", "承認済み", "要対応"]} onChange={setStatusFilter} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
+                  <SelectHeader label="状態" column="status" value={filters.status} options={["申請中", "確認中", "承認済み", "要対応"]} onChange={(value) => updateFilter("status", value)} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
                 )}
               </TableHead>
               <TableHead className="hidden min-w-64 lg:table-cell">

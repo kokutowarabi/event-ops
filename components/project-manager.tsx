@@ -23,8 +23,8 @@ import {
 import { SearchHeader, SelectHeader } from "@/components/table-column-header"
 import { EditableSelectCell, EditableTextCell } from "@/components/editable-cell"
 import { type EventDepartment, type EventProject, type ProjectStatus } from "@/lib/event-data"
+import { matchesSelectedValues } from "@/lib/table-filters"
 
-const ALL_STATUSES = "すべての状態"
 const EVENT_DEPARTMENTS: EventDepartment[] = ["模擬店", "屋外ステージ", "教室"]
 const statusVariants: Record<ProjectStatus, "default" | "secondary" | "destructive" | "outline"> = {
   確定: "default",
@@ -59,17 +59,16 @@ type ProjectManagerProps = {
 }
 
 export function ProjectManager({ projects, onProjectsChange }: ProjectManagerProps) {
-  const [statusFilter, setStatusFilter] = useState<string>(ALL_STATUSES)
-  const [filters, setFilters] = useState<Record<ProjectSortKey, string>>({
-    title: "",
-    organizationName: "",
-    department: "",
-    venue: "",
-    startTime: "",
-    endTime: "",
-    owner: "",
-    status: "",
-    note: "",
+  const [filters, setFilters] = useState<Record<ProjectSortKey, string[]>>({
+    title: [],
+    organizationName: [],
+    department: [],
+    venue: [],
+    startTime: [],
+    endTime: [],
+    owner: [],
+    status: [],
+    note: [],
   })
   const [sortKey, setSortKey] = useState<ProjectSortKey>("startTime")
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc")
@@ -91,17 +90,18 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
   )
 
   const visibleProjects = useMemo(() => {
-    const normalizedFilters = Object.fromEntries(
-      Object.entries(filters).map(([key, value]) => [key, value.trim().toLowerCase()]),
-    ) as Record<ProjectSortKey, string>
     return projects
       .filter((project) => {
-      const matchesQuery = (["title", "organizationName", "department", "venue", "startTime", "endTime", "owner", "note"] as ProjectSortKey[]).every(
-        (key) => !normalizedFilters[key] || project[key].toLowerCase().includes(normalizedFilters[key]),
-      )
-      const matchesStatus = statusFilter === ALL_STATUSES || project.status === statusFilter
-      return matchesQuery && matchesStatus
-    })
+        const standardKeys = (["title", "organizationName", "department", "venue", "owner", "status", "note"] as ProjectSortKey[])
+        const matchesStandardFilters = standardKeys.every((key) =>
+          matchesSelectedValues([project[key]], filters[key]),
+        )
+        const matchesTime = matchesSelectedValues(
+          [project.startTime, project.endTime, `${project.startTime}-${project.endTime}`],
+          filters.startTime,
+        )
+        return matchesStandardFilters && matchesTime
+      })
       .sort((a, b) => {
         if (sortKey === "startTime") {
           const result =
@@ -113,9 +113,9 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
           a[sortKey].localeCompare(b[sortKey], "ja")
         return sortOrder === "asc" ? result : -result
       })
-  }, [projects, filters, statusFilter, sortKey, sortOrder])
+  }, [projects, filters, sortKey, sortOrder])
 
-  const updateFilter = (key: ProjectSortKey, value: string) => setFilters((prev) => ({ ...prev, [key]: value }))
+  const updateFilter = (key: ProjectSortKey, value: string[]) => setFilters((prev) => ({ ...prev, [key]: value }))
 
   const updateProject = (id: string, update: Partial<Omit<EventProject, "id">>) => {
     onProjectsChange((prev) => prev.map((project) => (project.id === id ? { ...project, ...update } : project)))
@@ -233,7 +233,7 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
                     </SelectContent>
                   </Select>
                 ) : (
-                  <SelectHeader label="状態" column="status" value={statusFilter} allValue={ALL_STATUSES} options={["準備中", "確定", "当日対応", "要確認"]} onChange={setStatusFilter} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
+                  <SelectHeader label="状態" column="status" value={filters.status} options={["準備中", "確定", "当日対応", "要確認"]} onChange={(value) => updateFilter("status", value)} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
                 )}
               </TableHead>
               <TableHead className="hidden min-w-64 xl:table-cell">

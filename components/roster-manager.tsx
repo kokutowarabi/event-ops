@@ -30,6 +30,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { matchesSelectedValues } from "@/lib/table-filters"
 
 type RosterManagerProps = {
   members: Member[]
@@ -40,8 +41,12 @@ type RosterManagerProps = {
 }
 
 export function RosterManager({ members, departments = memberDepartments, roles = memberRoles, onMembersChange, onDeleteMember }: RosterManagerProps) {
-  const [filters, setFilters] = useState<Record<SortKey, string>>({ name: "", email: "", department: "", role: "" })
-  const [departmentFilter, setDepartmentFilter] = useState("all")
+  const [filters, setFilters] = useState<Record<SortKey, string[]>>({
+    name: [],
+    email: [],
+    department: [],
+    role: [],
+  })
   const [sortKey, setSortKey] = useState<SortKey>("name")
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc")
   const [draft, setDraft] = useState<Omit<Member, "id">>({ name: "", email: "", department: departments[0] ?? "", role: roles[0] ?? "" })
@@ -59,23 +64,16 @@ export function RosterManager({ members, departments = memberDepartments, roles 
   )
 
   const visibleMembers = useMemo(() => {
-    const normalizedFilters = {
-      name: filters.name.trim().toLowerCase(),
-      email: filters.email.trim().toLowerCase(),
-      role: filters.role.trim().toLowerCase(),
-    }
     const filtered = members.filter((m) => {
-      const matchesName = !normalizedFilters.name || m.name.toLowerCase().includes(normalizedFilters.name)
-      const matchesEmail = !normalizedFilters.email || m.email.toLowerCase().includes(normalizedFilters.email)
-      const matchesRole = !normalizedFilters.role || m.role.toLowerCase().includes(normalizedFilters.role)
-      const matchesDept = departmentFilter === "all" || m.department === departmentFilter
-      return matchesName && matchesEmail && matchesRole && matchesDept
+      return (Object.keys(filters) as SortKey[]).every((key) =>
+        matchesSelectedValues([m[key]], filters[key]),
+      )
     })
     return filtered.sort((a, b) => {
       const result = a[sortKey].localeCompare(b[sortKey], "ja")
       return sortOrder === "asc" ? result : -result
     })
-  }, [members, filters, departmentFilter, sortKey, sortOrder])
+  }, [members, filters, sortKey, sortOrder])
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -90,7 +88,7 @@ export function RosterManager({ members, departments = memberDepartments, roles 
     onDeleteMember(id)
   }
 
-  const updateFilter = (key: SortKey, value: string) => setFilters((prev) => ({ ...prev, [key]: value }))
+  const updateFilter = (key: SortKey, value: string[]) => setFilters((prev) => ({ ...prev, [key]: value }))
 
   const updateMember = (id: string, update: Partial<Omit<Member, "id">>) => {
     onMembersChange((prev) => prev.map((member) => (member.id === id ? { ...member, ...update } : member)))
@@ -176,7 +174,7 @@ export function RosterManager({ members, departments = memberDepartments, roles 
                     {departments.map((department) => <option key={department} value={department}>{department}</option>)}
                   </select>
                 ) : (
-                  <SelectHeader label="所属局" column="department" value={departmentFilter} allValue="all" options={departments} onChange={setDepartmentFilter} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
+                  <SelectHeader label="所属局" column="department" value={filters.department} options={departments} onChange={(value) => updateFilter("department", value)} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
                 )}
               </TableHead>
               <TableHead className="hidden min-w-44 sm:table-cell">
