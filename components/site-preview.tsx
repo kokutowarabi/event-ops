@@ -208,7 +208,7 @@ export function SitePreview({
                     >
                       {voted ? <Check className="size-4" /> : <Heart className="size-4" />}
                       {voted
-                        ? "この端末の投票先"
+                        ? "投票済み"
                         : submittingProjectId === project.id
                           ? "送信中…"
                           : !voteEligible
