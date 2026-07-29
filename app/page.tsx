@@ -13,7 +13,6 @@ import {
   CalendarDays,
   ClipboardList,
   MonitorSmartphone,
-  RotateCcw,
   Users,
 } from "lucide-react"
 import { OrganizationManager } from "@/components/organization-manager"
@@ -65,8 +64,6 @@ export default function Page() {
   const [voteConnectionState, setVoteConnectionState] = useState<VoteConnectionState>(
     isSupabaseConfigured ? "connecting" : "unconfigured",
   )
-  const [resetVersion, setResetVersion] = useState(0)
-  const [resetComplete, setResetComplete] = useState(false)
 
   useEffect(() => {
     if (!voteClient) return
@@ -139,20 +136,6 @@ export default function Page() {
     )
   }
 
-  const resetTemporaryData = () => {
-    if (!window.confirm("この画面で行った変更を破棄して、初期状態に戻しますか？")) return
-
-    const next = createInitialAppState()
-    setMembers(next.members)
-    setOrganizations(next.organizations)
-    setProjects(next.projects)
-    setShiftData(next.shiftData)
-    setView("roster")
-    setResetVersion((prev) => prev + 1)
-    setResetComplete(true)
-    window.setTimeout(() => setResetComplete(false), 1800)
-  }
-
   const castPreviewVote = useCallback(
     async (deviceId: string, projectId: string, votedOn: string) => {
       if (!voteClient) throw new Error("Supabase is not configured")
@@ -189,7 +172,6 @@ export default function Page() {
     if (view === "shift") {
       return (
         <ShiftManager
-          key={resetVersion}
           members={members}
           initialShiftData={shiftData}
           onShiftDataChange={changeShiftData}
@@ -255,20 +237,9 @@ export default function Page() {
           })}
         </div>
 
-        <div className="ml-auto flex shrink-0 items-center gap-1.5">
-          <Badge variant="outline" className="hidden lg:inline-flex">
-            {resetComplete ? "初期化しました" : "運営データは保存なし"}
-          </Badge>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon-sm"
-            onClick={resetTemporaryData}
-            aria-label="一時データを初期化"
-          >
-            <RotateCcw className="size-4" />
-          </Button>
-        </div>
+        <Badge variant="outline" className="ml-auto hidden lg:inline-flex">
+          運営データは保存なし
+        </Badge>
       </nav>
       <div className="min-h-0 flex-1">{renderView()}</div>
     </main>
