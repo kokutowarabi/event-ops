@@ -123,6 +123,8 @@ const MOBILE_TIMELINE_PADDING_SLOTS = 2
 const MOBILE_TIMELINE_PADDING_HEIGHT = MOBILE_TIMELINE_PADDING_SLOTS * MOBILE_SLOT_HEIGHT
 const MOBILE_TIMELINE_HEIGHT = ((END_MINUTES - START_MINUTES) / SLOT_MINUTES) * MOBILE_SLOT_HEIGHT
 const MOBILE_TIMELINE_TRACK_HEIGHT = MOBILE_TIMELINE_HEIGHT + MOBILE_TIMELINE_PADDING_HEIGHT * 2
+// MVPでは既存シフトの編集に限定し、新規作成の導線を閉じる。
+const SHIFT_CREATION_ENABLED = false
 
 const shiftKinds: Record<ShiftKind, { label: string; className: string; dotClassName: string }> = {
   morning: {
@@ -258,6 +260,25 @@ function isSlotOccupied(shifts: Shift[], memberId: string, date: string, slot: n
       shift.date === date &&
       shift.start < slotEnd &&
       shift.end > slotStart,
+  )
+}
+
+function canPlaceShift(
+  shifts: Shift[],
+  memberId: string,
+  date: string,
+  start: number,
+  end: number,
+  ignoreShiftId: string,
+) {
+  if (start < START_MINUTES || end > END_MINUTES || end <= start) return false
+  return !shifts.some(
+    (shift) =>
+      shift.id !== ignoreShiftId &&
+      shift.memberId === memberId &&
+      shift.date === date &&
+      shift.start < end &&
+      shift.end > start,
   )
 }
 
@@ -526,6 +547,23 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       return [template?.label, shift.note].some((value) => value?.toLowerCase().includes(query))
     })
   }, [allShiftTemplates, selectedDateShifts, shiftFilter])
+  const visibleInvitedMembers = useMemo(() => {
+    if (!shiftFilter.trim()) return invitedMembers
+    const visibleMemberIds = new Set(visibleSelectedDateShifts.map((shift) => shift.memberId))
+    return invitedMembers.filter((member) => visibleMemberIds.has(member.id))
+  }, [invitedMembers, shiftFilter, visibleSelectedDateShifts])
+  const filterSummary = useMemo(
+    () =>
+      [
+        shiftFilter ? `業務: ${shiftFilter}` : "",
+        memberSearch ? `氏名: ${memberSearch}` : "",
+        departmentFilter !== ALL_DEPARTMENTS ? `所属: ${departmentFilter}` : "",
+        roleFilter !== "すべての役職" ? `役職: ${roleFilter}` : "",
+      ]
+        .filter(Boolean)
+        .join("・"),
+    [departmentFilter, memberSearch, roleFilter, shiftFilter],
+  )
   const shiftFilterOptions = useMemo(() => {
     return [
       ...Object.values(allShiftTemplates).map((template) => template.label),
@@ -852,25 +890,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     return { previousEnd, nextStart }
   }
 
-  const getMoveBounds = (shift: Shift, currentShifts = shiftsRef.current) => {
-    const duration = shift.end - shift.start
-    const siblingShifts = currentShifts
-      .filter((item) => item.id !== shift.id && item.memberId === shift.memberId && item.date === shift.date)
-      .sort((left, right) => left.start - right.start)
-    const previousEnd = siblingShifts.reduce(
-      (latestEnd, item) => (item.end <= shift.start ? Math.max(latestEnd, item.end) : latestEnd),
-      START_MINUTES,
-    )
-    const nextStart = siblingShifts.reduce(
-      (earliestStart, item) => (item.start >= shift.end ? Math.min(earliestStart, item.start) : earliestStart),
-      END_MINUTES,
-    )
-    return {
-      minStart: previousEnd,
-      maxStart: nextStart - duration,
-    }
-  }
-
   const startMove = (shift: Shift, event: PointerEvent<HTMLDivElement>) => {
     if (!isAdmin) return
     const rect = event.currentTarget.getBoundingClientRect()
@@ -893,36 +912,53 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     if (!moving) return
     const shift = shiftsRef.current.find((item) => item.id === moving.id)
     if (!shift) return
-    const previewMemberId = getMemberIdFromPointer(event) ?? moving.previewMemberId
+    const candidateMemberId = getMemberIdFromPointer(event) ?? moving.previewMemberId
     const deltaSlots = Math.round((event.clientX - moving.originX) / SLOT_WIDTH)
     if (deltaSlots !== 0) {
       didMoveShiftRef.current = true
     }
     const duration = moving.end - moving.start
-    const { minStart, maxStart } = getMoveBounds({ ...shift, start: moving.start, end: moving.end })
-    if (maxStart < minStart) return
-    const start = Math.min(Math.max(moving.start + deltaSlots * SLOT_MINUTES, minStart), maxStart)
-    setShiftsWithoutHistory(
-      shiftsRef.current.map((item) =>
-        item.id === moving.id ? { ...item, start, end: start + duration } : item,
-      ),
+    const start = Math.min(
+      Math.max(moving.start + deltaSlots * SLOT_MINUTES, START_MINUTES),
+      END_MINUTES - duration,
     )
-    setMoving((prev) => (prev ? { ...prev, pointerX: event.clientX, pointerY: event.clientY, previewMemberId } : prev))
+    const canPlaceCandidate = canPlaceShift(
+      shiftsRef.current,
+      candidateMemberId,
+      shift.date,
+      start,
+      start + duration,
+      moving.id,
+    )
+    if (canPlaceCandidate) {
+      setShiftsWithoutHistory(
+        shiftsRef.current.map((item) =>
+          item.id === moving.id ? { ...item, start, end: start + duration } : item,
+        ),
+      )
+    }
+    setMoving((prev) =>
+      prev
+        ? {
+          ...prev,
+          pointerX: event.clientX,
+          pointerY: event.clientY,
+          previewMemberId: canPlaceCandidate ? candidateMemberId : prev.previewMemberId,
+        }
+        : prev,
+    )
   }
 
-  const stopMove = (event: PointerEvent<HTMLDivElement>) => {
+  const stopMove = () => {
     if (moving) {
       const shift = shiftsRef.current.find((item) => item.id === moving.id)
-      const memberId = getMemberIdFromPointer(event)
+      const memberId = moving.previewMemberId
       if (shift && memberId && memberId !== shift.memberId) {
-        const duration = shift.end - shift.start
-        const { minStart, maxStart } = getMoveBounds({ ...shift, memberId })
-        if (maxStart >= minStart) {
-          const start = Math.min(Math.max(shift.start, minStart), maxStart)
+        if (canPlaceShift(shiftsRef.current, memberId, shift.date, shift.start, shift.end, moving.id)) {
           didMoveShiftRef.current = true
           setShiftsWithoutHistory(
             shiftsRef.current.map((item) =>
-              item.id === moving.id ? { ...item, memberId, start, end: start + duration } : item,
+              item.id === moving.id ? { ...item, memberId } : item,
             ),
           )
         }
@@ -1138,20 +1174,35 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                 ) : null}
               </div>
             </div>
-            <Button type="button" size="sm" variant="outline" onClick={() => setFiltersOpen(true)}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="min-w-0 max-w-full"
+              onClick={() => setFiltersOpen(true)}
+              title={filterSummary || "絞り込み"}
+            >
               <ListFilter className="size-4" />
-              絞り込み
+              <span className="shrink-0">絞り込み</span>
+              {filterSummary ? (
+                <span className="min-w-0 truncate border-l pl-2 text-xs font-normal text-muted-foreground">
+                  {filterSummary}
+                </span>
+              ) : null}
             </Button>
-            <Button type="button" size="sm" className="bg-black text-white hover:bg-black/80" onClick={() => setShiftSheet(null)}>
-              <Plus className="size-4" />
-              シート新規作成
-            </Button>
+            {SHIFT_CREATION_ENABLED ? (
+              <Button type="button" size="sm" className="bg-black text-white hover:bg-black/80" onClick={() => setShiftSheet(null)}>
+                <Plus className="size-4" />
+                シート新規作成
+              </Button>
+            ) : null}
           </>
         ) : null}
       </header>
 
       {!shiftSheet ? (
-        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card">
+        SHIFT_CREATION_ENABLED ? (
+          <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card">
           <div className="flex min-h-0 flex-1 flex-col p-4">
             <div className="w-full max-w-4xl shrink-0">
               <h2 className="text-lg font-medium">シフトシート作成</h2>
@@ -1239,7 +1290,15 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
               シート新規作成
             </Button>
           </div>
-        </section>
+          </section>
+        ) : (
+          <section className="flex min-h-0 flex-1 items-center justify-center rounded-lg border bg-card p-8 text-center">
+            <div>
+              <h2 className="font-semibold">利用できるシフトシートがありません</h2>
+              <p className="mt-2 text-sm text-muted-foreground">シフトシートの新規作成は現在停止しています。</p>
+            </div>
+          </section>
+        )
       ) : (
         <>
           {shiftViewMode === "assignment" ? (
@@ -1266,16 +1325,18 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                           最大{group.maxOverlap}名重複
                         </p>
                       </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="ml-auto"
-                        onClick={() => openAssignmentDraft(group.templateId)}
-                      >
-                        <Plus className="size-3.5" />
-                        割り当て追加
-                      </Button>
+                      {SHIFT_CREATION_ENABLED ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="ml-auto"
+                          onClick={() => openAssignmentDraft(group.templateId)}
+                        >
+                          <Plus className="size-3.5" />
+                          割り当て追加
+                        </Button>
+                      ) : null}
                     </div>
 
                     <div className="mt-4 overflow-x-auto">
@@ -1298,7 +1359,8 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                               <button
                                 key={`${group.templateId}-${start}`}
                                 type="button"
-                                className={`h-9 rounded-sm text-[11px] font-semibold transition hover:ring-2 hover:ring-ring/40 ${overlapClass}`}
+                                disabled={!SHIFT_CREATION_ENABLED}
+                                className={`h-9 rounded-sm text-[11px] font-semibold transition enabled:hover:ring-2 enabled:hover:ring-ring/40 ${overlapClass}`}
                                 title={`${formatTime(start)}〜${formatTime(start + COVERAGE_SLOT_MINUTES)}: ${count}名`}
                                 onClick={() => openAssignmentDraft(group.templateId, start)}
                               >
@@ -1342,11 +1404,22 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
           ) : null}
 
           <div className={`${shiftViewMode === "member" ? "space-y-3 md:hidden" : "hidden"} min-h-0 flex-1 overflow-auto select-none`}>
-            <Button type="button" variant="outline" className="w-full justify-start" onClick={() => setFiltersOpen(true)}>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full min-w-0 justify-start"
+              onClick={() => setFiltersOpen(true)}
+              title={filterSummary || "絞り込み"}
+            >
               <ListFilter className="size-4" />
-              絞り込み
+              <span className="shrink-0">絞り込み</span>
+              {filterSummary ? (
+                <span className="min-w-0 truncate border-l pl-2 text-xs font-normal text-muted-foreground">
+                  {filterSummary}
+                </span>
+              ) : null}
             </Button>
-            {invitedMembers.map((member) => {
+            {visibleInvitedMembers.map((member) => {
               const memberShifts = visibleSelectedDateShifts
                 .filter((shift) => shift.memberId === member.id)
                 .sort((left, right) => left.start - right.start)
@@ -1376,7 +1449,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                       ))}
                     <button
                       type="button"
-                      disabled={!isAdmin}
+                      disabled={!SHIFT_CREATION_ENABLED || !isAdmin}
                       data-shift-member-id={member.id}
                       onPointerDown={(event) => beginCreateMobileShift(member.id, event)}
                       onPointerMove={(event) => moveCreateMobileShift(member.id, event)}
@@ -1475,9 +1548,21 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
           <div className={`${shiftViewMode === "member" ? "hidden md:block" : "hidden"} min-h-0 flex-1 select-none overflow-auto rounded-lg border bg-card`}>
             <div className="grid min-w-300 grid-cols-[15rem_1fr]">
               <div className="sticky left-0 top-0 z-30 border-b border-r bg-card p-3">
-                <Button type="button" variant="outline" size="sm" className="w-full justify-start" onClick={() => setFiltersOpen(true)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full min-w-0 justify-start"
+                  onClick={() => setFiltersOpen(true)}
+                  title={filterSummary || "絞り込み"}
+                >
                   <ListFilter className="size-4" />
-                  絞り込み
+                  <span className="shrink-0">絞り込み</span>
+                  {filterSummary ? (
+                    <span className="min-w-0 truncate border-l pl-2 text-xs font-normal text-muted-foreground">
+                      {filterSummary}
+                    </span>
+                  ) : null}
                 </Button>
               </div>
               <div className="sticky top-0 z-20 border-b bg-card py-3">
@@ -1507,7 +1592,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                 </div>
               </div>
 
-              {invitedMembers.map((member) => {
+              {visibleInvitedMembers.map((member) => {
                 const movingPreviewShift = moving
                   ? selectedDateShifts.find((shift) => shift.id === moving.id) ?? null
                   : null
@@ -1530,7 +1615,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                       <div className="relative h-16" style={{ width: TIMELINE_TRACK_WIDTH }}>
                         <button
                           type="button"
-                          disabled={!isAdmin}
+                          disabled={!SHIFT_CREATION_ENABLED || !isAdmin}
                           data-shift-member-id={member.id}
                           onPointerDown={(event) => beginCreateShift(member.id, event)}
                           onPointerMove={(event) => moveCreateShift(member.id, event)}
@@ -1634,8 +1719,8 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                   moveShift(event)
                                   moveResize(event)
                                 }}
-                                onPointerUp={(event) => {
-                                  stopMove(event)
+                                onPointerUp={() => {
+                                  stopMove()
                                   stopResize()
                                 }}
                                 onPointerCancel={() => {

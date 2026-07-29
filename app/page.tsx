@@ -44,9 +44,9 @@ type ViewItem = {
 }
 
 const viewItems: ViewItem[] = [
+  { id: "roster", label: "名簿", icon: Users },
   { id: "organizations", label: "参加団体", icon: Building2 },
   { id: "projects", label: "企画", icon: ClipboardList },
-  { id: "roster", label: "名簿", icon: Users },
   { id: "shift", label: "シフト", icon: CalendarDays },
   { id: "preview", label: "サイトプレビュー", icon: MonitorSmartphone },
   { id: "vote", label: "投票結果", icon: BarChart3 },
@@ -56,7 +56,7 @@ const initialData = createInitialAppState()
 
 export default function Page() {
   const voteClient = useMemo(() => getSupabaseClient(), [])
-  const [view, setView] = useState<View>("organizations")
+  const [view, setView] = useState<View>("roster")
   const [members, setMembers] = useState<Member[]>(initialData.members)
   const [organizations, setOrganizations] = useState<EventOrganization[]>(initialData.organizations)
   const [projects, setProjects] = useState<EventProject[]>(initialData.projects)
@@ -147,7 +147,7 @@ export default function Page() {
     setOrganizations(next.organizations)
     setProjects(next.projects)
     setShiftData(next.shiftData)
-    setView("organizations")
+    setView("roster")
     setResetVersion((prev) => prev + 1)
     setResetComplete(true)
     window.setTimeout(() => setResetComplete(false), 1800)
