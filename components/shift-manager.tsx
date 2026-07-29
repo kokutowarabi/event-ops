@@ -35,6 +35,14 @@ import {
 import { memberDepartmentBadgeClass } from "@/lib/member-department"
 import { MemberRoleBadges } from "@/components/member-role-badges"
 import { parseMemberRoles } from "@/lib/member-role"
+import type {
+  Shift,
+  ShiftData,
+  ShiftKind,
+  ShiftSchedule,
+  ShiftTemplate,
+  ShiftTemplateId,
+} from "@/lib/shift-data"
 import {
   Select,
   SelectContent,
@@ -43,33 +51,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-type ShiftKind = "morning" | "day" | "evening" | "full"
-type ShiftTemplateId = string
 type ShiftViewMode = "member" | "assignment"
 
-export type ShiftTemplate = {
-  label: string
-  kind: ShiftKind
-  defaultMinutes: number
-  note: string
-}
-
-export type ShiftSchedule = {
-  memberIds: string[]
-  startDate: string
-  endDate: string
-}
-
-export type Shift = {
-  id: string
-  memberId: string
-  date: string
-  start: number
-  end: number
-  templateId: ShiftTemplateId
-  kind: ShiftKind
-  note: string
-}
+export type { Shift, ShiftData, ShiftSchedule, ShiftTemplate } from "@/lib/shift-data"
 
 type DraftShift = {
   memberId: string
@@ -186,12 +170,6 @@ const shiftTemplates: Record<ShiftTemplateId, ShiftTemplate> = {
   exhibitor: { label: "出展者対応", kind: "day", defaultMinutes: 180, note: "参加団体受付・控室対応" },
   setup: { label: "設営・撤収", kind: "evening", defaultMinutes: 120, note: "備品搬入・撤収確認" },
   break: { label: "休憩", kind: "day", defaultMinutes: 45, note: "休憩" },
-}
-
-export type ShiftData = {
-  schedule: ShiftSchedule | null
-  shifts: Shift[]
-  customShiftTemplates: Record<ShiftTemplateId, ShiftTemplate>
 }
 
 export const initialShifts: Shift[] = [

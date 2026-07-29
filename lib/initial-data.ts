@@ -1,4 +1,4 @@
-import type { Shift, ShiftData } from "@/components/shift-manager"
+import type { Shift, ShiftData } from "@/lib/shift-data"
 import {
   eventSchedule,
   getFestivalDay,
