@@ -26,7 +26,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   formatCompactDate,
-  getOperationDayLabel,
   operationPeriod,
 } from "@/lib/event-schedule"
 import {
@@ -432,8 +431,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const [shiftSheets, setShiftSheets] = useState<ShiftSheet[]>(initialShiftData.sheets)
   const [shiftSheet, setShiftSheet] = useState<ShiftSheet | null>(() => initialShiftData.sheets[0] ?? null)
   const [editingSheetName, setEditingSheetName] = useState(false)
-  const [sheetSearchOpen, setSheetSearchOpen] = useState(false)
-  const [sheetSearchQuery, setSheetSearchQuery] = useState("")
   const [selectedDate, setSelectedDate] = useState(initialShiftData.sheets[0]?.startDate ?? defaultStartDate)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [shiftFilter, setShiftFilter] = useState("")
@@ -649,13 +646,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     setDepartmentFilter(ALL_DEPARTMENTS)
     setRoleFilter("すべての役職")
     setSheetDraft((prev) => ({ ...prev, name: "" }))
-  }
-
-  const openShiftSheet = (sheet: ShiftSheet) => {
-    setShiftSheet(sheet)
-    setSelectedDate(sheet.startDate)
-    setDepartmentFilter(ALL_DEPARTMENTS)
-    setRoleFilter("すべての役職")
   }
 
   const renameCurrentSheet = (name: string) => {
@@ -1131,12 +1121,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
               <SelectContent>
                 {dateTabs.map((date) => (
                   <SelectItem key={date} value={date}>
-                    <span>{formatCompactDate(date)}</span>
-                    {getOperationDayLabel(date) ? (
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        {getOperationDayLabel(date)}
-                      </span>
-                    ) : null}
+                    {formatCompactDate(date)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -1164,51 +1149,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                   {shiftSheet.name}
                 </Button>
               )}
-              <div className="relative">
-                <Button
-                  type="button"
-                  size="icon-sm"
-                  variant="outline"
-                  onClick={() => {
-                    setSheetSearchQuery("")
-                    setSheetSearchOpen((prev) => !prev)
-                  }}
-                  aria-label="シフトシートを検索"
-                >
-                  <Search className="size-4" />
-                </Button>
-                {sheetSearchOpen ? (
-                  <div className="absolute left-0 top-[calc(100%+0.25rem)] z-50 w-64 rounded-md border bg-popover p-2 shadow-lg">
-                    <Input
-                      autoFocus
-                      value={sheetSearchQuery}
-                      onChange={(event) => setSheetSearchQuery(event.target.value)}
-                      onBlur={() => window.setTimeout(() => setSheetSearchOpen(false), 120)}
-                      placeholder="シート検索"
-                      className="h-8 bg-background"
-                    />
-                    <div className="mt-2 max-h-56 overflow-y-auto overscroll-contain">
-                      {shiftSheets
-                        .map((sheet) => ({ sheet }))
-                        .filter(({ sheet }) => !sheetSearchQuery.trim() || sheet.name.toLowerCase().includes(sheetSearchQuery.trim().toLowerCase()))
-                        .map(({ sheet }) => (
-                          <button
-                            key={sheet.id}
-                            type="button"
-                            onMouseDown={(event) => event.preventDefault()}
-                            onClick={() => {
-                              openShiftSheet(sheet)
-                              setSheetSearchOpen(false)
-                            }}
-                            className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
-                          >
-                            {sheet.name}
-                          </button>
-                        ))}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
             </div>
             <Button
               type="button"
