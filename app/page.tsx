@@ -21,7 +21,6 @@ import { ProjectVote, type VoteConnectionState } from "@/components/project-vote
 import { RosterManager } from "@/components/roster-manager"
 import { ShiftManager, type ShiftData } from "@/components/shift-manager"
 import { SitePreview } from "@/components/site-preview"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { EventOrganization, EventProject } from "@/lib/event-data"
 import { createInitialAppState } from "@/lib/initial-data"
@@ -237,10 +236,6 @@ export default function Page() {
             )
           })}
         </div>
-
-        <Badge variant="outline" className="ml-auto hidden lg:inline-flex">
-          運営データは保存なし
-        </Badge>
       </nav>
       <div className="min-h-0 flex-1">{renderView()}</div>
     </main>
