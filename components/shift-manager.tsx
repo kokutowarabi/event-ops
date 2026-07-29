@@ -390,11 +390,12 @@ function SearchPicker({ label, value, options, allValue, onChange }: SearchPicke
         ? createPortal(
           <div
             data-shift-filter-picker-popup
-            className="fixed z-[70] rounded-md border bg-popover p-2 text-popover-foreground shadow-lg"
+            className="fixed z-[70] w-max rounded-md border bg-popover p-2 text-popover-foreground shadow-lg"
             style={{
               left: popupPosition.left,
               top: popupPosition.top,
-              width: popupPosition.width,
+              minWidth: popupPosition.width,
+              maxWidth: `calc(100vw - ${popupPosition.left + 8}px)`,
             }}
           >
             <Input
