@@ -14,3 +14,7 @@ export function votesByDate(votes: VisitorVote[]) {
     return counts
   }, {})
 }
+
+export function votesOnDate(votes: VisitorVote[], votedOn: string) {
+  return votes.filter((vote) => vote.voted_on === votedOn)
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { VisitorVote } from "@/lib/supabase/votes"
-import { projectVoteTotal, totalVotes, votesByDate } from "@/lib/votes"
+import { projectVoteTotal, totalVotes, votesByDate, votesOnDate } from "@/lib/votes"
 
 const votes: VisitorVote[] = [
   {
@@ -34,5 +34,10 @@ describe("vote totals", () => {
       "2026-10-31": 1,
       "2026-11-01": 1,
     })
+  })
+
+  it("filters votes to one voting date", () => {
+    expect(votesOnDate(votes, "2026-11-01")).toEqual([votes[1]])
+    expect(votesOnDate(votes, "2026-11-02")).toEqual([])
   })
 })

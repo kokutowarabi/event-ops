@@ -1,12 +1,19 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { BarChart3, CalendarDays, Heart, Trophy } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import type { EventDepartment, EventProject } from "@/lib/event-data"
 import { eventSchedule, formatJapaneseDate } from "@/lib/event-schedule"
 import type { VisitorVote } from "@/lib/supabase/votes"
-import { projectVoteTotal, totalVotes, votesByDate } from "@/lib/votes"
+import { projectVoteTotal, totalVotes, votesByDate, votesOnDate } from "@/lib/votes"
 
 export type VoteConnectionState = "unconfigured" | "connecting" | "realtime" | "error"
 
@@ -17,12 +24,16 @@ type ProjectVoteProps = {
 }
 
 const departments: EventDepartment[] = ["模擬店", "屋外ステージ", "教室"]
+const allVoteDates = "all"
+const allDepartments = "all"
 
 export function ProjectVote({ projects, votes, connectionState }: ProjectVoteProps) {
+  const [selectedVoteDate, setSelectedVoteDate] = useState(allVoteDates)
+  const [selectedDepartment, setSelectedDepartment] = useState<
+    EventDepartment | typeof allDepartments
+  >(allDepartments)
+
   const stats = useMemo(() => {
-    const ranking = [...projects].sort(
-      (a, b) => projectVoteTotal(b.id, votes) - projectVoteTotal(a.id, votes),
-    )
     const departmentTotals = departments.map((department) => ({
       department,
       count: projects
@@ -31,12 +42,30 @@ export function ProjectVote({ projects, votes, connectionState }: ProjectVotePro
     }))
 
     return {
-      ranking,
       departmentTotals,
       allVotes: totalVotes(votes),
       dailyTotals: votesByDate(votes),
     }
   }, [projects, votes])
+
+  const rankingStats = useMemo(() => {
+    const rankingVotes = selectedVoteDate === allVoteDates
+      ? votes
+      : votesOnDate(votes, selectedVoteDate)
+    const rankingProjects = selectedDepartment === allDepartments
+      ? projects
+      : projects.filter((project) => project.department === selectedDepartment)
+    const ranking = [...rankingProjects].sort((a, b) => {
+      const voteDifference = projectVoteTotal(b.id, rankingVotes)
+        - projectVoteTotal(a.id, rankingVotes)
+      return voteDifference || a.title.localeCompare(b.title, "ja")
+    })
+
+    return {
+      ranking,
+      votes: rankingVotes,
+    }
+  }, [projects, selectedDepartment, selectedVoteDate, votes])
 
   const connectionLabel = {
     unconfigured: "Supabase未設定",
@@ -107,15 +136,81 @@ export function ProjectVote({ projects, votes, connectionState }: ProjectVotePro
         </div>
 
         <section className="mt-4 rounded-xl border bg-card p-4">
-          <h2 className="mb-3 font-semibold">企画別ランキング</h2>
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <Trophy className="size-4 text-muted-foreground" />
+                <h2 className="font-semibold">投票日・部門別ランキング</h2>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                選択した投票日の票だけで、部門内の順位を表示します。
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <label className="grid gap-1 text-xs text-muted-foreground">
+                投票日
+                <Select
+                  value={selectedVoteDate}
+                  onValueChange={(value) => value !== null && setSelectedVoteDate(value)}
+                >
+                  <SelectTrigger className="min-w-44 bg-background">
+                    <SelectValue>
+                      {selectedVoteDate === allVoteDates
+                        ? "全投票日"
+                        : `${formatJapaneseDate(selectedVoteDate, false)}・${
+                            eventSchedule.festivalDays.find(
+                              (day) => day.date === selectedVoteDate,
+                            )?.label ?? ""
+                          }`}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={allVoteDates}>全投票日</SelectItem>
+                    {eventSchedule.festivalDays.map((day) => (
+                      <SelectItem key={day.date} value={day.date}>
+                        {formatJapaneseDate(day.date, false)}・{day.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </label>
+              <label className="grid gap-1 text-xs text-muted-foreground">
+                部門
+                <Select
+                  value={selectedDepartment}
+                  onValueChange={(value) => {
+                    if (value !== null) {
+                      setSelectedDepartment(value as EventDepartment | typeof allDepartments)
+                    }
+                  }}
+                >
+                  <SelectTrigger className="min-w-36 bg-background">
+                    <SelectValue>
+                      {selectedDepartment === allDepartments
+                        ? "全部門"
+                        : selectedDepartment}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={allDepartments}>全部門</SelectItem>
+                    {departments.map((department) => (
+                      <SelectItem key={department} value={department}>
+                        {department}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </label>
+            </div>
+          </div>
           <div className="grid gap-2 md:grid-cols-2">
-            {stats.ranking.map((project, index) => (
+            {rankingStats.ranking.map((project, index) => (
               <div key={project.id} className="flex items-center justify-between gap-3 rounded-lg border bg-background p-3">
                 <div className="min-w-0">
                   <div className="truncate font-medium">{index + 1}. {project.title}</div>
                   <div className="mt-1 text-xs text-muted-foreground">{project.department} / {project.organizationName}</div>
                 </div>
-                <Badge>{projectVoteTotal(project.id, votes)}票</Badge>
+                <Badge>{projectVoteTotal(project.id, rankingStats.votes)}票</Badge>
               </div>
             ))}
           </div>
