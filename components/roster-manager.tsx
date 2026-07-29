@@ -30,6 +30,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { memberDepartmentBadgeClass } from "@/lib/member-department"
 import { matchesSelectedValues } from "@/lib/table-filters"
 
 type RosterManagerProps = {
@@ -225,7 +226,10 @@ export function RosterManager({ members, departments = memberDepartments, roles 
                   <TableCell>
                     <EditableSelectCell value={member.department} options={departments} onCommit={(value) => updateMember(member.id, { department: value })}>
                       {member.department ? (
-                        <Badge variant="secondary" className="font-normal">
+                        <Badge
+                          variant="outline"
+                          className={`font-normal ${memberDepartmentBadgeClass(member.department)}`}
+                        >
                           {member.department}
                         </Badge>
                       ) : (

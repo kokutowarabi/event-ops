@@ -29,6 +29,7 @@ import {
   formatCompactDate,
   operationPeriod,
 } from "@/lib/event-schedule"
+import { memberDepartmentBadgeClass } from "@/lib/member-department"
 import {
   Select,
   SelectContent,
@@ -1292,8 +1293,14 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                         }`}
                     >
                       <span className="block font-medium">{member.name}</span>
-                      <span className="mt-1 block text-muted-foreground">
-                        {member.department} / {member.role}
+                      <span className="mt-1 flex flex-wrap items-center gap-1.5 text-muted-foreground">
+                        <Badge
+                          variant="outline"
+                          className={`font-normal ${memberDepartmentBadgeClass(member.department)}`}
+                        >
+                          {member.department}
+                        </Badge>
+                        <span>{member.role}</span>
                       </span>
                     </button>
                   )
@@ -1458,8 +1465,14 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                 <section key={`mobile-member-${member.id}`} className="rounded-lg border bg-card p-3">
                   <div className="mb-3">
                     <div className="font-medium">{member.name}</div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">
-                      {member.department} / {member.role}
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                      <Badge
+                        variant="outline"
+                        className={`font-normal ${memberDepartmentBadgeClass(member.department)}`}
+                      >
+                        {member.department}
+                      </Badge>
+                      <span>{member.role}</span>
                     </div>
                   </div>
                   <div className="relative" style={{ height: MOBILE_TIMELINE_TRACK_HEIGHT }}>
@@ -1637,8 +1650,14 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                   <div key={`member-row-${member.id}`} className="contents">
                     <div className="sticky left-0 z-10 border-r border-b bg-card p-4">
                       <div className="font-medium">{member.name}</div>
-                      <div className="mt-1 text-sm text-muted-foreground">
-                        {member.department} / {member.role}
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+                        <Badge
+                          variant="outline"
+                          className={`font-normal ${memberDepartmentBadgeClass(member.department)}`}
+                        >
+                          {member.department}
+                        </Badge>
+                        <span>{member.role}</span>
                       </div>
                     </div>
                     <div className="border-b py-3">
