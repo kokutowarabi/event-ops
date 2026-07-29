@@ -10,7 +10,7 @@ import {
   type KeyboardEvent,
   type PointerEvent,
 } from "react"
-import { CalendarDays, Eye, Layers3, ListFilter, Plus, Search, Trash2, Users } from "lucide-react"
+import { CalendarDays, Download, Eye, Layers3, ListFilter, Plus, Search, Trash2, Users } from "lucide-react"
 import type { Member } from "../lib/members"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { downloadCsv } from "@/lib/csv"
 import {
   formatCompactDate,
   operationPeriod,
@@ -574,6 +575,20 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     const visibleMemberIds = new Set(visibleSelectedDateShifts.map((shift) => shift.memberId))
     return invitedMembers.filter((member) => visibleMemberIds.has(member.id))
   }, [invitedMembers, shiftFilter, visibleSelectedDateShifts])
+  const exportableShifts = useMemo(() => {
+    const visibleMemberIds = new Set(visibleInvitedMembers.map((member) => member.id))
+    const memberNames = new Map(members.map((member) => [member.id, member.name]))
+    return visibleSelectedDateShifts
+      .filter((shift) => visibleMemberIds.has(shift.memberId))
+      .sort(
+        (left, right) =>
+          left.start - right.start
+          || (memberNames.get(left.memberId) ?? "").localeCompare(
+            memberNames.get(right.memberId) ?? "",
+            "ja",
+          ),
+      )
+  }, [members, visibleInvitedMembers, visibleSelectedDateShifts])
   const filterSummary = useMemo(
     () =>
       [
@@ -646,6 +661,29 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     setDepartmentFilter(ALL_DEPARTMENTS)
     setRoleFilter("すべての役職")
     setSheetDraft((prev) => ({ ...prev, name: "" }))
+  }
+
+  const exportShifts = () => {
+    const membersById = new Map(members.map((member) => [member.id, member]))
+    downloadCsv(
+      `シフト_${shiftSheet?.name ?? ""}_${selectedDate}`,
+      ["日付", "氏名", "メールアドレス", "所属", "役職", "業務", "開始時刻", "終了時刻", "時間（分）", "メモ"],
+      exportableShifts.map((shift) => {
+        const member = membersById.get(shift.memberId)
+        return [
+          shift.date,
+          member?.name,
+          member?.email,
+          member?.department,
+          member?.role,
+          allShiftTemplates[shift.templateId]?.label ?? shift.templateId,
+          formatTime(shift.start),
+          formatTime(shift.end),
+          shift.end - shift.start,
+          shift.note,
+        ]
+      }),
+    )
   }
 
   const renameCurrentSheet = (name: string) => {
@@ -1165,6 +1203,17 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                   {filterSummary}
                 </span>
               ) : null}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={exportShifts}
+              disabled={exportableShifts.length === 0}
+              title="表示中の日付と絞り込み条件でCSV出力"
+            >
+              <Download className="size-4" />
+              CSV
             </Button>
             {SHIFT_CREATION_ENABLED ? (
               <Button type="button" size="sm" className="bg-black text-white hover:bg-black/80" onClick={() => setShiftSheet(null)}>

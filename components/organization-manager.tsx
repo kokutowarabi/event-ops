@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Building2, Plus, Trash2 } from "lucide-react"
+import { Building2, Download, Plus, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/table"
 import { SearchHeader, SelectHeader } from "@/components/table-column-header"
 import { EditableSelectCell, EditableTextCell } from "@/components/editable-cell"
+import { downloadCsv } from "@/lib/csv"
 import { type EventDepartment, type EventOrganization, type OrganizationStatus } from "@/lib/event-data"
 import { matchesSelectedValues } from "@/lib/table-filters"
 
@@ -134,6 +135,23 @@ export function OrganizationManager({
     setAdding(false)
   }
 
+  const exportOrganizations = () => {
+    downloadCsv(
+      "参加団体",
+      ["参加団体名", "種別", "部門", "代表者", "連絡先", "配置", "状態", "メモ"],
+      visibleOrganizations.map((organization) => [
+        organization.name,
+        organization.category,
+        organization.department,
+        organization.representative,
+        organization.contact,
+        organization.booth,
+        organization.status,
+        organization.note,
+      ]),
+    )
+  }
+
   return (
     <div className="mx-auto flex h-[calc(100svh-5.5rem)] max-w-7xl flex-col px-4 py-5 md:py-6">
       <header className="mb-4 flex shrink-0 items-center gap-2">
@@ -141,6 +159,17 @@ export function OrganizationManager({
         <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">参加団体管理</h1>
         <Button type="button" size="icon" className="ml-2 size-8" onClick={adding ? addOrganization : () => setAdding(true)} disabled={adding && !draft.name.trim()} aria-label={adding ? "参加団体を追加" : "追加欄を開く"}>
           <Plus className="size-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="ml-2"
+          onClick={exportOrganizations}
+          disabled={visibleOrganizations.length === 0}
+        >
+          <Download className="size-4" />
+          CSV
         </Button>
       </header>
 

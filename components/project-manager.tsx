@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { ClipboardList, Plus, Trash2 } from "lucide-react"
+import { ClipboardList, Download, Plus, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/table"
 import { SearchHeader, SelectHeader } from "@/components/table-column-header"
 import { EditableSelectCell, EditableTextCell } from "@/components/editable-cell"
+import { downloadCsv } from "@/lib/csv"
 import { type EventDepartment, type EventProject, type ProjectStatus } from "@/lib/event-data"
 import { matchesSelectedValues } from "@/lib/table-filters"
 
@@ -148,6 +149,24 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
     setAdding(false)
   }
 
+  const exportProjects = () => {
+    downloadCsv(
+      "企画",
+      ["企画名", "参加団体", "部門", "会場", "開始時刻", "終了時刻", "担当", "状態", "メモ"],
+      visibleProjects.map((project) => [
+        project.title,
+        project.organizationName,
+        project.department,
+        project.venue,
+        project.startTime,
+        project.endTime,
+        project.owner,
+        project.status,
+        project.note,
+      ]),
+    )
+  }
+
   return (
     <div className="mx-auto flex h-[calc(100svh-5.5rem)] max-w-7xl flex-col px-4 py-5 md:py-6">
       <header className="mb-4 flex shrink-0 items-center gap-2">
@@ -155,6 +174,17 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
         <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">企画管理</h1>
         <Button type="button" size="icon" className="ml-2 size-8" onClick={adding ? addProject : () => setAdding(true)} disabled={adding && !draft.title.trim()} aria-label={adding ? "企画を追加" : "追加欄を開く"}>
           <Plus className="size-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="ml-2"
+          onClick={exportProjects}
+          disabled={visibleProjects.length === 0}
+        >
+          <Download className="size-4" />
+          CSV
         </Button>
       </header>
 

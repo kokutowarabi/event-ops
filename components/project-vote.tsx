@@ -1,8 +1,9 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { BarChart3, CalendarDays, Heart, Trophy } from "lucide-react"
+import { BarChart3, CalendarDays, Download, Heart, Trophy } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Select,
   SelectContent,
@@ -10,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { downloadCsv } from "@/lib/csv"
 import type { EventDepartment, EventProject } from "@/lib/event-data"
 import { eventSchedule, formatJapaneseDate } from "@/lib/event-schedule"
 import type { VisitorVote } from "@/lib/supabase/votes"
@@ -74,6 +76,24 @@ export function ProjectVote({ projects, votes, connectionState }: ProjectVotePro
     error: "接続エラー",
   }[connectionState]
 
+  const exportRanking = () => {
+    const voteDateLabel = selectedVoteDate === allVoteDates
+      ? "全投票日"
+      : formatJapaneseDate(selectedVoteDate, false)
+    downloadCsv(
+      `投票結果_${selectedVoteDate === allVoteDates ? "全投票日" : selectedVoteDate}_${selectedDepartment === allDepartments ? "全部門" : selectedDepartment}`,
+      ["順位", "投票日", "部門", "企画名", "参加団体", "票数"],
+      rankingStats.ranking.map((project, index) => [
+        index + 1,
+        voteDateLabel,
+        project.department,
+        project.title,
+        project.organizationName,
+        projectVoteTotal(project.id, rankingStats.votes),
+      ]),
+    )
+  }
+
   return (
     <div className="mx-auto flex h-[calc(100svh-4rem)] max-w-7xl flex-col px-3 py-4 md:px-4 md:py-6">
       <header className="mb-4 flex shrink-0 flex-wrap items-center gap-2">
@@ -82,6 +102,18 @@ export function ProjectVote({ projects, votes, connectionState }: ProjectVotePro
         <Badge variant={connectionState === "error" ? "destructive" : "outline"} className="ml-2">
           {connectionLabel}
         </Badge>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="ml-auto"
+          onClick={exportRanking}
+          disabled={rankingStats.ranking.length === 0}
+          title="選択中の日付・部門ランキングをCSV出力"
+        >
+          <Download className="size-4" />
+          CSV
+        </Button>
       </header>
 
       <div className="min-h-0 flex-1 overflow-auto">

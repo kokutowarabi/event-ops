@@ -1,3 +1,5 @@
+import { downloadCsv } from "@/lib/csv"
+
 export type Member = {
   id: string
   name: string
@@ -67,13 +69,5 @@ export type SortOrder = "asc" | "desc"
 export function exportToCsv(members: Member[]): void {
   const headers = ["氏名", "メールアドレス", "所属局", "役職"]
   const rows = members.map((m) => [m.name, m.email, m.department, m.role])
-  const escape = (value: string) => `"${value.replace(/"/g, '""')}"`
-  const csv = [headers, ...rows].map((row) => row.map(escape).join(",")).join("\n")
-  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement("a")
-  link.href = url
-  link.download = `メンバー名簿_${new Date().toISOString().slice(0, 10)}.csv`
-  link.click()
-  URL.revokeObjectURL(url)
+  downloadCsv("メンバー名簿", headers, rows)
 }
