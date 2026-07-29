@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   ArrowLeft,
   ArrowRight,
@@ -10,19 +10,33 @@ import {
   Heart,
   ListChecks,
   MapPin,
+  MonitorSmartphone,
+  RotateCcw,
   Search,
+  Settings2,
   Sparkles,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { EventDepartment, EventProject } from "@/lib/event-data"
+import {
+  eventSchedule,
+  formatJapaneseDate,
+  getSiteTimingStatus,
+  parseDateTimeLocalValue,
+  toDateTimeLocalValue,
+  type SiteCmsContent,
+  type SiteTimingPhase,
+} from "@/lib/event-schedule"
 import { siteConfig } from "@/lib/site-config"
 
 type OfficialSiteProps = {
   projects: EventProject[]
   votedProjectIds: string[]
   onToggleVote: (projectId: string) => void
+  siteCmsContent: SiteCmsContent
+  onSiteCmsContentChange: (content: SiteCmsContent) => void
 }
 
 type OfficialPage = "home" | "projects" | "detail" | "votes"
@@ -30,12 +44,64 @@ type DepartmentFilter = EventDepartment | "すべて"
 
 const departments: DepartmentFilter[] = ["すべて", "屋外ステージ", "教室", "模擬店"]
 
-export function OfficialSite({ projects, votedProjectIds, onToggleVote }: OfficialSiteProps) {
+const cmsFields: Array<{
+  key: keyof SiteCmsContent
+  label: string
+  multiline?: boolean
+}> = [
+  { key: "heroTitle", label: "トップ見出し" },
+  { key: "heroDescription", label: "トップ説明", multiline: true },
+  { key: "beforeFestivalLabel", label: "開催前の見出し" },
+  { key: "beforeFestivalDescription", label: "開催前の説明", multiline: true },
+  { key: "beforeOpenTitle", label: "当日・開始前の見出し" },
+  { key: "beforeOpenDescription", label: "当日・開始前の説明", multiline: true },
+  { key: "liveTitle", label: "開催中の見出し" },
+  { key: "liveDescription", label: "開催中の説明", multiline: true },
+  { key: "afterCloseTitle", label: "各日終了後の見出し" },
+  { key: "afterCloseDescription", label: "各日終了後の説明", multiline: true },
+  { key: "afterFestivalTitle", label: "全日程終了後の見出し" },
+  { key: "afterFestivalDescription", label: "全日程終了後の説明", multiline: true },
+]
+
+const timingSamples: Array<{ label: string; value: string; phase: SiteTimingPhase }> = [
+  { label: "本祭前", value: "2026-10-28T12:00", phase: "before-festival" },
+  { label: "開始前", value: "2026-10-31T09:00", phase: "before-open" },
+  { label: "開催中", value: "2026-10-31T12:00", phase: "live" },
+  { label: "当日終了後", value: "2026-10-31T19:00", phase: "after-close" },
+  { label: "本祭終了後", value: "2026-11-02T18:00", phase: "after-festival" },
+]
+
+const phaseLabels: Record<SiteTimingPhase, string> = {
+  "before-festival": "本祭前",
+  "before-open": "当日・開始前",
+  live: "開催中",
+  "after-close": "各日終了後",
+  "after-festival": "全日程終了後",
+}
+
+export function OfficialSite({
+  projects,
+  votedProjectIds,
+  onToggleVote,
+  siteCmsContent,
+  onSiteCmsContentChange,
+}: OfficialSiteProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [page, setPage] = useState<OfficialPage>("home")
   const [selectedProjectId, setSelectedProjectId] = useState(projects[0]?.id ?? "")
   const [query, setQuery] = useState("")
   const [department, setDepartment] = useState<DepartmentFilter>("すべて")
+  const [simulatedDateTime, setSimulatedDateTime] = useState("2026-10-31T09:00")
+
+  useEffect(() => {
+    let cancelled = false
+    queueMicrotask(() => {
+      if (!cancelled) setSimulatedDateTime(toDateTimeLocalValue(new Date()))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const selectedProject = projects.find((project) => project.id === selectedProjectId)
   const votedProjects = projects.filter((project) => votedProjectIds.includes(project.id))
@@ -51,6 +117,14 @@ export function OfficialSite({ projects, votedProjectIds, onToggleVote }: Offici
       return matchesDepartment && matchesQuery
     })
   }, [department, projects, query])
+  const timingStatus = useMemo(
+    () => getSiteTimingStatus(parseDateTimeLocalValue(simulatedDateTime), siteCmsContent),
+    [simulatedDateTime, siteCmsContent],
+  )
+
+  const updateCmsContent = (key: keyof SiteCmsContent, value: string) => {
+    onSiteCmsContentChange({ ...siteCmsContent, [key]: value })
+  }
 
   const navigate = (nextPage: OfficialPage) => {
     setPage(nextPage)
@@ -63,7 +137,122 @@ export function OfficialSite({ projects, votedProjectIds, onToggleVote }: Offici
   }
 
   return (
-    <div ref={scrollRef} className="h-full overflow-auto bg-[#f5f2e9] text-[#18231f]">
+    <div className="grid h-full min-h-0 bg-muted/30 lg:grid-cols-[22rem_minmax(0,1fr)]">
+      <aside className="max-h-[45svh] overflow-auto border-b bg-background p-4 lg:max-h-none lg:border-b-0 lg:border-r">
+        <div className="flex items-center gap-2">
+          <Settings2 className="size-5 text-muted-foreground" />
+          <div>
+            <h1 className="font-semibold">サイトCMS</h1>
+            <p className="text-xs text-muted-foreground">テスト・文言編集専用</p>
+          </div>
+        </div>
+        <p className="mt-3 rounded-lg border bg-muted/40 p-3 text-xs leading-5 text-muted-foreground">
+          ここは別リポジトリの実サイトを公開する画面ではありません。表示タイミングと文言を確認するためのローカルプレビューです。
+        </p>
+
+        <section className="mt-5">
+          <h2 className="text-sm font-semibold">表示日時をテスト</h2>
+          <label className="mt-2 grid gap-1.5 text-xs text-muted-foreground">
+            プレビュー日時
+            <Input
+              type="datetime-local"
+              value={simulatedDateTime}
+              onChange={(event) => setSimulatedDateTime(event.target.value)}
+              className="text-foreground"
+            />
+          </label>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <Badge variant="outline">{phaseLabels[timingStatus.phase]}</Badge>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setSimulatedDateTime(toDateTimeLocalValue(new Date()))}
+            >
+              <RotateCcw className="size-3.5" />
+              現在時刻
+            </Button>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-1.5">
+            {timingSamples.map((sample) => (
+              <Button
+                key={sample.phase}
+                type="button"
+                size="sm"
+                variant={timingStatus.phase === sample.phase ? "secondary" : "outline"}
+                className="justify-start text-xs"
+                onClick={() => setSimulatedDateTime(sample.value)}
+              >
+                {sample.label}
+              </Button>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-5 border-t pt-5">
+          <h2 className="text-sm font-semibold">運営日程</h2>
+          <dl className="mt-2 grid gap-2 text-xs">
+            <div className="rounded-lg bg-muted/50 p-2.5">
+              <dt className="font-semibold">準備</dt>
+              <dd className="mt-1 text-muted-foreground">
+                {formatJapaneseDate(eventSchedule.preparationPeriod.startDate, false)}〜
+                {formatJapaneseDate(eventSchedule.preparationPeriod.endDate, false)}
+              </dd>
+            </div>
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-2.5">
+              <dt className="font-semibold">本祭（サイト表示対象）</dt>
+              {eventSchedule.festivalDays.map((day) => (
+                <dd key={day.date} className="mt-1 text-muted-foreground">
+                  {formatJapaneseDate(day.date, false)} {day.startTime}〜{day.endTime}
+                </dd>
+              ))}
+            </div>
+            <div className="rounded-lg bg-muted/50 p-2.5">
+              <dt className="font-semibold">片付け</dt>
+              <dd className="mt-1 text-muted-foreground">
+                {formatJapaneseDate(eventSchedule.cleanupPeriod.startDate, false)}〜
+                {formatJapaneseDate(eventSchedule.cleanupPeriod.endDate, false)}
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <section className="mt-5 border-t pt-5">
+          <h2 className="text-sm font-semibold">表示文言</h2>
+          <div className="mt-3 grid gap-3">
+            {cmsFields.map((field) => (
+              <label key={field.key} className="grid gap-1.5 text-xs text-muted-foreground">
+                {field.label}
+                {field.multiline ? (
+                  <textarea
+                    value={siteCmsContent[field.key]}
+                    onChange={(event) => updateCmsContent(field.key, event.target.value)}
+                    rows={3}
+                    className="w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  />
+                ) : (
+                  <Input
+                    value={siteCmsContent[field.key]}
+                    onChange={(event) => updateCmsContent(field.key, event.target.value)}
+                    className="text-foreground"
+                  />
+                )}
+              </label>
+            ))}
+          </div>
+        </section>
+      </aside>
+
+      <section className="flex min-h-0 flex-col p-3 md:p-4">
+        <div className="mb-2 flex shrink-0 items-center gap-2">
+          <MonitorSmartphone className="size-4 text-muted-foreground" />
+          <span className="text-sm font-medium">公開サイトのプレビュー</span>
+          <Badge variant="secondary" className="ml-auto">公開されません</Badge>
+        </div>
+        <div
+          ref={scrollRef}
+          className="min-h-0 flex-1 overflow-auto rounded-xl border bg-[#f5f2e9] text-[#18231f] shadow-sm"
+        >
       <header className="sticky top-0 z-30 border-b border-[#18231f]/10 bg-[#f5f2e9]/95 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center gap-3">
           <button type="button" onClick={() => navigate("home")} className="text-left">
@@ -103,13 +292,25 @@ export function OfficialSite({ projects, votedProjectIds, onToggleVote }: Offici
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_24%,#f3bf44_0_11%,transparent_11.5%),radial-gradient(circle_at_82%_16%,#5ab7b2_0_13%,transparent_13.5%),linear-gradient(135deg,#fff9e9,#e8f3ed_52%,#f7e8df)]" />
             <div className="relative mx-auto flex min-h-[70svh] max-w-6xl flex-col justify-center gap-10 px-4 py-16 md:flex-row md:items-end md:justify-between md:py-24">
               <div className="max-w-2xl">
-                <Badge className="mb-5 bg-[#c45235] text-white">{siteConfig.festivalEdition}</Badge>
+                <Badge className="mb-4 bg-[#c45235] text-white">{siteConfig.festivalEdition}</Badge>
+                <div className="mb-6 max-w-xl rounded-2xl border border-[#18231f]/10 bg-white/85 p-5 shadow-sm">
+                  <div className="text-xs font-bold tracking-[0.18em] text-[#c45235]">
+                    {phaseLabels[timingStatus.phase]}
+                  </div>
+                  <div className="mt-2 text-3xl font-black leading-tight">{timingStatus.title}</div>
+                  <p className="mt-2 text-sm leading-6 text-[#18231f]/65">{timingStatus.description}</p>
+                  {timingStatus.countdownLabel && timingStatus.countdown ? (
+                    <div className="mt-4 flex items-baseline gap-2 border-t border-[#18231f]/10 pt-3">
+                      <span className="text-xs font-bold text-[#18231f]/55">{timingStatus.countdownLabel}</span>
+                      <span className="text-xl font-black text-[#c45235]">{timingStatus.countdown}</span>
+                    </div>
+                  ) : null}
+                </div>
                 <h1 className="text-5xl font-black leading-[1.08] tracking-[-0.04em] md:text-7xl">
-                  {siteConfig.tagline}
+                  {siteCmsContent.heroTitle}
                 </h1>
                 <p className="mt-6 max-w-xl text-base leading-8 md:text-lg">
-                  {siteConfig.campusName}を舞台に、学生の研究、表現、食のアイデアが集まる
-                  {siteConfig.universityName}の大学祭です。
+                  {siteCmsContent.heroDescription}
                 </p>
                 <div className="mt-8 flex flex-wrap gap-2">
                   <Button type="button" className="bg-[#18231f] text-white hover:bg-[#18231f]/90" onClick={() => navigate("projects")}>
@@ -128,16 +329,20 @@ export function OfficialSite({ projects, votedProjectIds, onToggleVote }: Offici
                   <CalendarDays className="size-4 text-[#c45235]" />
                   開催情報
                 </div>
-                <div className="text-4xl font-black tracking-tight">{siteConfig.eventDates}</div>
-                <div className="grid gap-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="size-4" />
-                    {siteConfig.campusName}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock3 className="size-4" />
-                    {siteConfig.eventHours}
-                  </div>
+                <div className="grid gap-3">
+                  {eventSchedule.festivalDays.map((day) => (
+                    <div key={day.date} className="border-b border-[#18231f]/10 pb-3 last:border-0 last:pb-0">
+                      <div className="font-black">{formatJapaneseDate(day.date, false)}</div>
+                      <div className="mt-1 flex items-center gap-1.5 text-sm text-[#18231f]/65">
+                        <Clock3 className="size-4 text-[#c45235]" />
+                        {day.startTime}〜{day.endTime}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 border-t border-[#18231f]/10 pt-3 text-sm">
+                  <MapPin className="size-4 text-[#c45235]" />
+                  {siteConfig.campusName}
                 </div>
               </div>
             </div>
@@ -211,7 +416,7 @@ export function OfficialSite({ projects, votedProjectIds, onToggleVote }: Offici
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="企画名・団体名・会場から検索"
+                placeholder="企画名・参加団体名・会場から検索"
                 className="pl-9"
               />
             </div>
@@ -375,6 +580,8 @@ export function OfficialSite({ projects, votedProjectIds, onToggleVote }: Offici
           )}
         </main>
       ) : null}
+        </div>
+      </section>
     </div>
   )
 }

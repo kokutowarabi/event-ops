@@ -26,6 +26,7 @@ import {
   writeDemoState,
 } from "@/lib/demo-storage"
 import type { EventOrganization, EventProject } from "@/lib/event-data"
+import type { SiteCmsContent } from "@/lib/event-schedule"
 import type { Member } from "@/lib/members"
 import { siteConfig } from "@/lib/site-config"
 
@@ -44,7 +45,7 @@ const viewItems: ViewItem[] = [
   { id: "roster", label: "名簿", icon: Users },
   { id: "shift", label: "シフト", icon: CalendarDays },
   { id: "vote", label: "投票結果", icon: BarChart3 },
-  { id: "official", label: "公式サイト", icon: Globe2 },
+  { id: "official", label: "サイトCMS", icon: Globe2 },
 ]
 
 const initialDemoData = createInitialDemoState()
@@ -56,6 +57,7 @@ export default function Page() {
   const [projects, setProjects] = useState<EventProject[]>(initialDemoData.projects)
   const [shiftData, setShiftData] = useState<ShiftData>(initialDemoData.shiftData)
   const [votedProjectIds, setVotedProjectIds] = useState<string[]>(initialDemoData.votedProjectIds)
+  const [siteCmsContent, setSiteCmsContent] = useState<SiteCmsContent>(initialDemoData.siteCmsContent)
   const [storageReady, setStorageReady] = useState(false)
   const [resetVersion, setResetVersion] = useState(0)
   const [resetComplete, setResetComplete] = useState(false)
@@ -70,6 +72,7 @@ export default function Page() {
       setProjects(saved.projects)
       setShiftData(saved.shiftData)
       setVotedProjectIds(saved.votedProjectIds)
+      setSiteCmsContent(saved.siteCmsContent)
       setStorageReady(true)
     })
     return () => {
@@ -79,8 +82,8 @@ export default function Page() {
 
   useEffect(() => {
     if (!storageReady) return
-    writeDemoState({ members, organizations, projects, shiftData, votedProjectIds })
-  }, [members, organizations, projects, shiftData, storageReady, votedProjectIds])
+    writeDemoState({ members, organizations, projects, shiftData, votedProjectIds, siteCmsContent })
+  }, [members, organizations, projects, shiftData, siteCmsContent, storageReady, votedProjectIds])
 
   const changeMembers = (updater: Member[] | ((prev: Member[]) => Member[])) => {
     setMembers(updater)
@@ -122,6 +125,7 @@ export default function Page() {
     setProjects(next.projects)
     setShiftData(next.shiftData)
     setVotedProjectIds(next.votedProjectIds)
+    setSiteCmsContent(next.siteCmsContent)
     setView("kanban")
     setResetVersion((prev) => prev + 1)
     setResetComplete(true)
@@ -171,6 +175,8 @@ export default function Page() {
           projects={projects}
           votedProjectIds={votedProjectIds}
           onToggleVote={toggleVote}
+          siteCmsContent={siteCmsContent}
+          onSiteCmsContentChange={setSiteCmsContent}
         />
       )
     }

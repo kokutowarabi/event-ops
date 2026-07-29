@@ -16,6 +16,11 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
+  formatCompactDate,
+  getOperationDayLabel,
+  operationPeriod,
+} from "@/lib/event-schedule"
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -155,7 +160,7 @@ const shiftTemplates: Record<ShiftTemplateId, ShiftTemplate> = {
   guide: { label: "会場誘導", kind: "day", defaultMinutes: 240, note: "導線案内・列整理" },
   stage: { label: "ステージ進行", kind: "full", defaultMinutes: 180, note: "登壇者誘導・転換補助" },
   security: { label: "警備・巡回", kind: "evening", defaultMinutes: 180, note: "会場巡回・混雑対応" },
-  exhibitor: { label: "出展者対応", kind: "day", defaultMinutes: 180, note: "団体受付・控室対応" },
+  exhibitor: { label: "出展者対応", kind: "day", defaultMinutes: 180, note: "参加団体受付・控室対応" },
   setup: { label: "設営・撤収", kind: "evening", defaultMinutes: 120, note: "備品搬入・撤収確認" },
 }
 
@@ -171,14 +176,6 @@ export const initialShifts: Shift[] = [
   { id: "s3", memberId: "3", date: "2026-06-26", start: 15 * 60, end: 21 * 60, templateId: "security", kind: "evening", note: "混雑対応・巡回" },
   { id: "s4", memberId: "5", date: "2026-06-27", start: 10 * 60, end: 18 * 60, templateId: "stage", kind: "full", note: "音響確認・転換補助" },
 ]
-
-function todayKey() {
-  const date = new Date()
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
-  return `${year}-${month}-${day}`
-}
 
 function addDays(key: string, amount: number) {
   const [year, month, day] = key.split("-").map(Number)
@@ -389,13 +386,13 @@ export const emptyShiftData: ShiftData = {
 }
 
 export function ShiftManager({ members, initialShiftData, onShiftDataChange }: ShiftManagerProps) {
-  const defaultStartDate = todayKey()
+  const defaultStartDate = operationPeriod.startDate
   const [accountId, setAccountId] = useState(accounts[0].id)
   const [sheetDraft, setSheetDraft] = useState<Omit<ShiftSheet, "id">>({
     name: "",
     memberIds: members.slice(0, 6).map((member) => member.id),
     startDate: defaultStartDate,
-    endDate: addDays(defaultStartDate, 6),
+    endDate: operationPeriod.endDate,
   })
   const [shiftSheets, setShiftSheets] = useState<ShiftSheet[]>(initialShiftData.sheets)
   const [shiftSheet, setShiftSheet] = useState<ShiftSheet | null>(() => initialShiftData.sheets[0] ?? null)
@@ -509,10 +506,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const selectedTemplate = selectedShift ? allShiftTemplates[selectedShift.templateId] : null
   const draftTemplate = draftShift ? allShiftTemplates[draftShift.templateId] : null
   const movingShift = moving ? shifts.find((shift) => shift.id === moving.id) ?? null : null
-  const selectedDateIsStart = shiftSheet?.startDate === selectedDate
-  const selectedDateIsEnd = shiftSheet?.endDate === selectedDate
-  const selectedDateIsMiddle = Boolean(shiftSheet && !selectedDateIsStart && !selectedDateIsEnd)
-
   const toggleInvitedMember = (memberId: string) => {
     setSheetDraft((prev) => {
       const memberIds = prev.memberIds.includes(memberId)
@@ -968,26 +961,20 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
             </Select>
             <Select value={selectedDate} onValueChange={(value) => value !== null && setSelectedDate(value)}>
               <SelectTrigger className="h-8 w-auto max-w-full bg-background">
-                <div className="flex min-w-0 items-center gap-1 text-sm">
-                  <span className={selectedDateIsStart ? "font-semibold text-foreground" : "text-muted-foreground"}>
-                    {formatDate(shiftSheet.startDate)}
-                  </span>
-                  {selectedDateIsMiddle ? (
-                    <>
-                      <span className="text-muted-foreground">〜</span>
-                      <span className="font-semibold text-foreground">{formatDate(selectedDate)}</span>
-                    </>
-                  ) : null}
-                  <span className="text-muted-foreground">〜</span>
-                  <span className={selectedDateIsEnd ? "font-semibold text-foreground" : "text-muted-foreground"}>
-                    {formatDate(shiftSheet.endDate)}
-                  </span>
+                <div className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+                  <CalendarDays className="size-3.5 text-muted-foreground" />
+                  <span>{formatCompactDate(selectedDate)}</span>
                 </div>
               </SelectTrigger>
               <SelectContent>
                 {dateTabs.map((date) => (
                   <SelectItem key={date} value={date}>
-                    {formatDate(date)}
+                    <span>{formatCompactDate(date)}</span>
+                    {getOperationDayLabel(date) ? (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {getOperationDayLabel(date)}
+                      </span>
+                    ) : null}
                   </SelectItem>
                 ))}
               </SelectContent>
