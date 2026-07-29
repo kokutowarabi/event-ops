@@ -38,7 +38,7 @@ export const memberDepartments = [
   "広報局・第2部門",
   "広報局・第3部門",
 ]
-export const memberRoles = ["委員長", "副委員長", "局長・役員", "副局長", "3年会", "部門長", "2年継続", "1年新規"]
+export const memberRoles = ["委員長", "副委員長", "局長", "役員", "副局長", "3年会", "部門長", "2年継続", "1年新規"]
 
 export const initialMembers: Member[] = [
   { id: "1", name: "田中 太郎", email: "tanaka.taro@hoshihama.example", department: "執行部", role: "委員長" },

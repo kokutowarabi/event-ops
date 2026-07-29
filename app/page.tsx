@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button"
 import type { EventOrganization, EventProject } from "@/lib/event-data"
 import { createInitialAppState } from "@/lib/initial-data"
 import type { Member } from "@/lib/members"
+import { parseMemberRoles } from "@/lib/member-role"
 import { siteConfig } from "@/lib/site-config"
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase/client"
 import {
@@ -163,7 +164,7 @@ export default function Page() {
         <RosterManager
           members={members}
           departments={Array.from(new Set(members.map((member) => member.department)))}
-          roles={Array.from(new Set(members.map((member) => member.role)))}
+          roles={Array.from(new Set(members.flatMap((member) => parseMemberRoles(member.role))))}
           onMembersChange={changeMembers}
           onDeleteMember={deleteMember}
         />

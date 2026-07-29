@@ -21,7 +21,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { SearchHeader, SelectHeader } from "@/components/table-column-header"
-import { EditableSelectCell, EditableTextCell } from "@/components/editable-cell"
+import { EditableMultiSelectCell, EditableSelectCell, EditableTextCell } from "@/components/editable-cell"
+import { MemberRoleBadges } from "@/components/member-role-badges"
 import {
   Dialog,
   DialogContent,
@@ -31,7 +32,9 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { memberDepartmentBadgeClass } from "@/lib/member-department"
+import { joinMemberRoles, memberRoleBadgeClass, parseMemberRoles } from "@/lib/member-role"
 import { matchesSelectedValues } from "@/lib/table-filters"
+import { cn } from "@/lib/utils"
 
 type RosterManagerProps = {
   members: Member[]
@@ -42,6 +45,16 @@ type RosterManagerProps = {
 }
 
 export function RosterManager({ members, departments = memberDepartments, roles = memberRoles, onMembersChange, onDeleteMember }: RosterManagerProps) {
+  const roleOptions = useMemo(
+    () =>
+      Array.from(
+        new Set([
+          ...roles.flatMap(parseMemberRoles),
+          ...members.flatMap((member) => parseMemberRoles(member.role)),
+        ]),
+      ).filter(Boolean),
+    [members, roles],
+  )
   const [filters, setFilters] = useState<Record<SortKey, string[]>>({
     name: [],
     email: [],
@@ -59,16 +72,17 @@ export function RosterManager({ members, departments = memberDepartments, roles 
       name: members.map((member) => member.name),
       email: members.map((member) => member.email),
       department: members.map((member) => member.department),
-      role: members.map((member) => member.role),
+      role: members.flatMap((member) => parseMemberRoles(member.role)),
     }),
     [members],
   )
 
   const visibleMembers = useMemo(() => {
     const filtered = members.filter((m) => {
-      return (Object.keys(filters) as SortKey[]).every((key) =>
-        matchesSelectedValues([m[key]], filters[key]),
-      )
+      return (Object.keys(filters) as SortKey[]).every((key) => {
+        const values = key === "role" ? parseMemberRoles(m.role) : [m[key]]
+        return matchesSelectedValues(values, filters[key])
+      })
     })
     return filtered.sort((a, b) => {
       const result = a[sortKey].localeCompare(b[sortKey], "ja")
@@ -107,7 +121,7 @@ export function RosterManager({ members, departments = memberDepartments, roles 
         role: draft.role.trim(),
       },
     ])
-    setDraft({ name: "", email: "", department: departments[0] ?? "", role: roles[0] ?? "" })
+    setDraft({ name: "", email: "", department: departments[0] ?? "", role: roleOptions[0] ?? "" })
     setAdding(false)
   }
 
@@ -180,9 +194,14 @@ export function RosterManager({ members, departments = memberDepartments, roles 
               </TableHead>
               <TableHead className="hidden min-w-44 sm:table-cell">
                 {adding ? (
-                  <select value={draft.role} onChange={(event) => setDraft((prev) => ({ ...prev, role: event.target.value }))} className="h-8 w-full rounded-lg border border-input bg-background px-2 text-sm">
-                    {roles.map((role) => <option key={role} value={role}>{role}</option>)}
-                  </select>
+                  <EditableMultiSelectCell
+                    values={parseMemberRoles(draft.role)}
+                    options={roleOptions}
+                    optionClassName={memberRoleBadgeClass}
+                    onCommit={(nextRoles) => setDraft((prev) => ({ ...prev, role: joinMemberRoles(nextRoles) }))}
+                  >
+                    <MemberRoleBadges value={draft.role} />
+                  </EditableMultiSelectCell>
                 ) : (
                   <SearchHeader label="役職" column="role" value={filters.role} options={headerOptions.role} onChange={(value) => updateFilter("role", value)} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
                 )}
@@ -237,8 +256,15 @@ export function RosterManager({ members, departments = memberDepartments, roles 
                       )}
                     </EditableSelectCell>
                   </TableCell>
-                  <TableCell className="hidden sm:table-cell text-muted-foreground">
-                    <EditableSelectCell value={member.role} options={roles} onCommit={(value) => updateMember(member.id, { role: value })} />
+                  <TableCell className="hidden sm:table-cell">
+                    <EditableMultiSelectCell
+                      values={parseMemberRoles(member.role)}
+                      options={roleOptions}
+                      optionClassName={memberRoleBadgeClass}
+                      onCommit={(nextRoles) => updateMember(member.id, { role: joinMemberRoles(nextRoles) })}
+                    >
+                      <MemberRoleBadges value={member.role} />
+                    </EditableMultiSelectCell>
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end">
@@ -313,17 +339,37 @@ export function RosterManager({ members, departments = memberDepartments, roles 
                     </select>
                   </div>
                   <div className="grid gap-1.5">
-                    <Label htmlFor="detail-role">役職</Label>
-                    <select
-                      id="detail-role"
-                      value={detailDraft.role}
-                      onChange={(event) => setDetailDraft((prev) => (prev ? { ...prev, role: event.target.value } : prev))}
-                      className="h-8 rounded-lg border border-input bg-background px-2 text-sm"
-                    >
-                      {roles.map((role) => (
-                        <option key={role} value={role}>{role}</option>
-                      ))}
-                    </select>
+                    <Label>役職（複数選択可）</Label>
+                    <div className="flex min-h-8 flex-wrap gap-1.5 rounded-lg border border-input bg-background p-2">
+                      {roleOptions.map((role) => {
+                        const selected = parseMemberRoles(detailDraft.role).includes(role)
+                        return (
+                          <button
+                            key={role}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() =>
+                              setDetailDraft((prev) => {
+                                if (!prev) return prev
+                                const currentRoles = parseMemberRoles(prev.role)
+                                const nextRoles = selected
+                                  ? currentRoles.filter((currentRole) => currentRole !== role)
+                                  : [...currentRoles, role]
+                                return { ...prev, role: joinMemberRoles(nextRoles) }
+                              })
+                            }
+                            className={cn(
+                              "h-7 cursor-pointer rounded-lg border px-2 text-xs transition-colors",
+                              selected
+                                ? memberRoleBadgeClass(role)
+                                : "border-border text-muted-foreground hover:bg-muted hover:text-foreground",
+                            )}
+                          >
+                            {role}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>

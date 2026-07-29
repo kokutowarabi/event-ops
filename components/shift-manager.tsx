@@ -30,6 +30,8 @@ import {
   operationPeriod,
 } from "@/lib/event-schedule"
 import { memberDepartmentBadgeClass } from "@/lib/member-department"
+import { MemberRoleBadges } from "@/components/member-role-badges"
+import { parseMemberRoles } from "@/lib/member-role"
 import {
   Select,
   SelectContent,
@@ -519,7 +521,9 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     return Array.from(new Set(members.map((member) => member.department).filter(Boolean))).sort()
   }, [members])
   const roles = useMemo(() => {
-    return Array.from(new Set(members.map((member) => member.role).filter(Boolean))).sort()
+    return Array.from(
+      new Set(members.flatMap((member) => parseMemberRoles(member.role))),
+    ).sort()
   }, [members])
 
   const dateTabs = useMemo(() => {
@@ -550,7 +554,10 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       departmentFilter === ALL_DEPARTMENTS
         ? sheetMembers
         : sheetMembers.filter((member) => member.department === departmentFilter)
-    const filteredByRole = roleFilter === "すべての役職" ? filteredByDepartment : filteredByDepartment.filter((member) => member.role === roleFilter)
+    const filteredByRole =
+      roleFilter === "すべての役職"
+        ? filteredByDepartment
+        : filteredByDepartment.filter((member) => parseMemberRoles(member.role).includes(roleFilter))
     if (!query) return filteredByRole
     return filteredByRole.filter((member) =>
       [member.name, member.department, member.role].some((value) => value.toLowerCase().includes(query)),
@@ -1300,7 +1307,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                         >
                           {member.department}
                         </Badge>
-                        <span>{member.role}</span>
+                        <MemberRoleBadges value={member.role} />
                       </span>
                     </button>
                   )
@@ -1472,7 +1479,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                       >
                         {member.department}
                       </Badge>
-                      <span>{member.role}</span>
+                      <MemberRoleBadges value={member.role} />
                     </div>
                   </div>
                   <div className="relative" style={{ height: MOBILE_TIMELINE_TRACK_HEIGHT }}>
@@ -1657,7 +1664,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                         >
                           {member.department}
                         </Badge>
-                        <span>{member.role}</span>
+                        <MemberRoleBadges value={member.role} />
                       </div>
                     </div>
                     <div className="border-b py-3">
