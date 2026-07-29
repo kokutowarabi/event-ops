@@ -2,27 +2,39 @@
 
 ```mermaid
 flowchart LR
-  Visitor[来場者]
-  Staff[実行委員]
-  Next[Next.js App Router]
-  UI[React Client Components]
-  Storage[(Browser localStorage)]
+  Staff["実行委員"]
+  PublicSite["別リポジトリの公開サイト"]
+  App["Next.js EventOps"]
+  Auth["Supabase Auth"]
+  State[("event_ops_state")]
+  Votes[("visitor_votes")]
+  Realtime["Supabase Realtime"]
 
-  Visitor -->|公式サイト・投票| Next
-  Staff -->|管理画面| Next
-  Next --> UI
-  UI -->|自動保存・初期化| Storage
+  Staff -->|"メール・パスワード"| Auth
+  Staff --> App
+  App -->|"認証済みCRUD"| State
+  PublicSite -->|"端末UUIDでcast_visitor_vote"| Votes
+  Realtime -->|"共有データ更新"| App
+  State --> Realtime
+  Votes --> Realtime
 ```
 
-## デモ版の設計
+## 認証と認可
 
-- Next.js の静的エクスポートとして配信する。
-- 参加団体、企画、名簿、シフト、投票履歴は同一ブラウザの `localStorage` に保存する。
-- 管理画面で編集した企画情報を、公式サイトと投票結果へ即時反映する。
-- 「初期化」操作でシードデータへ戻せる。
+- Supabase Authでログインしたユーザーだけが運営データを閲覧・変更できます。
+- 全ログインユーザーは同じ権限です。
+- ブラウザへ渡すPublishable keyだけを使用し、Row Level Securityで認可します。
+- `service_role`キーはクライアントへ渡しません。
 
-## 本運用へ拡張する場合
+## リアルタイム同期
 
-- Auth.js や Supabase Auth で実行委員と来場者を識別する。
-- PostgreSQL へイベントデータと投票を保存する。
-- API または Server Actions で認可、入力検証、集計を行う。
+- 運営データは`event_ops_state`のJSONBへ保存します。
+- 管理アプリは`event_ops_state`と`visitor_votes`をRealtime購読します。
+- 変更は350msのデバウンス後に保存し、別端末へ即時反映します。
+- 運営データのローカル保存へのフォールバックは行いません。
+
+## 投票
+
+- 公開サイトはログインを必要とせず、`cast_visitor_vote` RPCだけを呼び出します。
+- `device_id`を主キーにすることで有効票を1端末1票に制限します。
+- 同じ端末が投票先を変更した場合は既存行を更新します。

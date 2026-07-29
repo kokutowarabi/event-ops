@@ -4,40 +4,43 @@ import { useMemo } from "react"
 import { BarChart3, CalendarDays, Heart, Trophy } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import type { EventDepartment, EventProject } from "@/lib/event-data"
-import { dailyVoteCounts, projectVoteTotal, totalVotes } from "@/lib/votes"
+import { eventSchedule, formatJapaneseDate } from "@/lib/event-schedule"
+import type { VisitorVote } from "@/lib/supabase/data"
+import { projectVoteTotal, totalVotes, votesByDate } from "@/lib/votes"
 
 type ProjectVoteProps = {
   projects: EventProject[]
-  votedProjectIds: string[]
+  votes: VisitorVote[]
 }
 
 const departments: EventDepartment[] = ["模擬店", "屋外ステージ", "教室"]
 
-export function ProjectVote({ projects, votedProjectIds }: ProjectVoteProps) {
+export function ProjectVote({ projects, votes }: ProjectVoteProps) {
   const stats = useMemo(() => {
     const ranking = [...projects].sort(
-      (a, b) => projectVoteTotal(b.id, votedProjectIds) - projectVoteTotal(a.id, votedProjectIds),
+      (a, b) => projectVoteTotal(b.id, votes) - projectVoteTotal(a.id, votes),
     )
     const departmentTotals = departments.map((department) => ({
       department,
       count: projects
         .filter((project) => project.department === department)
-        .reduce((total, project) => total + projectVoteTotal(project.id, votedProjectIds), 0),
+        .reduce((total, project) => total + projectVoteTotal(project.id, votes), 0),
     }))
 
     return {
       ranking,
       departmentTotals,
-      allVotes: totalVotes(projects.map((project) => project.id), votedProjectIds),
+      allVotes: totalVotes(votes),
+      dailyTotals: votesByDate(votes),
     }
-  }, [projects, votedProjectIds])
+  }, [projects, votes])
 
   return (
     <div className="mx-auto flex h-[calc(100svh-5.5rem)] max-w-7xl flex-col px-3 py-4 md:px-4 md:py-6">
       <header className="mb-4 flex shrink-0 flex-wrap items-center gap-2">
         <BarChart3 className="size-5 text-muted-foreground" />
         <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">投票結果</h1>
-        <Badge variant="outline" className="ml-2">来場者投票デモ</Badge>
+        <Badge variant="outline" className="ml-2">Supabase Realtime</Badge>
       </header>
 
       <div className="min-h-0 flex-1 overflow-auto">
@@ -47,9 +50,9 @@ export function ProjectVote({ projects, votedProjectIds }: ProjectVoteProps) {
             <div className="mt-2 text-3xl font-semibold">{stats.allVotes}</div>
           </div>
           <div className="rounded-xl border bg-card p-4">
-            <div className="text-sm text-muted-foreground">この端末からの投票</div>
+            <div className="text-sm text-muted-foreground">投票済み端末数</div>
             <div className="mt-2 flex items-center gap-2 text-3xl font-semibold">
-              {votedProjectIds.length}
+              {stats.allVotes}
               <Heart className="size-6 text-rose-500" />
             </div>
           </div>
@@ -66,10 +69,10 @@ export function ProjectVote({ projects, votedProjectIds }: ProjectVoteProps) {
               <h2 className="font-semibold">開催日ごとの投票数</h2>
             </div>
             <div className="grid gap-2">
-              {dailyVoteCounts.map((item) => (
-                <div key={item.date} className="flex items-center justify-between rounded-lg border bg-background p-3">
-                  <span>{item.date}</span>
-                  <Badge variant="secondary">{item.count}票</Badge>
+              {eventSchedule.festivalDays.map((day) => (
+                <div key={day.date} className="flex items-center justify-between rounded-lg border bg-background p-3">
+                  <span>{formatJapaneseDate(day.date, false)}</span>
+                  <Badge variant="secondary">{stats.dailyTotals[day.date] ?? 0}票</Badge>
                 </div>
               ))}
             </div>
@@ -104,7 +107,7 @@ export function ProjectVote({ projects, votedProjectIds }: ProjectVoteProps) {
                     {project.department} / {project.organizationName}
                   </div>
                 </div>
-                <Badge>{projectVoteTotal(project.id, votedProjectIds)}票</Badge>
+                <Badge>{projectVoteTotal(project.id, votes)}票</Badge>
               </div>
             ))}
           </div>

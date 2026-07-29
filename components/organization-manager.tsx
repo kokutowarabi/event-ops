@@ -144,8 +144,8 @@ export function OrganizationManager({
     <div className="mx-auto flex h-[calc(100svh-5.5rem)] max-w-7xl flex-col px-4 py-5 md:py-6">
       <header className="mb-4 flex shrink-0 items-center gap-2">
         <Building2 className="size-5 text-muted-foreground" />
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">団体管理</h1>
-        <Button type="button" size="icon" className="ml-2 size-8" onClick={adding ? addOrganization : () => setAdding(true)} disabled={adding && !draft.name.trim()} aria-label={adding ? "団体を追加" : "追加欄を開く"}>
+        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">参加団体管理</h1>
+        <Button type="button" size="icon" className="ml-2 size-8" onClick={adding ? addOrganization : () => setAdding(true)} disabled={adding && !draft.name.trim()} aria-label={adding ? "参加団体を追加" : "追加欄を開く"}>
           <Plus className="size-4" />
         </Button>
       </header>
@@ -156,9 +156,9 @@ export function OrganizationManager({
             <TableRow className="bg-muted/40 hover:bg-muted/40">
               <TableHead className="min-w-60">
                 {adding ? (
-                  <Input value={draft.name} onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))} placeholder="団体名" className="h-8 bg-background" />
+                  <Input value={draft.name} onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))} placeholder="参加団体名" className="h-8 bg-background" />
                 ) : (
-                  <SearchHeader label="団体名" column="name" value={filters.name} options={headerOptions.name} onChange={(value) => updateFilter("name", value)} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
+                  <SearchHeader label="参加団体名" column="name" value={filters.name} options={headerOptions.name} onChange={(value) => updateFilter("name", value)} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
                 )}
               </TableHead>
               <TableHead className="min-w-36">
@@ -232,7 +232,7 @@ export function OrganizationManager({
             {visibleOrganizations.map((organization) => (
               <TableRow key={organization.id}>
                 <TableCell className="font-medium">
-                  <EditableTextCell value={organization.name} placeholder="団体名" onCommit={(value) => updateOrganization(organization.id, { name: value })}>
+                  <EditableTextCell value={organization.name} placeholder="参加団体名" onCommit={(value) => updateOrganization(organization.id, { name: value })}>
                     <>
                       {organization.name}
                       <span className="mt-0.5 block text-xs text-muted-foreground md:hidden">

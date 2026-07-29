@@ -171,9 +171,9 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
               </TableHead>
               <TableHead className="hidden min-w-52 md:table-cell">
                 {adding ? (
-                  <Input value={draft.organizationName} onChange={(event) => setDraft((prev) => ({ ...prev, organizationName: event.target.value }))} placeholder="団体" className="h-8 bg-background" />
+                  <Input value={draft.organizationName} onChange={(event) => setDraft((prev) => ({ ...prev, organizationName: event.target.value }))} placeholder="参加団体" className="h-8 bg-background" />
                 ) : (
-                  <SearchHeader label="団体" column="organizationName" value={filters.organizationName} options={headerOptions.organizationName} onChange={(value) => updateFilter("organizationName", value)} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
+                  <SearchHeader label="参加団体" column="organizationName" value={filters.organizationName} options={headerOptions.organizationName} onChange={(value) => updateFilter("organizationName", value)} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
                 )}
               </TableHead>
               <TableHead className="min-w-36">
@@ -260,7 +260,7 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
                   </EditableTextCell>
                 </TableCell>
                 <TableCell className="hidden text-muted-foreground md:table-cell">
-                  <EditableTextCell value={project.organizationName} placeholder="団体" onCommit={(value) => updateProject(project.id, { organizationName: value })} />
+                  <EditableTextCell value={project.organizationName} placeholder="参加団体" onCommit={(value) => updateProject(project.id, { organizationName: value })} />
                 </TableCell>
                 <TableCell>
                   <EditableSelectCell value={project.department} options={EVENT_DEPARTMENTS} onCommit={(value) => updateProject(project.id, { department: value })} />

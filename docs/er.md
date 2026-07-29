@@ -2,6 +2,36 @@
 
 ```mermaid
 erDiagram
+  AUTH_USER {
+    uuid id PK
+    string email
+  }
+
+  EVENT_OPS_STATE {
+    string id PK
+    jsonb data
+    timestamptz updated_at
+    uuid updated_by FK
+  }
+
+  VISITOR_VOTE {
+    uuid device_id PK
+    string project_id
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  AUTH_USER ||--o{ EVENT_OPS_STATE : updates
+```
+
+`event_ops_state.data`には、MVPの画面構造に合わせた次の共有データを保存します。
+
+```mermaid
+erDiagram
+  MEMBER ||--o{ SHIFT : assigned
+  ORGANIZATION ||--|{ PROJECT : owns
+  SHIFT_SHEET ||--o{ SHIFT : contains
+
   MEMBER {
     string id PK
     string name
@@ -25,7 +55,7 @@ erDiagram
   PROJECT {
     string id PK
     string title
-    string organizationName FK
+    string organizationName
     string department
     string venue
     string startTime
@@ -44,7 +74,7 @@ erDiagram
 
   SHIFT {
     string id PK
-    string memberId FK
+    string memberId
     string date
     int start
     int end
@@ -52,15 +82,6 @@ erDiagram
     string kind
     string note
   }
-
-  LOCAL_VOTE {
-    string projectId FK
-  }
-
-  ORGANIZATION ||--o{ PROJECT : owns
-  MEMBER ||--o{ SHIFT : assigned
-  SHIFT_SHEET ||--o{ SHIFT : contains
-  PROJECT ||--o| LOCAL_VOTE : selected
 ```
 
-デモ版では上記をブラウザ内の単一データセットとして保存しています。本番化する場合はID参照へ正規化し、投票者と投票日時を追加します。
+投票は集計・一意制約・匿名書き込みを運営データと分離するため、専用テーブルへ正規化しています。

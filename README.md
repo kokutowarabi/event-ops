@@ -1,62 +1,70 @@
 # 星浜祭 EventOps
 
-架空の「星浜大学・星浜祭」を題材にした、大学祭運営の統合管理アプリです。実行委員向けの業務画面と来場者向け公式サイトを同じ企画データでつなぎ、準備から当日の投票までを一つのデモで体験できます。
+架空の「星浜大学・星浜祭」を題材にした、大学祭実行委員向けの運営管理アプリです。
 
-[公開デモを開く](__DEMO_URL__)
+MVPでは次の機能に絞っています。
 
-## 解決したい課題
+- 参加団体管理（初期データ20組）
+- 企画管理（1組につき2企画、合計40企画）
+- 実行委員名簿
+- 個人別・担当業務別のシフト管理
+- Supabaseへ集まった端末単位投票のリアルタイム集計
 
-大学祭の準備では、参加団体、企画進行、スタッフ配置、来場者向け情報が別々の表やツールに分散しがちです。その結果、更新漏れや二重入力が発生し、当日の判断にも時間がかかります。
+カンバンとサイトCMSはMVPの対象外です。公開サイトは別リポジトリで管理します。
 
-EventOpsは、次の情報を一つのデータフローにまとめます。
+## データ共有
 
-- 参加団体と企画の登録・編集
-- カンバンによる準備状況の把握
-- 実行委員名簿とシフト配置
-- 管理データを利用した公式サイト
-- 来場者の投票、マイ投票、投票結果
+運営データはSupabase Postgresの`event_ops_state`へ保存します。Supabase Authでログインしたユーザーは全員が同じデータを編集でき、`event_ops_state`と`visitor_votes`の変更はSupabase Realtimeで各画面へ反映されます。
 
-## 利用フロー
+ブラウザの`localStorage`を運営データの保存先には使用しません。Supabaseが未設定の場合は管理画面を開かず、接続設定画面を表示します。
 
-1. 「参加団体」と「企画」で出展情報を管理します。
-2. 「カンバン」で企画を準備中・要確認・当日対応・確定へ移動します。
-3. 「名簿」と「シフト」で当日の担当者を配置します。
-4. 「公式サイト」の企画一覧から詳細ページを開き、企画に投票します。
-5. 来場者は「マイ投票」、運営側は「投票結果」で投票内容を確認します。
+## 無料枠でのSupabase設定
 
-初期画面はカンバンです。編集内容と投票はブラウザへ自動保存され、右上の「初期化」からいつでもサンプル状態へ戻せます。
+このリポジトリの運用では、課金が発生するプランやアドオンを使用しないでください。
 
-## スクリーンショット
+1. Supabaseで無料枠のプロジェクトを用意します。
+2. Supabase DashboardのSQL Editorで[`supabase/migrations/20260729000000_event_ops.sql`](supabase/migrations/20260729000000_event_ops.sql)を実行します。
+3. AuthenticationのUsers画面で、運営メンバーのメールアドレスとパスワードを登録します。
+4. `.env.example`を参考に、ローカルの`.env.local`またはVercelのEnvironment Variablesへ次を設定します。
 
-### 企画進行を俯瞰するカンバン
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+```
 
-![星浜祭 EventOpsのカンバン](docs/screenshots/kanban.jpg)
+Publishable keyはブラウザへ公開される前提のキーです。`service_role`キーは絶対にブラウザやVercelの`NEXT_PUBLIC_`環境変数へ設定しないでください。データ更新の権限はSQLマイグレーション内のRow Level Securityで制御します。
 
-### 時間軸で配置するスタッフシフト
+## 端末単位の投票
 
-![星浜祭 EventOpsのシフト管理](docs/screenshots/shift.jpg)
+`visitor_votes.device_id`が主キーのため、1端末につき有効な投票は1票です。同じ端末が別企画へ投票すると、既存の1票が新しい企画へ変更されます。
 
-### 同じ企画データを使う来場者向け公式サイト
+別リポジトリの公開サイトからは、端末UUIDを`localStorage`へ保持し、次のRPCを呼び出します。
 
-![星浜祭の公式サイト](docs/screenshots/official-site.jpg)
+```ts
+const storageKey = "hoshihama-voting-device-id"
+const deviceId = localStorage.getItem(storageKey) ?? crypto.randomUUID()
+localStorage.setItem(storageKey, deviceId)
 
-## 技術構成
+await supabase.rpc("cast_visitor_vote", {
+  p_device_id: deviceId,
+  p_project_id: projectId,
+})
+```
 
-- Next.js 16.2 / App Router / Static Export
-- React 19.2 / TypeScript 5
-- Tailwind CSS 4 / Base UI / shadcn
-- Browser localStorage
-- Vitest / Testing Library
-- ESLint / GitHub Actions
+管理アプリの投票結果ページは、固定値や偽の投票数を加えず、`visitor_votes`に存在する行だけを集計します。
 
-設計資料:
+## シフト
 
-- [システム構成](docs/system-architecture.md)
-- [データモデル](docs/er.md)
+初期状態では、20名全員に準備・本祭・片付けを合わせた10日間のシフトを割り当てています。各人・各日に午前担当、45分の休憩、午後担当があります。
+
+シフト画面には次の2つの表示があります。
+
+- 個人別: 各メンバーの時間軸からシフトを作成・移動・編集
+- 担当業務別: 受付、会場誘導、警備、休憩などの業務ごとに、時間帯別人数、最大重複人数、担当者、延べ時間を確認・編集
 
 ## ローカル実行
 
-Node.js 22 と npm 10.8.1 を使用します。
+Node.js 22とnpm 10.8.1を使用します。
 
 ```bash
 nvm use
@@ -64,7 +72,7 @@ npm ci
 npm run dev
 ```
 
-ブラウザで `http://localhost:3000` を開いてください。
+ブラウザで`http://localhost:3000`を開いてください。
 
 ```bash
 npm run lint
@@ -72,10 +80,9 @@ npm test
 npm run build
 ```
 
-## デモ上の制約
+## 技術構成
 
-- データは端末・ブラウザごとに保存され、別端末とは共有されません。
-- 投票はログインを伴わないデモ仕様で、1端末につき各企画1票です。
-- 管理画面と公式サイトはポートフォリオ用に同一アプリ内へ収録しています。
-- 実在の大学、団体、人物、イベントとは関係ありません。
-- 本運用では認証、サーバー側の認可、データベース、監査ログ、不正投票対策が必要です。
+- Next.js 16.2 / React 19.2 / TypeScript 5
+- Tailwind CSS 4 / Base UI
+- Supabase Auth / Postgres / Row Level Security / Realtime
+- Vitest / ESLint

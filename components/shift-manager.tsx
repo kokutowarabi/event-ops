@@ -1,7 +1,7 @@
 "use client"
 
 import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react"
-import { CalendarDays, Eye, ListFilter, Plus, Search, Trash2 } from "lucide-react"
+import { CalendarDays, Eye, Layers3, ListFilter, Plus, Search, Trash2, Users } from "lucide-react"
 import type { Member } from "../lib/members"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -28,9 +28,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-type AccountRole = "admin" | "viewer"
 type ShiftKind = "morning" | "day" | "evening" | "full"
 type ShiftTemplateId = string
+type ShiftViewMode = "member" | "assignment"
 
 export type ShiftTemplate = {
   label: string
@@ -124,11 +124,6 @@ const MOBILE_TIMELINE_PADDING_HEIGHT = MOBILE_TIMELINE_PADDING_SLOTS * MOBILE_SL
 const MOBILE_TIMELINE_HEIGHT = ((END_MINUTES - START_MINUTES) / SLOT_MINUTES) * MOBILE_SLOT_HEIGHT
 const MOBILE_TIMELINE_TRACK_HEIGHT = MOBILE_TIMELINE_HEIGHT + MOBILE_TIMELINE_PADDING_HEIGHT * 2
 
-const accounts = [
-  { id: "admin", name: "管理者", role: "admin" },
-  { id: "viewer", name: "メンバー", role: "viewer" },
-] satisfies Array<{ id: string; name: string; role: AccountRole }>
-
 const shiftKinds: Record<ShiftKind, { label: string; className: string; dotClassName: string }> = {
   morning: {
     label: "オレンジ",
@@ -162,6 +157,7 @@ const shiftTemplates: Record<ShiftTemplateId, ShiftTemplate> = {
   security: { label: "警備・巡回", kind: "evening", defaultMinutes: 180, note: "会場巡回・混雑対応" },
   exhibitor: { label: "出展者対応", kind: "day", defaultMinutes: 180, note: "参加団体受付・控室対応" },
   setup: { label: "設営・撤収", kind: "evening", defaultMinutes: 120, note: "備品搬入・撤収確認" },
+  break: { label: "休憩", kind: "day", defaultMinutes: 45, note: "休憩" },
 }
 
 export type ShiftData = {
@@ -218,6 +214,11 @@ const timeOptions = Array.from({ length: (END_MINUTES - START_MINUTES) / SLOT_MI
   return { value: label, label, minutes }
 })
 const timeSlots = timeOptions.slice(0, -1)
+const COVERAGE_SLOT_MINUTES = 30
+const coverageTimeSlots = Array.from(
+  { length: (END_MINUTES - START_MINUTES) / COVERAGE_SLOT_MINUTES },
+  (_, index) => START_MINUTES + index * COVERAGE_SLOT_MINUTES,
+)
 
 function getHoveredSlotRadiusClass(slot: number) {
   if (slot === 0) return "rounded-l-lg"
@@ -387,7 +388,7 @@ export const emptyShiftData: ShiftData = {
 
 export function ShiftManager({ members, initialShiftData, onShiftDataChange }: ShiftManagerProps) {
   const defaultStartDate = operationPeriod.startDate
-  const [accountId, setAccountId] = useState(accounts[0].id)
+  const [shiftViewMode, setShiftViewMode] = useState<ShiftViewMode>("member")
   const [sheetDraft, setSheetDraft] = useState<Omit<ShiftSheet, "id">>({
     name: "",
     memberIds: members.slice(0, 6).map((member) => member.id),
@@ -427,13 +428,34 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const resizeInitialShiftsRef = useRef<Shift[] | null>(null)
   const didMoveShiftRef = useRef(false)
   const didResizeShiftRef = useRef(false)
+  const syncedShiftDataRef = useRef(JSON.stringify(initialShiftData))
+
+  useEffect(() => {
+    const nextSignature = JSON.stringify(initialShiftData)
+    if (nextSignature === syncedShiftDataRef.current) return
+    syncedShiftDataRef.current = nextSignature
+    let cancelled = false
+    queueMicrotask(() => {
+      if (cancelled) return
+      setShiftSheets(initialShiftData.sheets)
+      setShifts(initialShiftData.shifts)
+      shiftsRef.current = initialShiftData.shifts
+      setCustomShiftTemplates(initialShiftData.customShiftTemplates)
+      setShiftSheet((current) => {
+        if (!current) return initialShiftData.sheets[0] ?? null
+        return initialShiftData.sheets.find((sheet) => sheet.id === current.id) ?? initialShiftData.sheets[0] ?? null
+      })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [initialShiftData])
 
   useEffect(() => {
     onShiftDataChange({ sheets: shiftSheets, shifts, customShiftTemplates })
   }, [customShiftTemplates, onShiftDataChange, shiftSheets, shifts])
 
-  const account = accounts.find((item) => item.id === accountId) ?? accounts[0]
-  const isAdmin = account.role === "admin"
+  const isAdmin = true
   const memberIds = useMemo(() => new Set(members.map((member) => member.id)), [members])
   const selectedShift = shifts.find((shift) => shift.id === selectedShiftId && memberIds.has(shift.memberId)) ?? null
   const allShiftTemplates = useMemo(
@@ -465,18 +487,24 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     )
   }, [members, sheetDraft.memberIds, sheetMemberSearch, showSelectedMembersOnly])
 
+  const sheetMembers = useMemo(() => {
+    if (!shiftSheet) return []
+    return members.filter((member) => shiftSheet.memberIds.includes(member.id))
+  }, [members, shiftSheet])
+
   const invitedMembers = useMemo(() => {
     if (!shiftSheet) return []
     const query = memberSearch.trim().toLowerCase()
-    const invited = members.filter((member) => shiftSheet.memberIds.includes(member.id))
     const filteredByDepartment =
-      departmentFilter === ALL_DEPARTMENTS ? invited : invited.filter((member) => member.department === departmentFilter)
+      departmentFilter === ALL_DEPARTMENTS
+        ? sheetMembers
+        : sheetMembers.filter((member) => member.department === departmentFilter)
     const filteredByRole = roleFilter === "すべての役職" ? filteredByDepartment : filteredByDepartment.filter((member) => member.role === roleFilter)
     if (!query) return filteredByRole
     return filteredByRole.filter((member) =>
       [member.name, member.department, member.role].some((value) => value.toLowerCase().includes(query)),
     )
-  }, [departmentFilter, memberSearch, members, roleFilter, shiftSheet])
+  }, [departmentFilter, memberSearch, roleFilter, sheetMembers, shiftSheet])
 
   const selectedDateShifts = useMemo(() => {
     if (!shiftSheet) return []
@@ -497,6 +525,29 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       ...Object.values(allShiftTemplates).map((template) => template.label),
       ...selectedDateShifts.map((shift) => shift.note),
     ].filter(Boolean)
+  }, [allShiftTemplates, selectedDateShifts])
+  const assignmentCoverage = useMemo(() => {
+    return Object.entries(allShiftTemplates)
+      .map(([templateId, template]) => {
+        const assignments = selectedDateShifts
+          .filter((shift) => shift.templateId === templateId)
+          .sort((left, right) => left.start - right.start || left.memberId.localeCompare(right.memberId))
+        const slotCounts = coverageTimeSlots.map((slotStart) => {
+          const slotEnd = slotStart + COVERAGE_SLOT_MINUTES
+          return assignments.filter((shift) => shift.start < slotEnd && shift.end > slotStart).length
+        })
+        return {
+          templateId,
+          template,
+          assignments,
+          slotCounts,
+          maxOverlap: Math.max(0, ...slotCounts),
+          totalMinutes: assignments.reduce((total, shift) => total + shift.end - shift.start, 0),
+          memberCount: new Set(assignments.map((shift) => shift.memberId)).size,
+        }
+      })
+      .filter((group) => group.assignments.length > 0)
+      .sort((left, right) => right.maxOverlap - left.maxOverlap || left.template.label.localeCompare(right.template.label, "ja"))
   }, [allShiftTemplates, selectedDateShifts])
 
   const selectedMember = selectedShift
@@ -711,6 +762,29 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       start: START_MINUTES + startSlot * SLOT_MINUTES,
       end: START_MINUTES + endSlot * SLOT_MINUTES,
     }
+  }
+
+  const openAssignmentDraft = (templateId: ShiftTemplateId, start = 10 * 60) => {
+    const template = allShiftTemplates[templateId]
+    const end = clampShiftEnd(Math.min(start + template.defaultMinutes, END_MINUTES), start)
+    const availableMember =
+      sheetMembers.find((member) =>
+        !selectedDateShifts.some(
+          (shift) =>
+            shift.memberId === member.id &&
+            shift.start < end &&
+            shift.end > start,
+        ),
+      ) ?? sheetMembers[0]
+    if (!availableMember) return
+    setDraftShift({
+      memberId: availableMember.id,
+      date: selectedDate,
+      start,
+      end,
+      templateId,
+      note: template.note,
+    })
   }
 
   const createDraftShift = () => {
@@ -947,18 +1021,28 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
         <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">シフト管理</h1>
         {shiftSheet ? (
           <>
-            <Select value={accountId} onValueChange={(value) => value !== null && setAccountId(value)}>
-              <SelectTrigger className="h-8 w-36">
-                <SelectValue>{account.name}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {accounts.map((item) => (
-                  <SelectItem key={item.id} value={item.id}>
-                    {item.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex rounded-md border bg-muted/35 p-0.5">
+              <Button
+                type="button"
+                size="sm"
+                variant={shiftViewMode === "member" ? "secondary" : "ghost"}
+                className="h-7 px-2.5"
+                onClick={() => setShiftViewMode("member")}
+              >
+                <Users className="size-3.5" />
+                個人別
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={shiftViewMode === "assignment" ? "secondary" : "ghost"}
+                className="h-7 px-2.5"
+                onClick={() => setShiftViewMode("assignment")}
+              >
+                <Layers3 className="size-3.5" />
+                担当業務別
+              </Button>
+            </div>
             <Select value={selectedDate} onValueChange={(value) => value !== null && setSelectedDate(value)}>
               <SelectTrigger className="h-8 w-auto max-w-full bg-background">
                 <div className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
@@ -1152,7 +1236,106 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
         </section>
       ) : (
         <>
-          <div className="min-h-0 flex-1 space-y-3 overflow-auto select-none md:hidden">
+          {shiftViewMode === "assignment" ? (
+            <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-card p-3 md:p-4">
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h2 className="font-semibold">担当業務別の配置</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    色の数字は同じ時間帯に入っている人数です。時間帯または割り当てをクリックして編集できます。
+                  </p>
+                </div>
+                <Badge variant="outline">{assignmentCoverage.length}業務</Badge>
+              </div>
+              <div className="grid gap-4">
+                {assignmentCoverage.map((group) => (
+                  <section key={`coverage-${group.templateId}`} className="rounded-xl border bg-background p-4">
+                    <div className="flex flex-wrap items-start gap-3">
+                      <div className={`mt-1 size-3 shrink-0 rounded-full ${shiftKinds[group.template.kind].dotClassName}`} />
+                      <div>
+                        <h3 className="font-semibold">{group.template.label}</h3>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {group.memberCount}名・延べ
+                          {(group.totalMinutes / 60).toLocaleString("ja-JP", { maximumFractionDigits: 1 })}時間・
+                          最大{group.maxOverlap}名重複
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="ml-auto"
+                        onClick={() => openAssignmentDraft(group.templateId)}
+                      >
+                        <Plus className="size-3.5" />
+                        割り当て追加
+                      </Button>
+                    </div>
+
+                    <div className="mt-4 overflow-x-auto">
+                      <div className="min-w-180">
+                        <div
+                          className="grid gap-0.5"
+                          style={{ gridTemplateColumns: `repeat(${coverageTimeSlots.length}, minmax(20px, 1fr))` }}
+                        >
+                          {group.slotCounts.map((count, index) => {
+                            const start = coverageTimeSlots[index]
+                            const overlapClass =
+                              count === 0
+                                ? "bg-muted/25 text-muted-foreground/45"
+                                : count === 1
+                                  ? "bg-sky-500/15 text-sky-800"
+                                  : count <= 3
+                                    ? "bg-amber-500/25 text-amber-900"
+                                    : "bg-rose-500/30 text-rose-900"
+                            return (
+                              <button
+                                key={`${group.templateId}-${start}`}
+                                type="button"
+                                className={`h-9 rounded-sm text-[11px] font-semibold transition hover:ring-2 hover:ring-ring/40 ${overlapClass}`}
+                                title={`${formatTime(start)}〜${formatTime(start + COVERAGE_SLOT_MINUTES)}: ${count}名`}
+                                onClick={() => openAssignmentDraft(group.templateId, start)}
+                              >
+                                {count}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        <div
+                          className="mt-1 grid gap-0.5 text-[10px] text-muted-foreground"
+                          style={{ gridTemplateColumns: `repeat(${coverageTimeSlots.length}, minmax(20px, 1fr))` }}
+                        >
+                          {coverageTimeSlots.map((start, index) => (
+                            <span key={`coverage-time-${start}`} className="truncate">
+                              {index % 4 === 0 ? formatTime(start) : ""}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex max-h-40 flex-wrap gap-2 overflow-auto">
+                      {group.assignments.map((shift) => (
+                        <button
+                          key={`coverage-assignment-${shift.id}`}
+                          type="button"
+                          className={`rounded-lg border px-2.5 py-2 text-left text-xs transition hover:ring-2 hover:ring-ring/30 ${shiftKinds[shift.kind].className}`}
+                          onClick={() => openShiftDetail(shift.id)}
+                        >
+                          <span className="font-semibold">{memberName(shift.memberId)}</span>
+                          <span className="ml-2 opacity-75">
+                            {formatTime(shift.start)}〜{formatTime(shift.end)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className={`${shiftViewMode === "member" ? "space-y-3 md:hidden" : "hidden"} min-h-0 flex-1 overflow-auto select-none`}>
             <Button type="button" variant="outline" className="w-full justify-start" onClick={() => setFiltersOpen(true)}>
               <ListFilter className="size-4" />
               絞り込み
@@ -1283,7 +1466,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
             })}
           </div>
 
-          <div className="hidden min-h-0 flex-1 select-none overflow-auto rounded-lg border bg-card md:block">
+          <div className={`${shiftViewMode === "member" ? "hidden md:block" : "hidden"} min-h-0 flex-1 select-none overflow-auto rounded-lg border bg-card`}>
             <div className="grid min-w-300 grid-cols-[15rem_1fr]">
               <div className="sticky left-0 top-0 z-30 border-b border-r bg-card p-3">
                 <Button type="button" variant="outline" size="sm" className="w-full justify-start" onClick={() => setFiltersOpen(true)}>
@@ -1534,8 +1717,8 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-1.5">
-              <Label>シフト名</Label>
-              <SearchPicker label="シフト名" value={shiftFilter} options={shiftFilterOptions} onChange={setShiftFilter} />
+              <Label>担当業務</Label>
+              <SearchPicker label="担当業務" value={shiftFilter} options={shiftFilterOptions} onChange={setShiftFilter} />
             </div>
             <div className="grid gap-1.5">
               <Label>メンバー名</Label>
@@ -1582,7 +1765,29 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
               </DialogHeader>
               <div className="grid gap-4 py-2">
                 <div className="grid gap-1.5">
-                  <Label>シフト種類</Label>
+                  <Label>担当者</Label>
+                  <Select
+                    value={draftShift.memberId}
+                    onValueChange={(value) => {
+                      if (value !== null) {
+                        setDraftShift((prev) => (prev ? { ...prev, memberId: value } : prev))
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue>{memberName(draftShift.memberId)}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sheetMembers.map((member) => (
+                        <SelectItem key={`draft-member-${member.id}`} value={member.id}>
+                          {member.name}・{member.department}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label>担当業務</Label>
                   <Select
                     value={draftShift.templateId}
                     onValueChange={(value) => {
@@ -1613,11 +1818,11 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                     </SelectContent>
                   </Select>
                   <div className="grid gap-3 rounded-md border border-primary/30 bg-primary/5 p-3">
-                    <div className="text-sm font-medium">新しいシフト種類を追加</div>
+                    <div className="text-sm font-medium">新しい担当業務を追加</div>
                     <Input
                       value={templateDraft.label}
                       onChange={(event) => setTemplateDraft((prev) => ({ ...prev, label: event.target.value }))}
-                      placeholder="種類名"
+                      placeholder="担当業務名"
                     />
                     <div className="grid gap-2 sm:grid-cols-[1fr_8rem]">
                       <Select
@@ -1748,7 +1953,27 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
               {isAdmin ? (
                 <div className="grid gap-4 py-2">
                   <div className="grid gap-1.5">
-                    <Label>シフト種類</Label>
+                    <Label>担当者</Label>
+                    <Select
+                      value={selectedShift.memberId}
+                      onValueChange={(value) => {
+                        if (value !== null) updateShift(selectedShift.id, { memberId: value })
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue>{selectedMember.name}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sheetMembers.map((member) => (
+                          <SelectItem key={`detail-member-${member.id}`} value={member.id}>
+                            {member.name}・{member.department}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label>担当業務</Label>
                     <Select
                       value={selectedShift.templateId}
                       onValueChange={(value) => {
@@ -1830,7 +2055,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
               ) : (
                 <div className="grid gap-3 py-2 text-sm">
                   <div className="rounded-lg border bg-muted/30 p-3">
-                    <div className="text-xs text-muted-foreground">シフト種類</div>
+                    <div className="text-xs text-muted-foreground">担当業務</div>
                     <div className="mt-1 font-medium">{selectedTemplate.label}</div>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">

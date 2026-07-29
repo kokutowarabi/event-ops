@@ -1,21 +1,29 @@
-export const baseVoteCounts: Record<string, number> = {
-  "project-1": 86,
-  "project-2": 128,
-  "project-3": 104,
-  "project-4": 72,
-  "project-5": 97,
+import type { VisitorVote } from "@/lib/supabase/data"
+
+export function projectVoteTotal(projectId: string, votes: VisitorVote[]) {
+  return votes.filter((vote) => vote.project_id === projectId).length
 }
 
-export const dailyVoteCounts = [
-  { date: "10/31", count: 142 },
-  { date: "11/1", count: 188 },
-  { date: "11/2", count: 157 },
-] as const
-
-export function projectVoteTotal(projectId: string, votedProjectIds: string[]) {
-  return (baseVoteCounts[projectId] ?? 0) + (votedProjectIds.includes(projectId) ? 1 : 0)
+export function totalVotes(votes: VisitorVote[]) {
+  return votes.length
 }
 
-export function totalVotes(projectIds: string[], votedProjectIds: string[]) {
-  return projectIds.reduce((total, projectId) => total + projectVoteTotal(projectId, votedProjectIds), 0)
+export function voteDateKey(timestamp: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(timestamp))
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? ""
+  return `${part("year")}-${part("month")}-${part("day")}`
+}
+
+export function votesByDate(votes: VisitorVote[]) {
+  return votes.reduce<Record<string, number>>((counts, vote) => {
+    const date = voteDateKey(vote.created_at)
+    counts[date] = (counts[date] ?? 0) + 1
+    return counts
+  }, {})
 }
