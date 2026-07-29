@@ -429,11 +429,13 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const didMoveShiftRef = useRef(false)
   const didResizeShiftRef = useRef(false)
   const syncedShiftDataRef = useRef(JSON.stringify(initialShiftData))
+  const emittedShiftDataRef = useRef(JSON.stringify(initialShiftData))
 
   useEffect(() => {
     const nextSignature = JSON.stringify(initialShiftData)
     if (nextSignature === syncedShiftDataRef.current) return
     syncedShiftDataRef.current = nextSignature
+    emittedShiftDataRef.current = nextSignature
     let cancelled = false
     queueMicrotask(() => {
       if (cancelled) return
@@ -452,7 +454,11 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   }, [initialShiftData])
 
   useEffect(() => {
-    onShiftDataChange({ sheets: shiftSheets, shifts, customShiftTemplates })
+    const nextData = { sheets: shiftSheets, shifts, customShiftTemplates }
+    const nextSignature = JSON.stringify(nextData)
+    if (nextSignature === emittedShiftDataRef.current) return
+    emittedShiftDataRef.current = nextSignature
+    onShiftDataChange(nextData)
   }, [customShiftTemplates, onShiftDataChange, shiftSheets, shifts])
 
   const isAdmin = true

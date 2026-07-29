@@ -5,17 +5,20 @@ import { BarChart3, CalendarDays, Heart, Trophy } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import type { EventDepartment, EventProject } from "@/lib/event-data"
 import { eventSchedule, formatJapaneseDate } from "@/lib/event-schedule"
-import type { VisitorVote } from "@/lib/supabase/data"
+import type { VisitorVote } from "@/lib/supabase/votes"
 import { projectVoteTotal, totalVotes, votesByDate } from "@/lib/votes"
+
+export type VoteConnectionState = "unconfigured" | "connecting" | "realtime" | "error"
 
 type ProjectVoteProps = {
   projects: EventProject[]
   votes: VisitorVote[]
+  connectionState: VoteConnectionState
 }
 
 const departments: EventDepartment[] = ["模擬店", "屋外ステージ", "教室"]
 
-export function ProjectVote({ projects, votes }: ProjectVoteProps) {
+export function ProjectVote({ projects, votes, connectionState }: ProjectVoteProps) {
   const stats = useMemo(() => {
     const ranking = [...projects].sort(
       (a, b) => projectVoteTotal(b.id, votes) - projectVoteTotal(a.id, votes),
@@ -35,18 +38,27 @@ export function ProjectVote({ projects, votes }: ProjectVoteProps) {
     }
   }, [projects, votes])
 
+  const connectionLabel = {
+    unconfigured: "Supabase未設定",
+    connecting: "接続中",
+    realtime: "Realtime",
+    error: "接続エラー",
+  }[connectionState]
+
   return (
-    <div className="mx-auto flex h-[calc(100svh-5.5rem)] max-w-7xl flex-col px-3 py-4 md:px-4 md:py-6">
+    <div className="mx-auto flex h-[calc(100svh-4rem)] max-w-7xl flex-col px-3 py-4 md:px-4 md:py-6">
       <header className="mb-4 flex shrink-0 flex-wrap items-center gap-2">
         <BarChart3 className="size-5 text-muted-foreground" />
         <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">投票結果</h1>
-        <Badge variant="outline" className="ml-2">Supabase Realtime</Badge>
+        <Badge variant={connectionState === "error" ? "destructive" : "outline"} className="ml-2">
+          {connectionLabel}
+        </Badge>
       </header>
 
       <div className="min-h-0 flex-1 overflow-auto">
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl border bg-card p-4">
-            <div className="text-sm text-muted-foreground">累計投票数</div>
+            <div className="text-sm text-muted-foreground">有効投票数</div>
             <div className="mt-2 text-3xl font-semibold">{stats.allVotes}</div>
           </div>
           <div className="rounded-xl border bg-card p-4">
@@ -66,7 +78,7 @@ export function ProjectVote({ projects, votes }: ProjectVoteProps) {
           <section className="rounded-xl border bg-card p-4">
             <div className="mb-3 flex items-center gap-2">
               <CalendarDays className="size-4 text-muted-foreground" />
-              <h2 className="font-semibold">開催日ごとの投票数</h2>
+              <h2 className="font-semibold">投票日ごとの投票数</h2>
             </div>
             <div className="grid gap-2">
               {eventSchedule.festivalDays.map((day) => (
@@ -100,12 +112,8 @@ export function ProjectVote({ projects, votes }: ProjectVoteProps) {
             {stats.ranking.map((project, index) => (
               <div key={project.id} className="flex items-center justify-between gap-3 rounded-lg border bg-background p-3">
                 <div className="min-w-0">
-                  <div className="truncate font-medium">
-                    {index + 1}. {project.title}
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    {project.department} / {project.organizationName}
-                  </div>
+                  <div className="truncate font-medium">{index + 1}. {project.title}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{project.department} / {project.organizationName}</div>
                 </div>
                 <Badge>{projectVoteTotal(project.id, votes)}票</Badge>
               </div>

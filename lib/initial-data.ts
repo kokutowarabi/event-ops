@@ -7,7 +7,7 @@ import {
 import { initialOrganizations, initialProjects, type EventOrganization, type EventProject } from "@/lib/event-data"
 import { initialMembers, type Member } from "@/lib/members"
 
-export type SharedAppState = {
+export type AppState = {
   members: Member[]
   organizations: EventOrganization[]
   projects: EventProject[]
@@ -128,25 +128,11 @@ const initialShiftData: ShiftData = {
   customShiftTemplates: {},
 }
 
-export function createInitialSharedState(): SharedAppState {
+export function createInitialAppState(): AppState {
   return {
     members: structuredClone(initialMembers),
     organizations: structuredClone(initialOrganizations),
     projects: structuredClone(initialProjects),
     shiftData: structuredClone(initialShiftData),
   }
-}
-
-export function isSharedAppState(value: unknown): value is SharedAppState {
-  if (!value || typeof value !== "object") return false
-  const state = value as Partial<SharedAppState>
-  return (
-    Array.isArray(state.members) &&
-    Array.isArray(state.organizations) &&
-    Array.isArray(state.projects) &&
-    Boolean(state.shiftData) &&
-    Array.isArray(state.shiftData?.sheets) &&
-    Array.isArray(state.shiftData?.shifts) &&
-    Boolean(state.shiftData?.customShiftTemplates)
-  )
 }

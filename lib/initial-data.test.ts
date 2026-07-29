@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { createInitialSharedState } from "@/lib/initial-data"
+import { createInitialAppState } from "@/lib/initial-data"
 
-describe("initial shared data", () => {
-  const state = createInitialSharedState()
+describe("initial app data", () => {
+  const state = createInitialAppState()
 
   it("contains 20 organizations and two projects per organization", () => {
     expect(state.organizations).toHaveLength(20)

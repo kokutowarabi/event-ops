@@ -1,33 +1,35 @@
 import { describe, expect, it } from "vitest"
-import type { VisitorVote } from "@/lib/supabase/data"
+import type { VisitorVote } from "@/lib/supabase/votes"
 import { projectVoteTotal, totalVotes, votesByDate } from "@/lib/votes"
 
 const votes: VisitorVote[] = [
   {
     device_id: "00000000-0000-0000-0000-000000000001",
     project_id: "project-1",
+    voted_on: "2026-10-31",
     created_at: "2026-10-31T01:00:00.000Z",
     updated_at: "2026-10-31T01:00:00.000Z",
   },
   {
     device_id: "00000000-0000-0000-0000-000000000002",
     project_id: "project-2",
+    voted_on: "2026-11-01",
     created_at: "2026-11-01T01:00:00.000Z",
     updated_at: "2026-11-01T01:00:00.000Z",
   },
 ]
 
-describe("Supabase vote totals", () => {
-  it("counts only persisted votes for a project", () => {
+describe("vote totals", () => {
+  it("counts persisted votes by project", () => {
     expect(projectVoteTotal("project-1", votes)).toBe(1)
     expect(projectVoteTotal("project-3", votes)).toBe(0)
   })
 
-  it("counts one row per voting device", () => {
+  it("counts one active row per voting device", () => {
     expect(totalVotes(votes)).toBe(2)
   })
 
-  it("groups timestamps by festival date in Japan", () => {
+  it("groups votes by the selected preview date", () => {
     expect(votesByDate(votes)).toEqual({
       "2026-10-31": 1,
       "2026-11-01": 1,
