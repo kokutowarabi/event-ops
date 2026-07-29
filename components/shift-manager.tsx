@@ -1208,7 +1208,11 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                     <span className={date === selectedDate ? "font-semibold" : ""}>
                       {formatCompactDate(date)}
                     </span>
-                    <span className="ml-auto pl-5 text-xs font-normal text-muted-foreground!">
+                    <span
+                      className={`ml-auto pl-5 text-xs font-normal ${
+                        date === selectedDate ? "" : "text-muted-foreground!"
+                      }`}
+                    >
                       {getOperationPeriodLabel(date)}
                     </span>
                   </SelectItem>
