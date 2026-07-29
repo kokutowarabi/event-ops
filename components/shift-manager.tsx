@@ -376,9 +376,9 @@ function SearchPicker({ label, value, options, allValue, onChange }: SearchPicke
           const rect = event.currentTarget.getBoundingClientRect()
           setPopupPosition({
             left: rect.left,
-            top: rect.bottom + 4,
+            top: rect.top,
             width: rect.width,
-            maxHeight: Math.max(96, window.innerHeight - rect.bottom - 16),
+            maxHeight: Math.max(96, window.innerHeight - rect.top - 16),
           })
           setOpen(true)
         }}
