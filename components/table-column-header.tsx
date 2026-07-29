@@ -1,5 +1,3 @@
-"use client"
-
 import { useState } from "react"
 import { ArrowDown, ArrowUp, ArrowUpDown, ListFilter, X } from "lucide-react"
 import { Button } from "@/components/ui/button"

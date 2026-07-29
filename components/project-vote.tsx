@@ -1,5 +1,3 @@
-"use client"
-
 import { useMemo, useState } from "react"
 import { BarChart3, CalendarDays, Download, Heart, Trophy } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
