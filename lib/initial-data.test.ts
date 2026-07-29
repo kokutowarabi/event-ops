@@ -16,8 +16,8 @@ describe("initial app data", () => {
   })
 
   it("assigns every member on every operation date with a break", () => {
-    const sheet = state.shiftData.sheets[0]
-    expect(sheet.memberIds).toHaveLength(20)
+    const schedule = state.shiftData.schedule
+    expect(schedule?.memberIds).toHaveLength(20)
     expect(state.shiftData.shifts).toHaveLength(600)
 
     const memberDateGroups = new Map<string, typeof state.shiftData.shifts>()

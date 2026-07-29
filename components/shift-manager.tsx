@@ -8,9 +8,11 @@ import {
   useState,
   type CSSProperties,
   type KeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent,
 } from "react"
-import { CalendarDays, Download, Eye, Layers3, ListFilter, Plus, Search, Trash2, Users } from "lucide-react"
+import { createPortal } from "react-dom"
+import { CalendarDays, Check, Download, Eye, Layers3, ListFilter, Plus, Search, Trash2, Users, X } from "lucide-react"
 import type { Member } from "../lib/members"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -27,6 +29,7 @@ import { Label } from "@/components/ui/label"
 import { downloadCsv } from "@/lib/csv"
 import {
   formatCompactDate,
+  getOperationPeriodLabel,
   operationPeriod,
 } from "@/lib/event-schedule"
 import { memberDepartmentBadgeClass } from "@/lib/member-department"
@@ -51,9 +54,7 @@ export type ShiftTemplate = {
   note: string
 }
 
-export type ShiftSheet = {
-  id: string
-  name: string
+export type ShiftSchedule = {
   memberIds: string[]
   startDate: string
   endDate: string
@@ -122,6 +123,15 @@ type SearchPickerProps = {
   onChange: (value: string) => void
 }
 
+type FilterAnchor = "mobile" | "table"
+
+type FilterPanelPosition = {
+  left: number
+  top: number
+  width: number
+  maxHeight: number
+}
+
 const ALL_DEPARTMENTS = "すべてのセクション"
 const START_MINUTES = 6 * 60
 const END_MINUTES = 22 * 60
@@ -179,7 +189,7 @@ const shiftTemplates: Record<ShiftTemplateId, ShiftTemplate> = {
 }
 
 export type ShiftData = {
-  sheets: ShiftSheet[]
+  schedule: ShiftSchedule | null
   shifts: Shift[]
   customShiftTemplates: Record<ShiftTemplateId, ShiftTemplate>
 }
@@ -418,7 +428,7 @@ type ShiftManagerProps = {
 }
 
 export const emptyShiftData: ShiftData = {
-  sheets: [],
+  schedule: null,
   shifts: initialShifts,
   customShiftTemplates: {},
 }
@@ -426,22 +436,15 @@ export const emptyShiftData: ShiftData = {
 export function ShiftManager({ members, initialShiftData, onShiftDataChange }: ShiftManagerProps) {
   const defaultStartDate = operationPeriod.startDate
   const [shiftViewMode, setShiftViewMode] = useState<ShiftViewMode>("member")
-  const [sheetDraft, setSheetDraft] = useState<Omit<ShiftSheet, "id">>({
-    name: "",
-    memberIds: members.slice(0, 6).map((member) => member.id),
-    startDate: defaultStartDate,
-    endDate: operationPeriod.endDate,
-  })
-  const [shiftSheets, setShiftSheets] = useState<ShiftSheet[]>(initialShiftData.sheets)
-  const [shiftSheet, setShiftSheet] = useState<ShiftSheet | null>(() => initialShiftData.sheets[0] ?? null)
-  const [editingSheetName, setEditingSheetName] = useState(false)
-  const [selectedDate, setSelectedDate] = useState(initialShiftData.sheets[0]?.startDate ?? defaultStartDate)
+  const [shiftSchedule, setShiftSchedule] = useState<ShiftSchedule | null>(initialShiftData.schedule)
+  const [selectedDate, setSelectedDate] = useState(initialShiftData.schedule?.startDate ?? defaultStartDate)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [filterAnchor, setFilterAnchor] = useState<FilterAnchor | null>(null)
+  const [filterPanelPosition, setFilterPanelPosition] = useState<FilterPanelPosition | null>(null)
   const [shiftFilter, setShiftFilter] = useState("")
   const [memberSearch, setMemberSearch] = useState("")
   const [departmentFilter, setDepartmentFilter] = useState(ALL_DEPARTMENTS)
   const [roleFilter, setRoleFilter] = useState("すべての役職")
-  const [sheetMemberSearch, setSheetMemberSearch] = useState("")
   const [shifts, setShifts] = useState<Shift[]>(initialShiftData.shifts)
   const [customShiftTemplates, setCustomShiftTemplates] = useState<Record<ShiftTemplateId, ShiftTemplate>>(initialShiftData.customShiftTemplates)
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null)
@@ -456,7 +459,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const [resizing, setResizing] = useState<ResizingShift | null>(null)
   const [hoveredSlot, setHoveredSlot] = useState<{ memberId: string; slot: number } | null>(null)
   const [creatingShift, setCreatingShift] = useState<CreatingShift | null>(null)
-  const [showSelectedMembersOnly, setShowSelectedMembersOnly] = useState(false)
   const shiftsRef = useRef(shifts)
   const historyRef = useRef<{ past: Shift[][]; future: Shift[][] }>({ past: [], future: [] })
   const moveInitialShiftsRef = useRef<Shift[] | null>(null)
@@ -465,6 +467,8 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const didResizeShiftRef = useRef(false)
   const syncedShiftDataRef = useRef(JSON.stringify(initialShiftData))
   const emittedShiftDataRef = useRef(JSON.stringify(initialShiftData))
+  const filterTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const filterPanelRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const nextSignature = JSON.stringify(initialShiftData)
@@ -474,14 +478,10 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     let cancelled = false
     queueMicrotask(() => {
       if (cancelled) return
-      setShiftSheets(initialShiftData.sheets)
+      setShiftSchedule(initialShiftData.schedule)
       setShifts(initialShiftData.shifts)
       shiftsRef.current = initialShiftData.shifts
       setCustomShiftTemplates(initialShiftData.customShiftTemplates)
-      setShiftSheet((current) => {
-        if (!current) return initialShiftData.sheets[0] ?? null
-        return initialShiftData.sheets.find((sheet) => sheet.id === current.id) ?? initialShiftData.sheets[0] ?? null
-      })
     })
     return () => {
       cancelled = true
@@ -489,12 +489,12 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   }, [initialShiftData])
 
   useEffect(() => {
-    const nextData = { sheets: shiftSheets, shifts, customShiftTemplates }
+    const nextData = { schedule: shiftSchedule, shifts, customShiftTemplates }
     const nextSignature = JSON.stringify(nextData)
     if (nextSignature === emittedShiftDataRef.current) return
     emittedShiftDataRef.current = nextSignature
     onShiftDataChange(nextData)
-  }, [customShiftTemplates, onShiftDataChange, shiftSheets, shifts])
+  }, [customShiftTemplates, onShiftDataChange, shiftSchedule, shifts])
 
   const isAdmin = true
   const memberIds = useMemo(() => new Set(members.map((member) => member.id)), [members])
@@ -527,33 +527,24 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   }, [members])
 
   const dateTabs = useMemo(() => {
-    if (!shiftSheet) return []
-    return Array.from({ length: dateDiff(shiftSheet.startDate, shiftSheet.endDate) + 1 }, (_, index) =>
-      addDays(shiftSheet.startDate, index),
+    if (!shiftSchedule) return []
+    return Array.from({ length: dateDiff(shiftSchedule.startDate, shiftSchedule.endDate) + 1 }, (_, index) =>
+      addDays(shiftSchedule.startDate, index),
     )
-  }, [shiftSheet])
+  }, [shiftSchedule])
 
-  const draftMembers = useMemo(() => {
-    const baseMembers = showSelectedMembersOnly ? members.filter((member) => sheetDraft.memberIds.includes(member.id)) : members
-    const query = sheetMemberSearch.trim().toLowerCase()
-    if (!query) return baseMembers
-    return baseMembers.filter((member) =>
-      [member.name, member.email, member.department, member.role].some((value) => value.toLowerCase().includes(query)),
-    )
-  }, [members, sheetDraft.memberIds, sheetMemberSearch, showSelectedMembersOnly])
-
-  const sheetMembers = useMemo(() => {
-    if (!shiftSheet) return []
-    return members.filter((member) => shiftSheet.memberIds.includes(member.id))
-  }, [members, shiftSheet])
+  const scheduledMembers = useMemo(() => {
+    if (!shiftSchedule) return []
+    return members.filter((member) => shiftSchedule.memberIds.includes(member.id))
+  }, [members, shiftSchedule])
 
   const invitedMembers = useMemo(() => {
-    if (!shiftSheet) return []
+    if (!shiftSchedule) return []
     const query = memberSearch.trim().toLowerCase()
     const filteredByDepartment =
       departmentFilter === ALL_DEPARTMENTS
-        ? sheetMembers
-        : sheetMembers.filter((member) => member.department === departmentFilter)
+        ? scheduledMembers
+        : scheduledMembers.filter((member) => member.department === departmentFilter)
     const filteredByRole =
       roleFilter === "すべての役職"
         ? filteredByDepartment
@@ -562,14 +553,14 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     return filteredByRole.filter((member) =>
       [member.name, member.department, member.role].some((value) => value.toLowerCase().includes(query)),
     )
-  }, [departmentFilter, memberSearch, roleFilter, sheetMembers, shiftSheet])
+  }, [departmentFilter, memberSearch, roleFilter, scheduledMembers, shiftSchedule])
 
   const selectedDateShifts = useMemo(() => {
-    if (!shiftSheet) return []
+    if (!shiftSchedule) return []
     return shifts.filter(
-      (shift) => shift.date === selectedDate && shiftSheet.memberIds.includes(shift.memberId) && memberIds.has(shift.memberId),
+      (shift) => shift.date === selectedDate && shiftSchedule.memberIds.includes(shift.memberId) && memberIds.has(shift.memberId),
     )
-  }, [memberIds, selectedDate, shiftSheet, shifts])
+  }, [memberIds, selectedDate, shiftSchedule, shifts])
   const visibleSelectedDateShifts = useMemo(() => {
     const query = shiftFilter.trim().toLowerCase()
     if (!query) return selectedDateShifts
@@ -646,35 +637,10 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const selectedTemplate = selectedShift ? allShiftTemplates[selectedShift.templateId] : null
   const draftTemplate = draftShift ? allShiftTemplates[draftShift.templateId] : null
   const movingShift = moving ? shifts.find((shift) => shift.id === moving.id) ?? null : null
-  const toggleInvitedMember = (memberId: string) => {
-    setSheetDraft((prev) => {
-      const memberIds = prev.memberIds.includes(memberId)
-        ? prev.memberIds.filter((id) => id !== memberId)
-        : [...prev.memberIds, memberId]
-      return { ...prev, memberIds }
-    })
-  }
-
-  const createShiftSheet = () => {
-    const name = sheetDraft.name.trim()
-    if (!name) return
-    const startDate = sheetDraft.startDate
-    const endDate = sheetDraft.endDate < startDate ? startDate : sheetDraft.endDate
-    const activeMemberIds = sheetDraft.memberIds.filter((id) => memberIds.has(id))
-    const memberIdsForSheet = activeMemberIds.length > 0 ? activeMemberIds : members[0] ? [members[0].id] : []
-    const nextSheet = { id: crypto.randomUUID(), name, memberIds: memberIdsForSheet, startDate, endDate }
-    setShiftSheets((prev) => [...prev, nextSheet])
-    setShiftSheet(nextSheet)
-    setSelectedDate(startDate)
-    setDepartmentFilter(ALL_DEPARTMENTS)
-    setRoleFilter("すべての役職")
-    setSheetDraft((prev) => ({ ...prev, name: "" }))
-  }
-
   const exportShifts = () => {
     const membersById = new Map(members.map((member) => [member.id, member]))
     downloadCsv(
-      `シフト_${shiftSheet?.name ?? ""}_${selectedDate}`,
+      `シフト_${selectedDate}`,
       ["日付", "氏名", "メールアドレス", "所属", "役職", "業務", "開始時刻", "終了時刻", "時間（分）", "メモ"],
       exportableShifts.map((shift) => {
         const member = membersById.get(shift.memberId)
@@ -694,14 +660,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     )
   }
 
-  const renameCurrentSheet = (name: string) => {
-    if (!shiftSheet) return
-    const nextName = name.trim() || shiftSheet.name
-    const nextSheet = { ...shiftSheet, name: nextName }
-    setShiftSheet(nextSheet)
-    setShiftSheets((prev) => prev.map((sheet) => (sheet.id === shiftSheet.id ? nextSheet : sheet)))
-  }
-
   const getSlotFromPointer = (event: PointerEvent<HTMLButtonElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
     return Math.min(
@@ -719,7 +677,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   }
 
   const beginCreateMobileShift = (memberId: string, event: PointerEvent<HTMLButtonElement>) => {
-    if (!isAdmin || !shiftSheet) return
+    if (!isAdmin || !shiftSchedule) return
     const slot = getMobileSlotFromPointer(event)
     if (isSlotOccupied(shiftsRef.current, memberId, selectedDate, slot)) {
       setHoveredSlot(null)
@@ -799,7 +757,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   }
 
   const beginCreateShift = (memberId: string, event: PointerEvent<HTMLButtonElement>) => {
-    if (!isAdmin || !shiftSheet) return
+    if (!isAdmin || !shiftSchedule) return
     const slot = getSlotFromPointer(event)
     if (isSlotOccupied(shiftsRef.current, memberId, selectedDate, slot)) {
       setHoveredSlot(null)
@@ -873,14 +831,14 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     const template = allShiftTemplates[templateId]
     const end = clampShiftEnd(Math.min(start + template.defaultMinutes, END_MINUTES), start)
     const availableMember =
-      sheetMembers.find((member) =>
+      scheduledMembers.find((member) =>
         !selectedDateShifts.some(
           (shift) =>
             shift.memberId === member.id &&
             shift.start < end &&
             shift.end > start,
         ),
-      ) ?? sheetMembers[0]
+      ) ?? scheduledMembers[0]
     if (!availableMember) return
     setDraftShift({
       memberId: availableMember.id,
@@ -1112,6 +1070,26 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     setSelectedShiftId(null)
   }
 
+  const toggleFilters = (anchor: FilterAnchor, event: ReactMouseEvent<HTMLButtonElement>) => {
+    if (filtersOpen && filterAnchor === anchor) {
+      setFiltersOpen(false)
+      setFilterAnchor(null)
+      return
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect()
+    const left = Math.max(8, rect.left)
+    filterTriggerRef.current = event.currentTarget
+    setFilterAnchor(anchor)
+    setFilterPanelPosition({
+      left,
+      top: rect.top,
+      width: Math.max(280, Math.min(560, window.innerWidth - left - 16)),
+      maxHeight: Math.max(240, window.innerHeight - rect.top - 16),
+    })
+    setFiltersOpen(true)
+  }
+
   useEffect(() => {
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
       if (!event.metaKey || event.altKey || event.ctrlKey || event.key.toLowerCase() !== "z") return
@@ -1128,12 +1106,36 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     return () => window.removeEventListener("keydown", handleKeyDown)
   })
 
+  useEffect(() => {
+    if (!filtersOpen) return
+
+    const handlePointerDown = (event: globalThis.PointerEvent) => {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (filterPanelRef.current?.contains(target) || filterTriggerRef.current?.contains(target)) return
+      setFiltersOpen(false)
+      setFilterAnchor(null)
+    }
+    const handleEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") return
+      setFiltersOpen(false)
+      setFilterAnchor(null)
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown)
+    document.addEventListener("keydown", handleEscape)
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown)
+      document.removeEventListener("keydown", handleEscape)
+    }
+  }, [filtersOpen])
+
   return (
     <div className="mx-auto flex h-[calc(100svh-5.5rem)] max-w-7xl flex-col px-4 py-5 md:py-6">
       <header className="mb-4 flex shrink-0 flex-wrap items-center gap-2">
         <CalendarDays className="size-5 text-muted-foreground" />
         <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">シフト管理</h1>
-        {shiftSheet ? (
+        {shiftSchedule ? (
           <>
             <div className="flex rounded-md border bg-muted/35 p-0.5">
               <Button
@@ -1164,54 +1166,27 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                   <span>{formatCompactDate(selectedDate)}</span>
                 </div>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="w-max min-w-80">
                 {dateTabs.map((date) => (
-                  <SelectItem key={date} value={date}>
-                    {formatCompactDate(date)}
+                  <SelectItem
+                    key={date}
+                    value={date}
+                    hideIndicator
+                    className="pr-2 pl-2"
+                  >
+                    <span className="grid size-4 shrink-0 place-items-center">
+                      {date === selectedDate ? <Check className="size-3.5" /> : null}
+                    </span>
+                    <span className={date === selectedDate ? "font-semibold" : ""}>
+                      {formatCompactDate(date)}
+                    </span>
+                    <span className="ml-auto pl-5 text-xs font-normal text-muted-foreground!">
+                      {getOperationPeriodLabel(date)}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex min-w-0 items-center gap-1">
-              {editingSheetName ? (
-                <Input
-                  autoFocus
-                  defaultValue={shiftSheet.name}
-                  onBlur={(event) => {
-                    renameCurrentSheet(event.target.value)
-                    setEditingSheetName(false)
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      renameCurrentSheet(event.currentTarget.value)
-                      setEditingSheetName(false)
-                    }
-                    if (event.key === "Escape") setEditingSheetName(false)
-                  }}
-                  className="h-8 w-48 bg-background"
-                />
-              ) : (
-                <Button type="button" size="sm" variant="default" className="max-w-48 truncate" onClick={() => setEditingSheetName(true)}>
-                  {shiftSheet.name}
-                </Button>
-              )}
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="min-w-0 max-w-full"
-              onClick={() => setFiltersOpen(true)}
-              title={filterSummary || "絞り込み"}
-            >
-              <ListFilter className="size-4" />
-              <span className="shrink-0">絞り込み</span>
-              {filterSummary ? (
-                <span className="min-w-0 truncate border-l pl-2 text-xs font-normal text-muted-foreground">
-                  {filterSummary}
-                </span>
-              ) : null}
-            </Button>
             <Button
               type="button"
               size="sm"
@@ -1223,121 +1198,17 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
               <Download className="size-4" />
               CSV
             </Button>
-            {SHIFT_CREATION_ENABLED ? (
-              <Button type="button" size="sm" className="bg-black text-white hover:bg-black/80" onClick={() => setShiftSheet(null)}>
-                <Plus className="size-4" />
-                シート新規作成
-              </Button>
-            ) : null}
           </>
         ) : null}
       </header>
 
-      {!shiftSheet ? (
-        SHIFT_CREATION_ENABLED ? (
-          <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card">
-          <div className="flex min-h-0 flex-1 flex-col p-4">
-            <div className="w-full max-w-4xl shrink-0">
-              <h2 className="text-lg font-medium">シフトシート作成</h2>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-1.5 sm:col-span-2">
-                  <Label htmlFor="sheet-name">シート名</Label>
-                  <Input
-                    id="sheet-name"
-                    value={sheetDraft.name}
-                    onChange={(event) => setSheetDraft((prev) => ({ ...prev, name: event.target.value }))}
-                    placeholder="例: 星浜祭1日目 本部シフト"
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="sheet-start">開始日</Label>
-                  <Input
-                    id="sheet-start"
-                    type="date"
-                    value={sheetDraft.startDate}
-                    onChange={(event) =>
-                      setSheetDraft((prev) => ({
-                        ...prev,
-                        startDate: event.target.value,
-                        endDate: prev.endDate < event.target.value ? event.target.value : prev.endDate,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="sheet-end">終了日</Label>
-                  <Input
-                    id="sheet-end"
-                    type="date"
-                    value={sheetDraft.endDate}
-                    min={sheetDraft.startDate}
-                    onChange={(event) => setSheetDraft((prev) => ({ ...prev, endDate: event.target.value }))}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 flex min-h-0 flex-1 flex-col">
-              <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <Label>招待するメンバー</Label>
-                <Input
-                  value={sheetMemberSearch}
-                  onChange={(event) => setSheetMemberSearch(event.target.value)}
-                  placeholder="メンバー検索"
-                  className="h-8 sm:w-64"
-                />
-              </div>
-              <div className="mt-3 min-h-0 flex-1 overflow-auto pr-1">
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                {draftMembers.map((member) => {
-                  const selected = sheetDraft.memberIds.includes(member.id)
-                  return (
-                    <button
-                      key={member.id}
-                      type="button"
-                      onClick={() => toggleInvitedMember(member.id)}
-                      className={`cursor-pointer rounded-lg border p-3 text-left text-sm transition ${selected ? "border-primary bg-primary/10" : "bg-background hover:bg-muted"
-                        }`}
-                    >
-                      <span className="block font-medium">{member.name}</span>
-                      <span className="mt-1 flex flex-wrap items-center gap-1.5 text-muted-foreground">
-                        <Badge
-                          variant="outline"
-                          className={`font-normal ${memberDepartmentBadgeClass(member.department)}`}
-                        >
-                          {member.department}
-                        </Badge>
-                        <MemberRoleBadges value={member.role} />
-                      </span>
-                    </button>
-                  )
-                })}
-                </div>
-              </div>
-            </div>
+      {!shiftSchedule ? (
+        <section className="flex min-h-0 flex-1 items-center justify-center rounded-lg border bg-card p-8 text-center">
+          <div>
+            <h2 className="font-semibold">シフトデータがありません</h2>
+            <p className="mt-2 text-sm text-muted-foreground">運営期間とメンバーの設定を確認してください。</p>
           </div>
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t bg-card p-4">
-            <button
-              type="button"
-              onClick={() => setShowSelectedMembersOnly((prev) => !prev)}
-              className="cursor-pointer rounded-md px-2 py-1 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
-            >
-              {sheetDraft.memberIds.length}名を選択中
-            </button>
-            <Button type="button" className="bg-black text-white hover:bg-black/80" onClick={createShiftSheet}>
-              <Plus className="size-4" />
-              シート新規作成
-            </Button>
-          </div>
-          </section>
-        ) : (
-          <section className="flex min-h-0 flex-1 items-center justify-center rounded-lg border bg-card p-8 text-center">
-            <div>
-              <h2 className="font-semibold">利用できるシフトシートがありません</h2>
-              <p className="mt-2 text-sm text-muted-foreground">シフトシートの新規作成は現在停止しています。</p>
-            </div>
-          </section>
-        )
+        </section>
       ) : (
         <>
           {shiftViewMode === "assignment" ? (
@@ -1451,8 +1322,9 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
               type="button"
               variant="outline"
               className="w-full min-w-0 justify-start"
-              onClick={() => setFiltersOpen(true)}
+              onClick={(event) => toggleFilters("mobile", event)}
               title={filterSummary || "絞り込み"}
+              aria-expanded={filtersOpen && filterAnchor === "mobile"}
             >
               <ListFilter className="size-4" />
               <span className="shrink-0">絞り込み</span>
@@ -1597,14 +1469,15 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
 
           <div className={`${shiftViewMode === "member" ? "hidden md:block" : "hidden"} min-h-0 flex-1 select-none overflow-auto rounded-lg border bg-card`}>
             <div className="grid min-w-300 grid-cols-[15rem_1fr]">
-              <div className="sticky left-0 top-0 z-30 border-b border-r bg-card p-3">
+              <div className="sticky left-0 top-0 z-30 flex h-16 items-center border-b border-r bg-card px-3">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   className="w-full min-w-0 justify-start"
-                  onClick={() => setFiltersOpen(true)}
+                  onClick={(event) => toggleFilters("table", event)}
                   title={filterSummary || "絞り込み"}
+                  aria-expanded={filtersOpen && filterAnchor === "table"}
                 >
                   <ListFilter className="size-4" />
                   <span className="shrink-0">絞り込み</span>
@@ -1615,8 +1488,8 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                   ) : null}
                 </Button>
               </div>
-              <div className="sticky top-0 z-20 border-b bg-card py-3">
-                <div className="relative h-10" style={{ width: TIMELINE_TRACK_WIDTH }}>
+              <div className="sticky top-0 z-20 flex h-16 items-center border-b bg-card">
+                <div className="relative h-full" style={{ width: TIMELINE_TRACK_WIDTH }}>
                   {timeOptions.map((slot, index) => {
                     const isMajor = (slot.minutes - START_MINUTES) % 120 === 0
                     const isHovered = hoveredSlot?.slot === index
@@ -1625,7 +1498,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                     return (
                       <span
                         key={`time-slot-${slot.value}`}
-                        className={`absolute top-1 -translate-x-1/2 whitespace-nowrap text-xs transition ${isHovered
+                        className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-xs transition ${isHovered
                             ? "font-semibold text-foreground opacity-100"
                             : isNearHovered
                               ? "text-muted-foreground opacity-0"
@@ -1864,49 +1737,85 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
         </div>
       ) : null}
 
-      <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>シフト絞り込み</DialogTitle>
-            <DialogDescription>表示するメンバーとシフトを条件で絞り込みます。</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-2">
-            <div className="grid gap-1.5">
-              <Label>担当業務</Label>
-              <SearchPicker label="担当業務" value={shiftFilter} options={shiftFilterOptions} onChange={setShiftFilter} />
+      {filtersOpen && filterPanelPosition
+        ? createPortal(
+          <div
+            ref={filterPanelRef}
+            role="region"
+            aria-label="シフト絞り込み"
+            className="fixed z-50 overflow-y-auto rounded-lg border bg-popover p-5 text-popover-foreground shadow-lg"
+            style={{
+              left: filterPanelPosition.left,
+              top: filterPanelPosition.top,
+              width: filterPanelPosition.width,
+              maxHeight: filterPanelPosition.maxHeight,
+            }}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="font-semibold">シフト絞り込み</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  表示するメンバーとシフトを条件で絞り込みます。
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => {
+                  setFiltersOpen(false)
+                  setFilterAnchor(null)
+                }}
+                aria-label="絞り込みカードを閉じる"
+              >
+                <X className="size-4" />
+              </Button>
             </div>
-            <div className="grid gap-1.5">
-              <Label>メンバー名</Label>
-              <SearchPicker label="メンバー名" value={memberSearch} options={members.map((member) => member.name)} onChange={setMemberSearch} />
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label>担当業務</Label>
+                <SearchPicker label="担当業務" value={shiftFilter} options={shiftFilterOptions} onChange={setShiftFilter} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label>メンバー名</Label>
+                <SearchPicker label="メンバー名" value={memberSearch} options={members.map((member) => member.name)} onChange={setMemberSearch} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label>所属</Label>
+                <SearchPicker label="所属" value={departmentFilter} allValue={ALL_DEPARTMENTS} options={departments} onChange={setDepartmentFilter} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label>役職</Label>
+                <SearchPicker label="役職" value={roleFilter} allValue="すべての役職" options={roles} onChange={setRoleFilter} />
+              </div>
             </div>
-            <div className="grid gap-1.5">
-              <Label>所属</Label>
-              <SearchPicker label="所属" value={departmentFilter} allValue={ALL_DEPARTMENTS} options={departments} onChange={setDepartmentFilter} />
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShiftFilter("")
+                  setMemberSearch("")
+                  setDepartmentFilter(ALL_DEPARTMENTS)
+                  setRoleFilter("すべての役職")
+                }}
+              >
+                クリア
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setFiltersOpen(false)
+                  setFilterAnchor(null)
+                }}
+              >
+                適用
+              </Button>
             </div>
-            <div className="grid gap-1.5">
-              <Label>役職</Label>
-              <SearchPicker label="役職" value={roleFilter} allValue="すべての役職" options={roles} onChange={setRoleFilter} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setShiftFilter("")
-                setMemberSearch("")
-                setDepartmentFilter(ALL_DEPARTMENTS)
-                setRoleFilter("すべての役職")
-              }}
-            >
-              クリア
-            </Button>
-            <Button type="button" onClick={() => setFiltersOpen(false)}>
-              適用
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>,
+          document.body,
+        )
+        : null}
 
       <Dialog open={draftShift !== null} onOpenChange={(open) => !open && setDraftShift(null)}>
         <DialogContent className="sm:max-w-lg">
@@ -1933,7 +1842,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                       <SelectValue>{memberName(draftShift.memberId)}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {sheetMembers.map((member) => (
+                      {scheduledMembers.map((member) => (
                         <SelectItem key={`draft-member-${member.id}`} value={member.id}>
                           {member.name}・{member.department}
                         </SelectItem>
@@ -2119,7 +2028,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                         <SelectValue>{selectedMember.name}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        {sheetMembers.map((member) => (
+                        {scheduledMembers.map((member) => (
                           <SelectItem key={`detail-member-${member.id}`} value={member.id}>
                             {member.name}・{member.department}
                           </SelectItem>

@@ -111,8 +111,11 @@ function SelectLabel({
 function SelectItem({
   className,
   children,
+  hideIndicator = false,
   ...props
-}: SelectPrimitive.Item.Props) {
+}: SelectPrimitive.Item.Props & {
+  hideIndicator?: boolean
+}) {
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
@@ -125,13 +128,16 @@ function SelectItem({
       <SelectPrimitive.ItemText className="flex min-w-0 flex-1 gap-2 truncate whitespace-nowrap">
         {children}
       </SelectPrimitive.ItemText>
-      <SelectPrimitive.ItemIndicator
-        render={
-          <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center" />
-        }
-      >
-        <CheckIcon className="pointer-events-none" />
-      </SelectPrimitive.ItemIndicator>
+      {hideIndicator ? null : (
+        <SelectPrimitive.ItemIndicator
+          data-slot="select-item-indicator"
+          render={
+            <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center" />
+          }
+        >
+          <CheckIcon className="pointer-events-none" />
+        </SelectPrimitive.ItemIndicator>
+      )}
     </SelectPrimitive.Item>
   )
 }

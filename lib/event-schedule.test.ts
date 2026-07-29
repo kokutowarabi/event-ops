@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   getOperationDayLabel,
+  getOperationPeriodLabel,
   operationPeriod,
 } from "@/lib/event-schedule"
 
@@ -13,5 +14,11 @@ describe("event schedule", () => {
     expect(getOperationDayLabel("2026-10-26")).toBe("準備")
     expect(getOperationDayLabel("2026-10-31")).toBe("本祭 1日目・10:00〜18:00")
     expect(getOperationDayLabel("2026-11-04")).toBe("片付け")
+  })
+
+  it("labels each operation date by preparation, festival, or cleanup period", () => {
+    expect(getOperationPeriodLabel("2026-10-26")).toBe("準備日")
+    expect(getOperationPeriodLabel("2026-10-31")).toBe("本祭期間")
+    expect(getOperationPeriodLabel("2026-11-04")).toBe("片付け日")
   })
 })

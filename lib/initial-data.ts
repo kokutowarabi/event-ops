@@ -115,15 +115,11 @@ function createInitialShifts() {
 }
 
 const initialShiftData: ShiftData = {
-  sheets: [
-    {
-      id: "festival-operations",
-      name: "星浜祭 運営期間",
-      memberIds: initialMembers.map((member) => member.id),
-      startDate: operationPeriod.startDate,
-      endDate: operationPeriod.endDate,
-    },
-  ],
+  schedule: {
+    memberIds: initialMembers.map((member) => member.id),
+    startDate: operationPeriod.startDate,
+    endDate: operationPeriod.endDate,
+  },
   shifts: createInitialShifts(),
   customShiftTemplates: {},
 }

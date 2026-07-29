@@ -91,3 +91,19 @@ export function getOperationDayLabel(dateKey: string) {
   }
   return null
 }
+
+export function getOperationPeriodLabel(dateKey: string) {
+  if (
+    dateKey >= eventSchedule.preparationPeriod.startDate &&
+    dateKey <= eventSchedule.preparationPeriod.endDate
+  ) {
+    return "準備日"
+  }
+  if (getFestivalDay(dateKey)) {
+    return "本祭期間"
+  }
+  if (dateKey >= eventSchedule.cleanupPeriod.startDate && dateKey <= eventSchedule.cleanupPeriod.endDate) {
+    return "片付け日"
+  }
+  return null
+}
