@@ -1724,6 +1724,15 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
             ...getShiftTemplateColor(movingShift.templateId).blockStyle,
           }}
         >
+          {!moving.canDrop ? (
+            <span
+              data-slot="invalid-shift-drop-indicator"
+              className="absolute inset-0 z-10 grid place-items-center"
+              aria-hidden="true"
+            >
+              <X className="size-5 text-destructive drop-shadow-sm" strokeWidth={3} />
+            </span>
+          ) : null}
           {movingShift.end - movingShift.start === SLOT_MINUTES ? null : (
             <>
               <span className="block select-none truncate text-sm font-medium">
