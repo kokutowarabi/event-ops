@@ -1764,7 +1764,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                               : isHovered
                                 ? "font-semibold text-foreground opacity-100"
                                 : isFadedHoveredMajor
-                                  ? "text-muted-foreground opacity-50"
+                                  ? "text-muted-foreground opacity-0"
                                   : isNearHovered
                                   ? "text-muted-foreground opacity-0"
                                   : isMajor
