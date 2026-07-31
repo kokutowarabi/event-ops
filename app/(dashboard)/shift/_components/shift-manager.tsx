@@ -8,19 +8,10 @@ import {
   type PointerEvent,
 } from "react"
 import { createPortal } from "react-dom"
-import { CalendarDays, Check, Download, Eye, Layers3, ListFilter, Pin, Plus, Trash2, Users, X } from "lucide-react"
+import { CalendarDays, Check, Download, Layers3, ListFilter, Pin, Plus, Users, X } from "lucide-react"
 import type { Member } from "@/lib/members"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { downloadCsv } from "@/lib/csv"
 import {
@@ -34,7 +25,6 @@ import { parseMemberRoles } from "@/lib/member-role"
 import type {
   Shift,
   ShiftData,
-  ShiftKind,
   ShiftSchedule,
   ShiftTemplate,
   ShiftTemplateId,
@@ -44,10 +34,13 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select"
 import { ShiftCreateTimeLabel } from "./shift-create-time-label"
-import { ShiftAdjustmentSummary } from "./shift-adjustment-summary"
+import {
+  ShiftAdjustmentDialog,
+  ShiftCreationDialog,
+  ShiftDetailsDialog,
+} from "./shift-dialogs"
 import {
   ShiftFilterEmptyState,
   ShiftFilterPicker,
@@ -66,14 +59,11 @@ import {
   dateDiff,
   DEFAULT_SHIFT_TEMPLATE_ID,
   END_MINUTES,
-  formatDate,
   formatTime,
   getCreateShiftTimeRange,
   getShiftAdjustmentChanges,
   isSlotOccupied,
   orderMemberIdsWithPins,
-  parseTime,
-  shiftKinds,
   shiftsEqual,
   shiftTemplates,
   shouldSplitShiftTimeLabels,
@@ -81,7 +71,6 @@ import {
   START_MINUTES,
   timeOptions,
   timeSlots,
-  type ShiftAdjustmentChange,
   type ShiftTemplateColor,
 } from "./shift-domain"
 import {
@@ -89,91 +78,21 @@ import {
   getMemberRowFromPointer,
   getNearestMemberRowFromPointer,
 } from "./shift-pointer"
-
-type ShiftViewMode = "member" | "assignment"
+import type {
+  CopyingShift,
+  CreatingShift,
+  DraftShift,
+  DraftShiftTemplate,
+  FilterAnchor,
+  MovingShift,
+  PendingMovePress,
+  PendingShiftAdjustment,
+  ResizeEdge,
+  ResizingShift,
+  ShiftViewMode,
+} from "./shift-types"
 
 export type { Shift, ShiftData, ShiftSchedule, ShiftTemplate } from "@/lib/shift-data"
-
-type DraftShift = {
-  memberId: string
-  date: string
-  start: number
-  end: number
-  templateId: ShiftTemplateId
-  note: string
-}
-
-type DraftShiftTemplate = {
-  label: string
-  kind: ShiftKind
-  defaultMinutes: number
-  note: string
-}
-
-type CreatingShift = {
-  memberId: string
-  startSlot: number
-  currentSlot: number
-  adjustedShiftIds: string[]
-}
-
-type ResizeEdge = "start" | "end"
-
-type ResizingShift = {
-  id: string
-  edge: ResizeEdge
-  originX: number
-  start: number
-  end: number
-  adjustedShiftIds: string[]
-}
-
-type MovingShift = {
-  id: string
-  originX: number
-  pointerOffsetX: number
-  pointerX: number
-  pointerY: number
-  start: number
-  end: number
-  previewMemberId: string
-  canDrop: boolean
-}
-
-type PendingMovePress = {
-  timerId: number
-  shift: Shift
-  element: HTMLDivElement
-  pointerId: number
-  clientX: number
-  clientY: number
-}
-
-type CopyingShift = {
-  sourceId: string
-  previewMemberId: string
-  canDrop: boolean
-  sourceRect: {
-    left: number
-    top: number
-    width: number
-    height: number
-  }
-  stretchRect: {
-    left: number
-    top: number
-    width: number
-    height: number
-  }
-}
-
-type PendingShiftAdjustment = {
-  baseShifts: Shift[]
-  nextShifts: Shift[]
-  changes: ShiftAdjustmentChange[]
-}
-
-type FilterAnchor = "mobile" | "table"
 
 const ALL_DEPARTMENTS = "すべてのセクション"
 const SLOT_WIDTH = 16
@@ -463,12 +382,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       .sort((left, right) => right.maxOverlap - left.maxOverlap || left.template.label.localeCompare(right.template.label, "ja"))
   }, [allShiftTemplates, selectedDateShifts])
 
-  const selectedMember = selectedShift
-    ? members.find((member) => member.id === selectedShift.memberId)
-    : null
-
-  const selectedTemplate = selectedShift ? allShiftTemplates[selectedShift.templateId] : null
-  const draftTemplate = draftShift ? allShiftTemplates[draftShift.templateId] : null
   const currentDraftBaseShifts = draftBaseShifts ?? shifts
   const draftConflictResolution = draftShift
     ? adjustConflictingShiftRanges(
@@ -2127,388 +2040,37 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
         )
         : null}
 
-      <Dialog open={draftShift !== null} onOpenChange={(open) => !open && closeDraftShift()}>
-        <DialogContent className="sm:max-w-lg">
-          {draftShift && draftTemplate ? (
-            <>
-              <DialogHeader>
-                <DialogTitle>シフト作成</DialogTitle>
-                <DialogDescription>
-                  {memberName(draftShift.memberId)} / {formatDate(draftShift.date)}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-2">
-                <div className="grid gap-1.5">
-                  <Label>担当者</Label>
-                  <Select
-                    value={draftShift.memberId}
-                    onValueChange={(value) => {
-                      if (value !== null) {
-                        setDraftShift((prev) => (prev ? { ...prev, memberId: value } : prev))
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue>{memberName(draftShift.memberId)}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {scheduledMembers.map((member) => (
-                        <SelectItem key={`draft-member-${member.id}`} value={member.id}>
-                          {member.name}・{member.department}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-1.5">
-                  <Label>担当業務</Label>
-                  <Select
-                    value={draftShift.templateId}
-                    onValueChange={(value) => {
-                      if (value === null) return
-                      const templateId = value as ShiftTemplateId
-                      const template = allShiftTemplates[templateId]
-                      setDraftShift((prev) =>
-                        prev
-                          ? {
-                            ...prev,
-                            templateId,
-                            end: clampShiftEnd(prev.start + template.defaultMinutes, prev.start),
-                            note: template.note,
-                          }
-                          : prev,
-                      )
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue>{draftTemplate.label}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.keys(allShiftTemplates).map((templateId) => (
-                        <SelectItem key={templateId} value={templateId}>
-                          {allShiftTemplates[templateId].label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="grid gap-3 rounded-md border border-primary/30 bg-primary/5 p-3">
-                    <div className="text-sm font-medium">新しい担当業務を追加</div>
-                    <Input
-                      value={templateDraft.label}
-                      onChange={(event) => setTemplateDraft((prev) => ({ ...prev, label: event.target.value }))}
-                      placeholder="担当業務名"
-                    />
-                    <div className="grid gap-2 sm:grid-cols-[1fr_8rem]">
-                      <Select
-                        value={templateDraft.kind}
-                        onValueChange={(value) => {
-                          if (value !== null) setTemplateDraft((prev) => ({ ...prev, kind: value as ShiftKind }))
-                        }}
-                      >
-                        <SelectTrigger className="w-full bg-background">
-                          <SelectValue>{shiftKinds[templateDraft.kind].label}</SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(Object.keys(shiftKinds) as ShiftKind[]).map((kind) => (
-                            <SelectItem key={`template-kind-${kind}`} value={kind}>
-                              {shiftKinds[kind].label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        type="number"
-                        min={15}
-                        step={15}
-                        value={templateDraft.defaultMinutes}
-                        onChange={(event) =>
-                          setTemplateDraft((prev) => ({
-                            ...prev,
-                            defaultMinutes: Math.max(15, Math.round(Number(event.target.value || 15) / 15) * 15),
-                          }))
-                        }
-                        aria-label="標準時間（分）"
-                      />
-                    </div>
-                    <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-                      <Input
-                        value={templateDraft.note}
-                        onChange={(event) => setTemplateDraft((prev) => ({ ...prev, note: event.target.value }))}
-                        placeholder="標準メモ"
-                      />
-                      <Button type="button" onClick={createShiftTemplate} disabled={!templateDraft.label.trim()}>
-                        追加
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="grid gap-1.5">
-                    <Label>開始</Label>
-                    <Select
-                      value={formatTime(draftShift.start)}
-                      onValueChange={(value) => {
-                        if (value === null) return
-                        const start = parseTime(value)
-                        setDraftShift((prev) =>
-                          prev
-                            ? { ...prev, start, end: clampShiftEnd(Math.max(prev.end, start + SLOT_MINUTES), start) }
-                            : prev,
-                        )
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue>{formatTime(draftShift.start)}</SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {timeOptions.slice(0, -1).map((option) => (
-                          <SelectItem key={`draft-start-${option.value}`} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label>終了</Label>
-                    <Select
-                      value={formatTime(draftShift.end)}
-                      onValueChange={(value) => {
-                        if (value === null) return
-                        setDraftShift((prev) => (prev ? { ...prev, end: clampShiftEnd(parseTime(value), prev.start) } : prev))
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue>{formatTime(draftShift.end)}</SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {timeOptions.slice(1).map((option) => (
-                          <SelectItem key={`draft-end-${option.value}`} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="draft-note">業務・メモ</Label>
-                  <Input
-                    id="draft-note"
-                    value={draftShift.note}
-                    onChange={(event) => setDraftShift((prev) => (prev ? { ...prev, note: event.target.value } : prev))}
-                    placeholder="例: 受付、会場準備など"
-                  />
-                </div>
-                {!draftConflictResolution ? (
-                  <p className="text-sm text-destructive">
-                    開始時刻と終了時刻を確認してください。
-                  </p>
-                ) : (
-                  <ShiftAdjustmentSummary
-                    changes={draftAdjustmentChanges}
-                    templates={allShiftTemplates}
-                  />
-                )}
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={closeDraftShift}>
-                  キャンセル
-                </Button>
-                <Button type="button" onClick={createDraftShift} disabled={!draftConflictResolution}>
-                  作成
-                </Button>
-              </DialogFooter>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+      <ShiftCreationDialog
+        draft={draftShift}
+        templateDraft={templateDraft}
+        members={scheduledMembers}
+        templates={allShiftTemplates}
+        adjustmentChanges={draftAdjustmentChanges}
+        canCreate={draftConflictResolution !== null}
+        setDraft={setDraftShift}
+        setTemplateDraft={setTemplateDraft}
+        onCreateTemplate={createShiftTemplate}
+        onCreate={createDraftShift}
+        onClose={closeDraftShift}
+      />
 
-      <Dialog
-        open={pendingShiftAdjustment !== null}
-        onOpenChange={(open) => !open && cancelShiftAdjustment()}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>シフト変更の確認</DialogTitle>
-            <DialogDescription>
-              ハンドル操作による変更内容を確認してから確定してください。
-            </DialogDescription>
-          </DialogHeader>
-          {pendingShiftAdjustment ? (
-            <ShiftAdjustmentSummary
-              changes={pendingShiftAdjustment.changes}
-              templates={allShiftTemplates}
-            />
-          ) : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={cancelShiftAdjustment}>
-              キャンセル
-            </Button>
-            <Button type="button" onClick={confirmShiftAdjustment}>
-              変更を確定
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ShiftAdjustmentDialog
+        pending={pendingShiftAdjustment}
+        templates={allShiftTemplates}
+        onConfirm={confirmShiftAdjustment}
+        onCancel={cancelShiftAdjustment}
+      />
 
-      <Dialog
+      <ShiftDetailsDialog
         open={selectedShiftId !== null}
-        onOpenChange={(open) => !open && closeShiftDetail()}
-      >
-        <DialogContent className="sm:max-w-lg">
-          {selectedShift && selectedMember && selectedTemplate ? (
-            <>
-              <DialogHeader>
-                <DialogTitle>シフト詳細</DialogTitle>
-                <DialogDescription>
-                  {selectedMember.name} / {formatDate(selectedShift.date)}
-                </DialogDescription>
-              </DialogHeader>
-              {isAdmin ? (
-                <div className="grid gap-4 py-2">
-                  <div className="grid gap-1.5">
-                    <Label>担当者</Label>
-                    <Select
-                      value={selectedShift.memberId}
-                      onValueChange={(value) => {
-                        if (value !== null) updateShift(selectedShift.id, { memberId: value })
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue>{selectedMember.name}</SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {scheduledMembers.map((member) => (
-                          <SelectItem key={`detail-member-${member.id}`} value={member.id}>
-                            {member.name}・{member.department}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label>担当業務</Label>
-                    <Select
-                      value={selectedShift.templateId}
-                      onValueChange={(value) => {
-                        if (value === null) return
-                        const templateId = value as ShiftTemplateId
-                        const template = allShiftTemplates[templateId]
-                        updateShift(selectedShift.id, { templateId, kind: template.kind, note: template.note })
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue>{selectedTemplate.label}</SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.keys(allShiftTemplates).map((templateId) => (
-                          <SelectItem key={`detail-template-${templateId}`} value={templateId}>
-                            {allShiftTemplates[templateId].label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="grid gap-1.5">
-                      <Label>開始</Label>
-                      <Select
-                        value={formatTime(selectedShift.start)}
-                        onValueChange={(value) => {
-                          if (value === null) return
-                          const start = parseTime(value)
-                          updateShift(selectedShift.id, {
-                            start,
-                            end: clampShiftEnd(Math.max(selectedShift.end, start + SLOT_MINUTES), start),
-                          })
-                        }}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue>{formatTime(selectedShift.start)}</SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {timeOptions.slice(0, -1).map((option) => (
-                            <SelectItem key={`detail-start-${option.value}`} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-1.5">
-                      <Label>終了</Label>
-                      <Select
-                        value={formatTime(selectedShift.end)}
-                        onValueChange={(value) => {
-                          if (value !== null) updateShift(selectedShift.id, { end: clampShiftEnd(parseTime(value), selectedShift.start) })
-                        }}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue>{formatTime(selectedShift.end)}</SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {timeOptions.slice(1).map((option) => (
-                            <SelectItem key={`detail-end-${option.value}`} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="shift-note">業務・メモ</Label>
-                    <Input
-                      id="shift-note"
-                      value={selectedShift.note}
-                      onChange={(event) => updateShift(selectedShift.id, { note: event.target.value })}
-                      placeholder="例: 受付、会場準備など"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="grid gap-3 py-2 text-sm">
-                  <div className="rounded-lg border bg-muted/30 p-3">
-                    <div className="text-xs text-muted-foreground">担当業務</div>
-                    <div className="mt-1 font-medium">{selectedTemplate.label}</div>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-lg border bg-muted/30 p-3">
-                      <div className="text-xs text-muted-foreground">開始</div>
-                      <div className="mt-1 font-medium">{formatTime(selectedShift.start)}</div>
-                    </div>
-                    <div className="rounded-lg border bg-muted/30 p-3">
-                      <div className="text-xs text-muted-foreground">終了</div>
-                      <div className="mt-1 font-medium">{formatTime(selectedShift.end)}</div>
-                    </div>
-                  </div>
-                  <div className="rounded-lg border bg-muted/30 p-3">
-                    <div className="text-xs text-muted-foreground">業務・メモ</div>
-                    <div className="mt-1 font-medium">{selectedShift.note || selectedTemplate.note}</div>
-                  </div>
-                </div>
-              )}
-              <DialogFooter className="sm:justify-between">
-                {isAdmin ? (
-                  <Button type="button" variant="destructive" onClick={deleteSelectedShift}>
-                    <Trash2 className="size-4" />
-                    削除
-                  </Button>
-                ) : (
-                  <Badge variant="secondary">
-                    <Eye className="size-3" />
-                    閲覧のみ
-                  </Badge>
-                )}
-                <Button type="button" variant="outline" onClick={closeShiftDetail}>
-                  閉じる
-                </Button>
-              </DialogFooter>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+        shift={selectedShift}
+        members={scheduledMembers}
+        templates={allShiftTemplates}
+        editable={isAdmin}
+        onUpdate={updateShift}
+        onDelete={deleteSelectedShift}
+        onClose={closeShiftDetail}
+      />
     </div>
   )
 }
