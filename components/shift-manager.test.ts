@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   canPlaceShift,
+  copyShiftForMember,
   createShiftTemplateColor,
   fitShiftIntoAvailableRange,
   getCreateShiftTimeRange,
@@ -82,6 +83,14 @@ describe("shift placement", () => {
         "source",
       ),
     ).toBeNull()
+  })
+
+  it("copies a shift to another member without changing its contents", () => {
+    expect(copyShiftForMember(shifts[0], "member-c", "copy-id")).toEqual({
+      ...shifts[0],
+      id: "copy-id",
+      memberId: "member-c",
+    })
   })
 
   it("assigns a distinct color to every built-in business", () => {

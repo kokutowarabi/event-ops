@@ -1,5 +1,4 @@
 import {
-  Fragment,
   useEffect,
   useMemo,
   useRef,
@@ -96,6 +95,12 @@ type MovingShift = {
   previewMemberId: string
   canDrop: boolean
   wasAutoShrunk: boolean
+}
+
+type CopyingShift = {
+  sourceId: string
+  previewMemberId: string
+  canDrop: boolean
 }
 
 type SearchPickerProps = {
@@ -468,6 +473,10 @@ export function fitShiftIntoAvailableRange(
   return bestRange ? { ...bestRange, wasShrunk: true } : null
 }
 
+export function copyShiftForMember(shift: Shift, memberId: string, id: string): Shift {
+  return { ...shift, id, memberId }
+}
+
 function isRangeFree(shifts: Shift[], memberId: string, date: string, startSlot: number, endSlot: number) {
   const start = Math.min(startSlot, endSlot)
   const end = Math.max(startSlot, endSlot)
@@ -661,6 +670,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   })
   const [moving, setMoving] = useState<MovingShift | null>(null)
   const [resizing, setResizing] = useState<ResizingShift | null>(null)
+  const [copying, setCopying] = useState<CopyingShift | null>(null)
   const [hoveredSlot, setHoveredSlot] = useState<{ memberId: string; slot: number } | null>(null)
   const [creatingShift, setCreatingShift] = useState<CreatingShift | null>(null)
   const creatingTimeRange = creatingShift
@@ -854,6 +864,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const selectedTemplate = selectedShift ? allShiftTemplates[selectedShift.templateId] : null
   const draftTemplate = draftShift ? allShiftTemplates[draftShift.templateId] : null
   const movingShift = moving ? shifts.find((shift) => shift.id === moving.id) ?? null : null
+  const copyingShift = copying ? shifts.find((shift) => shift.id === copying.sourceId) ?? null : null
   const resizingShift = resizing ? shifts.find((shift) => shift.id === resizing.id) ?? null : null
   const editingTimelineShift = resizingShift ?? movingShift
   const timelineTimeRange = creatingTimeRange
@@ -1297,6 +1308,53 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     resizeInitialShiftsRef.current = null
     didResizeShiftRef.current = false
     setResizing(null)
+  }
+
+  const startCopyShift = (shift: Shift, event: PointerEvent<HTMLSpanElement>) => {
+    if (!isAdmin) return
+    event.stopPropagation()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setCopying({ sourceId: shift.id, previewMemberId: shift.memberId, canDrop: false })
+  }
+
+  const moveCopyShift = (event: PointerEvent<HTMLSpanElement>) => {
+    if (!copying) return
+    const sourceShift = shiftsRef.current.find((shift) => shift.id === copying.sourceId)
+    if (!sourceShift) return
+    const candidateMemberId = getMemberIdFromPointer(event) ?? copying.previewMemberId
+    const canDrop =
+      candidateMemberId !== sourceShift.memberId
+      && canPlaceShift(
+        shiftsRef.current,
+        candidateMemberId,
+        sourceShift.date,
+        sourceShift.start,
+        sourceShift.end,
+        sourceShift.id,
+      )
+    setCopying((current) =>
+      current
+        ? { ...current, previewMemberId: candidateMemberId, canDrop }
+        : current,
+    )
+  }
+
+  const stopCopyShift = () => {
+    if (!copying) return
+    const sourceShift = shiftsRef.current.find((shift) => shift.id === copying.sourceId)
+    if (sourceShift && copying.canDrop && copying.previewMemberId !== sourceShift.memberId) {
+      const copiedShift = copyShiftForMember(
+        sourceShift,
+        copying.previewMemberId,
+        `shift-${crypto.randomUUID()}`,
+      )
+      recordShiftsChange((current) => [...current, copiedShift])
+    }
+    setCopying(null)
+  }
+
+  const cancelCopyShift = () => {
+    setCopying(null)
   }
 
   const openShiftDetail = (id: string) => {
@@ -1837,10 +1895,14 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                   : null
                 const memberShifts = visibleSelectedDateShifts.filter((shift) => shift.memberId === member.id)
                 const allMemberShifts = selectedDateShifts.filter((shift) => shift.memberId === member.id)
-                const visibleMemberShifts =
+                const movingMemberShifts =
                   movingPreviewShift && moving?.previewMemberId === member.id && movingPreviewShift.memberId !== member.id
                     ? [...memberShifts, { ...movingPreviewShift, memberId: member.id }]
                     : memberShifts
+                const visibleMemberShifts =
+                  copyingShift && copying?.previewMemberId === member.id && copyingShift.memberId !== member.id
+                    ? [...movingMemberShifts, { ...copyingShift, memberId: member.id }]
+                    : movingMemberShifts
                 const createPreview = getCreatePreview(member.id)
                 return (
                   <div key={`member-row-${member.id}`} className="contents">
@@ -1961,13 +2023,20 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                           const isMovingSource = isMovingShift && !isMovingAlias
                           const isMovingSourceAlias = isMovingSource && moving?.previewMemberId === shift.memberId
                           const isHiddenMovingSource = isMovingSource && !isMovingSourceAlias
+                          const isCopyingAlias =
+                            copying?.sourceId === shift.id
+                            && copying.previewMemberId === member.id
+                            && copyingShift?.memberId !== member.id
+                          const isCopyingSource = copying?.sourceId === shift.id && !isCopyingAlias
+                          const isInteractionAlias = isMovingAlias || isCopyingAlias
+                          const verticalHandleLength = Math.min(40, visualWidth)
                           return (
-                            <Fragment key={shift.id}>
+                            <div key={`${shift.id}-${isCopyingAlias ? "copy" : "shift"}`} className="group contents">
                               <div
                                 role="button"
                                 tabIndex={0}
                                 onClick={() => {
-                                  if (!isMovingAlias) openShiftDetail(shift.id)
+                                  if (!isInteractionAlias) openShiftDetail(shift.id)
                                 }}
                                 onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
                                   if (event.key === "Enter" || event.key === " ") {
@@ -1976,7 +2045,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                   }
                                 }}
                                 onPointerDown={(event) => {
-                                  if (!isMovingAlias) startMove(shift, event)
+                                  if (!isInteractionAlias) startMove(shift, event)
                                 }}
                                 onPointerMove={(event) => {
                                   moveShift(event)
@@ -1991,7 +2060,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                   cancelResize()
                                 }}
                                 aria-label={`${member.name} ${formatTime(shift.start)}-${formatTime(shift.end)}の詳細`}
-                                className={`${isMovingAlias ? "pointer-events-none" : "pointer-events-auto"} absolute top-2 box-border h-12 select-none rounded-md border text-left transition hover:z-30 hover:ring-2 hover:ring-inset hover:ring-ring/40 ${hasSplitEditingTimes ? "overflow-visible" : "overflow-hidden"} ${isHiddenMovingSource ? "opacity-0" : ""} ${isMovingAlias || isMovingSourceAlias ? "opacity-40 ring-2 ring-inset ring-ring/30" : ""} ${isSingleSlotShift ? "px-0" : "px-3 shadow-sm"} ${isAdmin && !isMovingAlias ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
+                                className={`${isInteractionAlias ? "pointer-events-none" : "pointer-events-auto"} absolute top-2 box-border h-12 select-none rounded-md border text-left transition hover:z-30 hover:ring-2 hover:ring-inset hover:ring-ring/40 ${hasSplitEditingTimes ? "overflow-visible" : "overflow-hidden"} ${isHiddenMovingSource ? "opacity-0" : ""} ${isMovingAlias || isMovingSourceAlias || isCopyingAlias ? "opacity-40 ring-2 ring-inset ring-ring/30" : ""} ${isCopyingAlias && !copying?.canDrop ? "ring-destructive" : ""} ${isSingleSlotShift ? "px-0" : "px-3 shadow-sm"} ${isAdmin && !isInteractionAlias ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
                                   }`}
                                 style={{
                                   left,
@@ -2019,11 +2088,11 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                   </>
                                 )}
                               </div>
-                              {isAdmin && !isMovingAlias ? (
+                              {isAdmin && !isInteractionAlias ? (
                                 <>
                                   <span
-                                    className={`pointer-events-auto absolute top-3 z-40 h-10 w-2 cursor-ew-resize rounded-l-md transition hover:bg-foreground/15 active:bg-foreground/20 ${isMovingShift ? "opacity-0" : ""}`}
-                                    style={{ left: left - 4 }}
+                                    className={`pointer-events-auto absolute top-3 z-40 h-10 w-2 cursor-ew-resize rounded-l-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${isMovingShift || isCopyingSource ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}
+                                    style={{ left }}
                                     onClick={(event) => event.stopPropagation()}
                                     onPointerDown={(event) => startResize(shift, "start", event)}
                                     onPointerMove={(event) => moveResize(event)}
@@ -2032,8 +2101,8 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                     aria-hidden="true"
                                   />
                                   <span
-                                    className={`pointer-events-auto absolute top-3 z-40 h-10 w-2 cursor-ew-resize rounded-r-md transition hover:bg-foreground/15 active:bg-foreground/20 ${isMovingShift ? "opacity-0" : ""}`}
-                                    style={{ left: left + visualWidth - 4 }}
+                                    className={`pointer-events-auto absolute top-3 z-40 h-10 w-2 cursor-ew-resize rounded-r-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${isMovingShift || isCopyingSource ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}
+                                    style={{ left: left + visualWidth - 8 }}
                                     onClick={(event) => event.stopPropagation()}
                                     onPointerDown={(event) => startResize(shift, "end", event)}
                                     onPointerMove={(event) => moveResize(event)}
@@ -2041,9 +2110,35 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                     onPointerCancel={cancelResize}
                                     aria-hidden="true"
                                   />
+                                  <span
+                                    className={`pointer-events-auto absolute top-2 z-40 h-2 cursor-copy rounded-t-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${isMovingShift || isCopyingSource ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}
+                                    style={{
+                                      left: left + (visualWidth - verticalHandleLength) / 2,
+                                      width: verticalHandleLength,
+                                    }}
+                                    onClick={(event) => event.stopPropagation()}
+                                    onPointerDown={(event) => startCopyShift(shift, event)}
+                                    onPointerMove={moveCopyShift}
+                                    onPointerUp={stopCopyShift}
+                                    onPointerCancel={cancelCopyShift}
+                                    aria-hidden="true"
+                                  />
+                                  <span
+                                    className={`pointer-events-auto absolute top-12 z-40 h-2 cursor-copy rounded-b-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${isMovingShift || isCopyingSource ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}
+                                    style={{
+                                      left: left + (visualWidth - verticalHandleLength) / 2,
+                                      width: verticalHandleLength,
+                                    }}
+                                    onClick={(event) => event.stopPropagation()}
+                                    onPointerDown={(event) => startCopyShift(shift, event)}
+                                    onPointerMove={moveCopyShift}
+                                    onPointerUp={stopCopyShift}
+                                    onPointerCancel={cancelCopyShift}
+                                    aria-hidden="true"
+                                  />
                                 </>
                               ) : null}
-                            </Fragment>
+                            </div>
                           )
                         })}
                       </div>
