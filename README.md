@@ -13,11 +13,11 @@
 
 無料枠以外は使用しないでください。
 
-1. [`supabase/migrations/20260729010000_votes_only.sql`](supabase/migrations/20260729010000_votes_only.sql)を実行
+1. [`supabase/migrations`](supabase/migrations)内のSQLをファイル名順に実行
 2. `.env.example`を`.env.local`へコピーしてURLとPublishable keyを設定
 3. Supabase Dashboardで`visitor_votes`のRealtimeを確認
 
-匿名ユーザーは投票データを直接更新できず、企画IDと本祭日を検証する`cast_visitor_vote`だけを実行できます。有効票は端末UUIDごとに1票です。
+匿名ユーザーは投票データを直接更新できず、企画IDと本祭日を検証する`cast_visitor_vote`だけを実行できます。同一端末・同一企画・同一投票日は1票です。
 
 ## ローカル実行
 
