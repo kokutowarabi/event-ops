@@ -8,6 +8,7 @@ import {
   getCreateShiftTimeRange,
   getShiftAdjustmentChanges,
   getNearestVerticalRectIndex,
+  orderMemberIdsWithPins,
   shouldSplitShiftTimeLabels,
   type Shift,
 } from "@/components/shift-manager"
@@ -74,6 +75,16 @@ describe("shift placement", () => {
         "member-b",
       ),
     ).toBe(false)
+  })
+
+  it("keeps pinned members first and visible even when filters exclude them", () => {
+    expect(
+      orderMemberIdsWithPins(
+        ["member-a", "member-b", "member-c", "member-d"],
+        ["member-a", "member-d"],
+        ["member-c", "member-b"],
+      ),
+    ).toEqual(["member-c", "member-b", "member-a", "member-d"])
   })
 
   it("keeps a vertical copy preview active between member rows", () => {

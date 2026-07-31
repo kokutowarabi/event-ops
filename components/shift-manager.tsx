@@ -9,7 +9,7 @@ import {
   type PointerEvent,
 } from "react"
 import { createPortal } from "react-dom"
-import { CalendarDays, Check, Download, Eye, Layers3, ListFilter, Plus, Search, Trash2, Users, X } from "lucide-react"
+import { CalendarDays, Check, Download, Eye, Layers3, ListFilter, Pin, Plus, Search, Trash2, Users, X } from "lucide-react"
 import type { Member } from "../lib/members"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -168,11 +168,32 @@ const MOBILE_TIMELINE_PADDING_SLOTS = 2
 const MOBILE_TIMELINE_PADDING_HEIGHT = MOBILE_TIMELINE_PADDING_SLOTS * MOBILE_SLOT_HEIGHT
 const MOBILE_TIMELINE_HEIGHT = ((END_MINUTES - START_MINUTES) / SLOT_MINUTES) * MOBILE_SLOT_HEIGHT
 const MOBILE_TIMELINE_TRACK_HEIGHT = MOBILE_TIMELINE_HEIGHT + MOBILE_TIMELINE_PADDING_HEIGHT * 2
+const DESKTOP_TIMELINE_HEADER_HEIGHT = 64
+const DESKTOP_MEMBER_ROW_HEIGHT = 88
 const MOBILE_TIMELINE_GRID_BACKGROUND = `repeating-linear-gradient(to bottom, transparent 0, transparent ${MOBILE_SLOT_HEIGHT - 1}px, color-mix(in oklch, var(--border), transparent 35%) ${MOBILE_SLOT_HEIGHT - 1}px, color-mix(in oklch, var(--border), transparent 35%) ${MOBILE_SLOT_HEIGHT}px)`
 // MVPでは既存シフトの編集に限定し、新規作成の導線を閉じる。
 const SHIFT_CREATION_ENABLED = false
 // 個人タイムライン上のD&D作成だけは、15分単位で利用できる。
 const SHIFT_DND_CREATION_ENABLED = true
+
+export function orderMemberIdsWithPins(
+  scheduledMemberIds: string[],
+  filteredMemberIds: string[],
+  pinnedMemberIds: string[],
+): string[] {
+  const scheduled = new Set(scheduledMemberIds)
+  const ordered: string[] = []
+  const seen = new Set<string>()
+  const append = (memberId: string) => {
+    if (!scheduled.has(memberId) || seen.has(memberId)) return
+    seen.add(memberId)
+    ordered.push(memberId)
+  }
+
+  pinnedMemberIds.forEach(append)
+  filteredMemberIds.forEach(append)
+  return ordered
+}
 
 const shiftKinds: Record<ShiftKind, { label: string }> = {
   morning: { label: "オレンジ" },
@@ -688,6 +709,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const [memberSearch, setMemberSearch] = useState("")
   const [departmentFilter, setDepartmentFilter] = useState(ALL_DEPARTMENTS)
   const [roleFilter, setRoleFilter] = useState("すべての役職")
+  const [pinnedMemberIds, setPinnedMemberIds] = useState<string[]>([])
   const [shifts, setShifts] = useState<Shift[]>(initialShiftData.shifts)
   const [customShiftTemplates, setCustomShiftTemplates] = useState<Record<ShiftTemplateId, ShiftTemplate>>(initialShiftData.customShiftTemplates)
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null)
@@ -824,13 +846,47 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       return [template?.label, shift.note].some((value) => value?.toLowerCase().includes(query))
     })
   }, [allShiftTemplates, selectedDateShifts, shiftFilter])
-  const visibleInvitedMembers = useMemo(() => {
+  const filteredInvitedMembers = useMemo(() => {
     if (!shiftFilter.trim()) return invitedMembers
     const visibleMemberIds = new Set(visibleSelectedDateShifts.map((shift) => shift.memberId))
     return invitedMembers.filter((member) => visibleMemberIds.has(member.id))
   }, [invitedMembers, shiftFilter, visibleSelectedDateShifts])
+  const visibleMemberOrder = useMemo(
+    () => orderMemberIdsWithPins(
+      scheduledMembers.map((member) => member.id),
+      filteredInvitedMembers.map((member) => member.id),
+      pinnedMemberIds,
+    ),
+    [filteredInvitedMembers, pinnedMemberIds, scheduledMembers],
+  )
+  const scheduledMembersById = useMemo(
+    () => new Map(scheduledMembers.map((member) => [member.id, member])),
+    [scheduledMembers],
+  )
+  const visibleInvitedMembers = useMemo(
+    () => visibleMemberOrder.flatMap((memberId) => {
+      const member = scheduledMembersById.get(memberId)
+      return member ? [member] : []
+    }),
+    [scheduledMembersById, visibleMemberOrder],
+  )
+  const visiblePinnedMemberIds = useMemo(
+    () => visibleMemberOrder.filter((memberId) => pinnedMemberIds.includes(memberId)),
+    [pinnedMemberIds, visibleMemberOrder],
+  )
+  const visiblePinnedMemberIdSet = useMemo(
+    () => new Set(visiblePinnedMemberIds),
+    [visiblePinnedMemberIds],
+  )
+  const visiblePinnedMembers = useMemo(
+    () => visiblePinnedMemberIds.flatMap((memberId) => {
+      const member = scheduledMembersById.get(memberId)
+      return member ? [member] : []
+    }),
+    [scheduledMembersById, visiblePinnedMemberIds],
+  )
   const exportableShifts = useMemo(() => {
-    const visibleMemberIds = new Set(visibleInvitedMembers.map((member) => member.id))
+    const visibleMemberIds = new Set(filteredInvitedMembers.map((member) => member.id))
     const memberNames = new Map(members.map((member) => [member.id, member.name]))
     return visibleSelectedDateShifts
       .filter((shift) => visibleMemberIds.has(shift.memberId))
@@ -842,7 +898,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
             "ja",
           ),
       )
-  }, [members, visibleInvitedMembers, visibleSelectedDateShifts])
+  }, [filteredInvitedMembers, members, visibleSelectedDateShifts])
   const filterSummary = useMemo(
     () =>
       [
@@ -861,7 +917,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     || departmentFilter !== ALL_DEPARTMENTS
     || roleFilter !== "すべての役職",
   )
-  const hasNoFilterResults = hasActiveFilters && visibleInvitedMembers.length === 0
+  const hasNoFilterResults = hasActiveFilters && filteredInvitedMembers.length === 0
   const shiftFilterOptions = useMemo(() => {
     return [
       ...Object.values(allShiftTemplates).map((template) => template.label),
@@ -1588,6 +1644,14 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     closeShiftDetail()
   }
 
+  const toggleMemberPin = (memberId: string) => {
+    setPinnedMemberIds((current) =>
+      current.includes(memberId)
+        ? current.filter((id) => id !== memberId)
+        : [...current, memberId],
+    )
+  }
+
   const toggleFilters = (anchor: FilterAnchor, event: ReactMouseEvent<HTMLButtonElement>) => {
     if (filtersOpen && filterAnchor === anchor) {
       setFiltersOpen(false)
@@ -1857,28 +1921,61 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                 </span>
               ) : null}
             </Button>
+            {visiblePinnedMembers.length > 0 ? (
+              <div className="sticky top-0 z-30 rounded-lg border bg-card/95 p-2 shadow-sm backdrop-blur">
+                <div className="mb-1.5 text-xs font-medium text-muted-foreground">ピン留め</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {visiblePinnedMembers.map((member) => (
+                    <Button
+                      key={`mobile-pinned-${member.id}`}
+                      type="button"
+                      size="xs"
+                      variant="secondary"
+                      aria-label={`${member.name}のピン留めを解除`}
+                      onClick={() => toggleMemberPin(member.id)}
+                    >
+                      <Pin className="size-3 fill-current" />
+                      {member.name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             {hasNoFilterResults ? (
               <ShiftFilterEmptyState className="rounded-lg border bg-card" />
             ) : null}
             {visibleInvitedMembers.map((member) => {
-              const memberShifts = visibleSelectedDateShifts
+              const isPinned = visiblePinnedMemberIdSet.has(member.id)
+              const memberShifts = (isPinned ? selectedDateShifts : visibleSelectedDateShifts)
                 .filter((shift) => shift.memberId === member.id)
                 .sort((left, right) => left.start - right.start)
               const allMemberShifts = selectedDateShifts.filter((shift) => shift.memberId === member.id)
               const createPreview = getMobileCreatePreview(member.id)
               return (
                 <section key={`mobile-member-${member.id}`} className="rounded-lg border bg-card p-3">
-                  <div className="mb-3">
-                    <div className="font-medium">{member.name}</div>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                      <Badge
-                        variant="outline"
-                        className={`font-normal ${memberDepartmentBadgeClass(member.department)}`}
-                      >
-                        {member.department}
-                      </Badge>
-                      <MemberRoleBadges value={member.role} />
+                  <div className="mb-3 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-medium">{member.name}</div>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                        <Badge
+                          variant="outline"
+                          className={`font-normal ${memberDepartmentBadgeClass(member.department)}`}
+                        >
+                          {member.department}
+                        </Badge>
+                        <MemberRoleBadges value={member.role} />
+                      </div>
                     </div>
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      variant={isPinned ? "secondary" : "ghost"}
+                      aria-label={isPinned ? `${member.name}のピン留めを解除` : `${member.name}をピン留め`}
+                      aria-pressed={isPinned}
+                      onClick={() => toggleMemberPin(member.id)}
+                    >
+                      <Pin className={`size-4 ${isPinned ? "fill-current" : ""}`} />
+                    </Button>
                   </div>
                   <div className="relative" style={{ height: MOBILE_TIMELINE_TRACK_HEIGHT }}>
                     <div
@@ -2059,10 +2156,14 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
               </div>
 
               {visibleInvitedMembers.map((member) => {
+                const isPinned = visiblePinnedMemberIdSet.has(member.id)
+                const pinnedIndex = visiblePinnedMemberIds.indexOf(member.id)
+                const pinnedTop = DESKTOP_TIMELINE_HEADER_HEIGHT + pinnedIndex * DESKTOP_MEMBER_ROW_HEIGHT
                 const movingPreviewShift = moving
                   ? selectedDateShifts.find((shift) => shift.id === moving.id) ?? null
                   : null
-                const memberShifts = visibleSelectedDateShifts.filter((shift) => shift.memberId === member.id)
+                const memberShifts = (isPinned ? selectedDateShifts : visibleSelectedDateShifts)
+                  .filter((shift) => shift.memberId === member.id)
                 const allMemberShifts = selectedDateShifts.filter((shift) => shift.memberId === member.id)
                 const movingMemberShifts =
                   movingPreviewShift && moving?.previewMemberId === member.id && movingPreviewShift.memberId !== member.id
@@ -2075,8 +2176,23 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                 const createPreview = getCreatePreview(member.id)
                 return (
                   <div key={`member-row-${member.id}`} className="contents">
-                    <div className="sticky left-0 z-10 border-r border-b bg-card p-4">
-                      <div className="font-medium">{member.name}</div>
+                    <div
+                      className={`sticky left-0 border-r border-b bg-card p-4 ${isPinned ? "z-25 h-[88px] shadow-sm" : "z-10"}`}
+                      style={isPinned ? { top: pinnedTop } : undefined}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 font-medium">{member.name}</div>
+                        <Button
+                          type="button"
+                          size="icon-sm"
+                          variant={isPinned ? "secondary" : "ghost"}
+                          aria-label={isPinned ? `${member.name}のピン留めを解除` : `${member.name}をピン留め`}
+                          aria-pressed={isPinned}
+                          onClick={() => toggleMemberPin(member.id)}
+                        >
+                          <Pin className={`size-4 ${isPinned ? "fill-current" : ""}`} />
+                        </Button>
+                      </div>
                       <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
                         <Badge
                           variant="outline"
@@ -2087,7 +2203,10 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                         <MemberRoleBadges value={member.role} />
                       </div>
                     </div>
-                    <div className="border-b py-3">
+                    <div
+                      className={`border-b py-3 ${isPinned ? "sticky z-15 h-[88px] bg-card shadow-sm" : ""}`}
+                      style={isPinned ? { top: pinnedTop } : undefined}
+                    >
                       <div className="relative h-16" style={{ width: TIMELINE_TRACK_WIDTH }}>
                         <button
                           type="button"
