@@ -2285,7 +2285,10 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                 <>
                                   <span
                                     className={`pointer-events-auto absolute top-3 z-40 h-10 w-2 cursor-w-resize rounded-l-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${isMovingShift || isCopyingSource ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}
-                                    style={{ left }}
+                                    style={{
+                                      left,
+                                      cursor: "url('/cursors/resize-left.svg') 12 12, w-resize",
+                                    }}
                                     onClick={(event) => event.stopPropagation()}
                                     onPointerDown={(event) => startResize(shift, "start", event)}
                                     onPointerMove={(event) => moveResize(event)}
@@ -2295,7 +2298,10 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                   />
                                   <span
                                     className={`pointer-events-auto absolute top-3 z-40 h-10 w-2 cursor-e-resize rounded-r-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${isMovingShift || isCopyingSource ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}
-                                    style={{ left: left + visualWidth - 8 }}
+                                    style={{
+                                      left: left + visualWidth - 8,
+                                      cursor: "url('/cursors/resize-right.svg') 12 12, e-resize",
+                                    }}
                                     onClick={(event) => event.stopPropagation()}
                                     onPointerDown={(event) => startResize(shift, "end", event)}
                                     onPointerMove={(event) => moveResize(event)}
@@ -2308,6 +2314,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                     style={{
                                       left: left + (visualWidth - verticalHandleLength) / 2,
                                       width: verticalHandleLength,
+                                      cursor: "url('/cursors/resize-up.svg') 12 12, n-resize",
                                     }}
                                     onClick={(event) => event.stopPropagation()}
                                     onPointerDown={(event) => startCopyShift(shift, event)}
@@ -2321,6 +2328,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                     style={{
                                       left: left + (visualWidth - verticalHandleLength) / 2,
                                       width: verticalHandleLength,
+                                      cursor: "url('/cursors/resize-down.svg') 12 12, s-resize",
                                     }}
                                     onClick={(event) => event.stopPropagation()}
                                     onPointerDown={(event) => startCopyShift(shift, event)}
