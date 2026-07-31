@@ -1711,7 +1711,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                     ) : null}
                     {createPreview ? (
                       <div
-                        className="pointer-events-none absolute left-16 right-1 box-border overflow-hidden rounded-md border px-2 py-1 text-left shadow-sm"
+                        className="pointer-events-none absolute left-16 right-1 z-50 box-border overflow-hidden rounded-md border px-2 py-1 text-left shadow-sm"
                         style={{
                           top: createPreview.top,
                           height: Math.max(createPreview.height, 44),
@@ -1909,7 +1909,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                         </button>
                         {createPreview ? (
                           <div
-                            className={`pointer-events-none absolute top-2 box-border h-12 overflow-visible rounded-md border text-left ${createPreview.width === SLOT_WIDTH ? "px-0" : "px-3 shadow-sm"}`}
+                            className={`pointer-events-none absolute top-2 z-50 box-border h-12 overflow-visible rounded-md border text-left ${createPreview.width === SLOT_WIDTH ? "px-0" : "px-3 shadow-sm"}`}
                             style={{
                               left: createPreview.left,
                               width: createPreview.width,
