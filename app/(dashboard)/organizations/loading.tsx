@@ -1,4 +1,4 @@
-import { OrganizationsRouteLoading } from "../_components/route-loading"
+import { OrganizationsRouteLoading } from "./_components/organizations-route-loading"
 
 export default function Loading() {
   return <OrganizationsRouteLoading />

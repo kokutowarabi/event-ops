@@ -1,4 +1,4 @@
-import { ShiftRouteLoading } from "../_components/route-loading"
+import { ShiftRouteLoading } from "./_components/shift-route-loading"
 
 export default function Loading() {
   return <ShiftRouteLoading />
