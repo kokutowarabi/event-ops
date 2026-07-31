@@ -8,6 +8,10 @@ export function totalVotes(votes: VisitorVote[]) {
   return votes.length
 }
 
+export function votingDeviceCount(votes: VisitorVote[]) {
+  return new Set(votes.map((vote) => vote.device_id)).size
+}
+
 export function appendVisitorVote(
   votes: VisitorVote[],
   nextVote: VisitorVote,

@@ -14,7 +14,13 @@ import { downloadCsv } from "@/lib/csv"
 import type { EventDepartment, EventProject } from "@/lib/event-data"
 import { eventSchedule, formatJapaneseDate } from "@/lib/event-schedule"
 import type { VisitorVote } from "@/lib/supabase/votes"
-import { projectVoteTotal, totalVotes, votesByDate, votesOnDate } from "@/lib/votes"
+import {
+  projectVoteTotal,
+  totalVotes,
+  votesByDate,
+  votesOnDate,
+  votingDeviceCount,
+} from "@/lib/votes"
 
 export type VoteConnectionState = "unconfigured" | "connecting" | "realtime" | "error"
 
@@ -51,6 +57,7 @@ export function ProjectVote({
     return {
       departmentTotals,
       allVotes: totalVotes(votes),
+      votingDevices: votingDeviceCount(votes),
       dailyTotals: votesByDate(votes),
     }
   }, [projects, votes])
@@ -130,9 +137,9 @@ export function ProjectVote({
             <div className="mt-2 text-3xl font-semibold">{stats.allVotes}</div>
           </div>
           <div className="rounded-xl border bg-card p-4">
-            <div className="text-sm text-muted-foreground">投票済み端末数</div>
+            <div className="text-sm text-muted-foreground">投票参加端末数</div>
             <div className="mt-2 flex items-center gap-2 text-3xl font-semibold">
-              {stats.allVotes}
+              {stats.votingDevices}
               <Heart className="size-6 text-rose-500" />
             </div>
           </div>

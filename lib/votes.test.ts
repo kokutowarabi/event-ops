@@ -6,6 +6,7 @@ import {
   totalVotes,
   votesByDate,
   votesOnDate,
+  votingDeviceCount,
 } from "@/lib/votes"
 
 const votes: VisitorVote[] = [
@@ -31,8 +32,20 @@ describe("vote totals", () => {
     expect(projectVoteTotal("project-3", votes)).toBe(0)
   })
 
-  it("counts one active row per voting device", () => {
+  it("counts all accepted votes", () => {
     expect(totalVotes(votes)).toBe(2)
+  })
+
+  it("counts distinct voting devices separately from votes", () => {
+    expect(
+      votingDeviceCount([
+        ...votes,
+        {
+          ...votes[0],
+          project_id: "project-2",
+        },
+      ]),
+    ).toBe(2)
   })
 
   it("groups votes by the selected preview date", () => {
