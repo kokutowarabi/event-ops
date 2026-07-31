@@ -1,29 +1,12 @@
 import type { MouseEvent, PointerEvent } from "react"
-import { ListFilter } from "lucide-react"
 import type { Member } from "@/lib/members"
 import type { Shift, ShiftTemplate, ShiftTemplateId } from "@/lib/shift-data"
-import { Button } from "@/components/ui/button"
 import { ShiftDesktopMemberRow } from "./shift-desktop-member-row"
+import { ShiftDesktopTimelineHeader } from "./shift-desktop-timeline-header"
 import { ShiftFilterEmptyState } from "./shift-filter-ui"
-import {
-  START_MINUTES,
-  timeOptions,
-  type ShiftTemplateColor,
-} from "./shift-domain"
-import {
-  SLOT_WIDTH,
-  TIMELINE_PADDING_WIDTH,
-  TIMELINE_TRACK_WIDTH,
-} from "./shift-layout"
+import type { ShiftTemplateColor } from "./shift-domain"
 import type { CopyingShift, CreatingShift, MovingShift, ResizeEdge, ResizingShift } from "./shift-types"
-
-type DesktopCreatePreview = {
-  left: number
-  width: number
-  start: number
-  end: number
-  adjustsConflictingShifts: boolean
-}
+import type { DesktopCreatePreview } from "./shift-desktop-create-preview"
 
 export type ShiftDesktopViewProps = {
   visible: boolean
@@ -124,51 +107,15 @@ export function ShiftDesktopView({
       className={`${visible ? "hidden md:block" : "hidden"} min-h-0 flex-1 select-none overflow-auto rounded-lg border bg-card`}
     >
       <div className="grid min-w-300 grid-cols-[15rem_1fr]">
-        <div className="sticky left-0 top-0 z-30 flex h-16 items-center border-b border-r bg-card px-3">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="w-full min-w-0 justify-start"
-            onClick={onToggleFilters}
-            title={filterSummary || "絞り込み"}
-            aria-expanded={filtersOpen}
-          >
-            <ListFilter className="size-4" />
-            <span className="shrink-0">絞り込み</span>
-            {filterSummary ? (
-              <span className="min-w-0 truncate border-l pl-2 text-xs font-normal text-muted-foreground">
-                {filterSummary}
-              </span>
-            ) : null}
-          </Button>
-        </div>
-        <div className="sticky top-0 z-20 flex h-16 items-center border-b bg-card">
-          <div className="relative h-full" style={{ width: TIMELINE_TRACK_WIDTH }}>
-            {timeOptions.map((slot, index) => {
-              const isMajor = (slot.minutes - START_MINUTES) % 120 === 0
-              const isHovered =
-                creatingShift === null
-                && moving === null
-                && resizing === null
-                && hoveredSlot?.slot === index
-              return (
-                <span
-                  key={`time-slot-${slot.value}`}
-                  className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-xs transition ${isHovered
-                    ? "font-semibold text-foreground opacity-100"
-                    : isMajor
-                      ? "text-muted-foreground opacity-100"
-                      : "text-muted-foreground opacity-0"
-                  }`}
-                  style={{ left: TIMELINE_PADDING_WIDTH + index * SLOT_WIDTH }}
-                >
-                  {slot.label}
-                </span>
-              )
-            })}
-          </div>
-        </div>
+        <ShiftDesktopTimelineHeader
+          filterSummary={filterSummary}
+          filtersOpen={filtersOpen}
+          hoveredSlot={hoveredSlot}
+          creatingShift={creatingShift}
+          moving={moving}
+          resizing={resizing}
+          onToggleFilters={onToggleFilters}
+        />
 
         {members.map((member) => (
           <ShiftDesktopMemberRow

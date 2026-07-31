@@ -1,4 +1,4 @@
-import type { PointerEvent } from "react"
+import type { PointerEvent, PointerEventHandler } from "react"
 import { GripHorizontal, GripVertical } from "lucide-react"
 import type { Shift } from "@/lib/shift-data"
 import type { ResizeEdge } from "./shift-types"
@@ -6,8 +6,10 @@ import type { ResizeEdge } from "./shift-types"
 type ShiftHandlesProps = {
   left: number
   visualWidth: number
-  hidden: boolean
+  visible: boolean
   shift: Shift
+  onPointerOver: PointerEventHandler<HTMLSpanElement>
+  onPointerOut: PointerEventHandler<HTMLSpanElement>
   onStartResize: (shift: Shift, edge: ResizeEdge, event: PointerEvent<HTMLSpanElement>) => void
   onMoveResize: (event: PointerEvent<HTMLElement>) => void
   onStopResize: () => void
@@ -21,8 +23,10 @@ type ShiftHandlesProps = {
 export function ShiftHandles({
   left,
   visualWidth,
-  hidden,
+  visible,
   shift,
+  onPointerOver,
+  onPointerOut,
   onStartResize,
   onMoveResize,
   onStopResize,
@@ -33,13 +37,19 @@ export function ShiftHandles({
   onCancelCopy,
 }: ShiftHandlesProps) {
   const verticalHandleLength = Math.min(40, visualWidth)
-  const visibilityClass = hidden ? "opacity-0" : "opacity-0 group-hover:opacity-100"
+  const visibilityClass = visible
+    ? "pointer-events-auto opacity-100"
+    : "pointer-events-none opacity-0"
 
   return (
     <>
       <span
-        className={`pointer-events-auto absolute top-2 z-40 grid h-12 w-4 cursor-ew-resize place-items-center rounded-l-md text-foreground/45 transition hover:bg-foreground/10 hover:text-foreground/70 active:bg-foreground/15 ${visibilityClass}`}
-        style={{ left }}
+        data-shift-handle-for={shift.id}
+        data-shift-handle-edge="start"
+        className={`absolute top-2 z-40 grid h-12 w-4 cursor-ew-resize place-items-center rounded-md text-foreground/45 transition-colors hover:bg-foreground/10 hover:text-foreground/70 active:bg-foreground/15 ${visibilityClass}`}
+        style={{ left: left - 8 }}
+        onPointerOver={onPointerOver}
+        onPointerOut={onPointerOut}
         onClick={(event) => event.stopPropagation()}
         onPointerDown={(event) => onStartResize(shift, "start", event)}
         onPointerMove={onMoveResize}
@@ -50,8 +60,12 @@ export function ShiftHandles({
         <GripVertical className="size-4" />
       </span>
       <span
-        className={`pointer-events-auto absolute top-2 z-40 grid h-12 w-4 cursor-ew-resize place-items-center rounded-r-md text-foreground/45 transition hover:bg-foreground/10 hover:text-foreground/70 active:bg-foreground/15 ${visibilityClass}`}
-        style={{ left: left + visualWidth - 16 }}
+        data-shift-handle-for={shift.id}
+        data-shift-handle-edge="end"
+        className={`absolute top-2 z-40 grid h-12 w-4 cursor-ew-resize place-items-center rounded-md text-foreground/45 transition-colors hover:bg-foreground/10 hover:text-foreground/70 active:bg-foreground/15 ${visibilityClass}`}
+        style={{ left: left + visualWidth - 8 }}
+        onPointerOver={onPointerOver}
+        onPointerOut={onPointerOut}
         onClick={(event) => event.stopPropagation()}
         onPointerDown={(event) => onStartResize(shift, "end", event)}
         onPointerMove={onMoveResize}
@@ -62,11 +76,15 @@ export function ShiftHandles({
         <GripVertical className="size-4" />
       </span>
       <span
-        className={`pointer-events-auto absolute top-2 z-40 grid h-4 cursor-ns-resize place-items-center rounded-t-md text-foreground/45 transition hover:bg-foreground/10 hover:text-foreground/70 active:bg-foreground/15 ${visibilityClass}`}
+        data-shift-handle-for={shift.id}
+        data-shift-handle-edge="top"
+        className={`absolute top-0 z-40 grid h-4 cursor-ns-resize place-items-center rounded-md text-foreground/45 transition-colors hover:bg-foreground/10 hover:text-foreground/70 active:bg-foreground/15 ${visibilityClass}`}
         style={{
           left: left + (visualWidth - verticalHandleLength) / 2,
           width: verticalHandleLength,
         }}
+        onPointerOver={onPointerOver}
+        onPointerOut={onPointerOut}
         onClick={(event) => event.stopPropagation()}
         onPointerDown={(event) => onStartCopy(shift, event)}
         onPointerMove={onMoveCopy}
@@ -77,11 +95,15 @@ export function ShiftHandles({
         <GripHorizontal className="size-4" />
       </span>
       <span
-        className={`pointer-events-auto absolute top-10 z-40 grid h-4 cursor-ns-resize place-items-center rounded-b-md text-foreground/45 transition hover:bg-foreground/10 hover:text-foreground/70 active:bg-foreground/15 ${visibilityClass}`}
+        data-shift-handle-for={shift.id}
+        data-shift-handle-edge="bottom"
+        className={`absolute top-12 z-40 grid h-4 cursor-ns-resize place-items-center rounded-md text-foreground/45 transition-colors hover:bg-foreground/10 hover:text-foreground/70 active:bg-foreground/15 ${visibilityClass}`}
         style={{
           left: left + (visualWidth - verticalHandleLength) / 2,
           width: verticalHandleLength,
         }}
+        onPointerOver={onPointerOver}
+        onPointerOut={onPointerOut}
         onClick={(event) => event.stopPropagation()}
         onPointerDown={(event) => onStartCopy(shift, event)}
         onPointerMove={onMoveCopy}
