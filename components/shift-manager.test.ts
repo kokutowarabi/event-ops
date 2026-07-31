@@ -4,6 +4,7 @@ import {
   createShiftTemplateColor,
   getCreateShiftTimeRange,
   getNearestTimelineMajorSlots,
+  shouldSplitShiftTimeLabels,
   type Shift,
 } from "@/components/shift-manager"
 
@@ -71,5 +72,10 @@ describe("shift placement", () => {
 
   it("fades both surrounding major ticks for a midpoint hover", () => {
     expect(getNearestTimelineMajorSlots(4)).toEqual([0, 8])
+  })
+
+  it("splits time labels only below seventy-five minutes", () => {
+    expect(shouldSplitShiftTimeLabels(6 * 60, 7 * 60)).toBe(true)
+    expect(shouldSplitShiftTimeLabels(6 * 60, 7 * 60 + 15)).toBe(false)
   })
 })

@@ -208,6 +208,10 @@ function formatTime(minutes: number) {
   return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}`
 }
 
+export function shouldSplitShiftTimeLabels(start: number, end: number) {
+  return end - start < 75
+}
+
 export function getCreateShiftTimeRange(
   startSlot: number,
   currentSlot: number,
@@ -1796,13 +1800,24 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                               ...getShiftTemplateColor(DEFAULT_SHIFT_TEMPLATE_ID).blockStyle,
                             }}
                           >
-                            <div className="absolute left-1 top-1 z-10">
-                              <ShiftCreateTimeLabel
-                                start={createPreview.start}
-                                end={createPreview.end}
-                                orientation="horizontal"
-                              />
-                            </div>
+                            {shouldSplitShiftTimeLabels(createPreview.start, createPreview.end) ? (
+                              <>
+                                <span className="absolute right-full top-1 mr-2 whitespace-nowrap text-xs font-medium">
+                                  {formatTime(createPreview.start)}
+                                </span>
+                                <span className="absolute left-full top-1 ml-2 whitespace-nowrap text-xs font-medium">
+                                  {formatTime(createPreview.end)}
+                                </span>
+                              </>
+                            ) : (
+                              <div className="absolute left-1 top-1 z-10">
+                                <ShiftCreateTimeLabel
+                                  start={createPreview.start}
+                                  end={createPreview.end}
+                                  orientation="horizontal"
+                                />
+                              </div>
+                            )}
                             {createPreview.width > SLOT_WIDTH ? (
                               <span className="absolute left-1 top-7 block truncate text-xs opacity-80">
                                 {allShiftTemplates[DEFAULT_SHIFT_TEMPLATE_ID].label}
