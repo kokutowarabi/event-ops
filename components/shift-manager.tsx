@@ -2177,7 +2177,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                               {isAdmin && !isInteractionAlias ? (
                                 <>
                                   <span
-                                    className={`pointer-events-auto absolute top-3 z-40 h-10 w-2 cursor-ew-resize rounded-l-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${isMovingShift || isCopyingSource ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}
+                                    className={`pointer-events-auto absolute top-3 z-40 h-10 w-2 cursor-w-resize rounded-l-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${isMovingShift || isCopyingSource ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}
                                     style={{ left }}
                                     onClick={(event) => event.stopPropagation()}
                                     onPointerDown={(event) => startResize(shift, "start", event)}
@@ -2187,7 +2187,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                     aria-hidden="true"
                                   />
                                   <span
-                                    className={`pointer-events-auto absolute top-3 z-40 h-10 w-2 cursor-ew-resize rounded-r-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${isMovingShift || isCopyingSource ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}
+                                    className={`pointer-events-auto absolute top-3 z-40 h-10 w-2 cursor-e-resize rounded-r-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${isMovingShift || isCopyingSource ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}
                                     style={{ left: left + visualWidth - 8 }}
                                     onClick={(event) => event.stopPropagation()}
                                     onPointerDown={(event) => startResize(shift, "end", event)}
@@ -2197,7 +2197,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                     aria-hidden="true"
                                   />
                                   <span
-                                    className={`pointer-events-auto absolute top-2 z-40 h-2 cursor-copy rounded-t-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${isMovingShift || isCopyingSource ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}
+                                    className={`pointer-events-auto absolute top-2 z-40 h-2 cursor-n-resize rounded-t-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${isMovingShift || isCopyingSource ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}
                                     style={{
                                       left: left + (visualWidth - verticalHandleLength) / 2,
                                       width: verticalHandleLength,
@@ -2210,7 +2210,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                     aria-hidden="true"
                                   />
                                   <span
-                                    className={`pointer-events-auto absolute top-12 z-40 h-2 cursor-copy rounded-b-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${isMovingShift || isCopyingSource ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}
+                                    className={`pointer-events-auto absolute top-12 z-40 h-2 cursor-s-resize rounded-b-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${isMovingShift || isCopyingSource ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}
                                     style={{
                                       left: left + (visualWidth - verticalHandleLength) / 2,
                                       width: verticalHandleLength,
