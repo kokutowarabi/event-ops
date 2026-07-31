@@ -247,7 +247,7 @@ export function ShiftCreateTimeLabel({
   return (
     <span
       data-orientation="horizontal"
-      className="absolute left-0 top-1 z-10 inline-flex w-max items-center whitespace-nowrap rounded-sm bg-background/90 px-1 text-xs font-semibold shadow-sm"
+      className="inline-flex w-max items-center whitespace-nowrap rounded-sm bg-card/95 px-1 text-xs font-semibold shadow-sm"
       aria-label={label}
     >
       {label}
@@ -515,6 +515,12 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const [resizing, setResizing] = useState<ResizingShift | null>(null)
   const [hoveredSlot, setHoveredSlot] = useState<{ memberId: string; slot: number } | null>(null)
   const [creatingShift, setCreatingShift] = useState<CreatingShift | null>(null)
+  const creatingTimeRange = creatingShift
+    ? {
+        ...getCreateShiftTimeRange(creatingShift.startSlot, creatingShift.currentSlot),
+        startSlot: Math.min(creatingShift.startSlot, creatingShift.currentSlot),
+      }
+    : null
   const shiftsRef = useRef(shifts)
   const historyRef = useRef<{ past: Shift[][]; future: Shift[][] }>({ past: [], future: [] })
   const moveInitialShiftsRef = useRef<Shift[] | null>(null)
@@ -1432,11 +1438,27 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                           className="absolute left-0 right-0 border-t border-dashed border-border/70"
                           style={{ top: MOBILE_TIMELINE_PADDING_HEIGHT + ((slot.minutes - START_MINUTES) / SLOT_MINUTES) * MOBILE_SLOT_HEIGHT }}
                         >
-                          <span className="-mt-2.5 inline-block w-12 bg-card pr-2 text-xs text-muted-foreground">
+                          <span
+                            className={`-mt-2.5 inline-block w-12 bg-card pr-2 text-xs text-muted-foreground transition-opacity ${
+                              createPreview ? "opacity-0" : "opacity-100"
+                            }`}
+                          >
                             {slot.label}
                           </span>
                         </div>
                       ))}
+                    {createPreview ? (
+                      <div
+                        className="pointer-events-none absolute left-0 z-10 -translate-y-[0.35rem] bg-card pr-2"
+                        style={{ top: createPreview.top }}
+                      >
+                        <ShiftCreateTimeLabel
+                          start={createPreview.start}
+                          end={createPreview.end}
+                          orientation="vertical"
+                        />
+                      </div>
+                    ) : null}
                     <button
                       type="button"
                       disabled={!SHIFT_DND_CREATION_ENABLED || !isAdmin}
@@ -1494,19 +1516,14 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                     ) : null}
                     {createPreview ? (
                       <div
-                        className="pointer-events-none absolute left-16 right-1 box-border overflow-visible rounded-md border px-2 py-1 text-left shadow-sm"
+                        className="pointer-events-none absolute left-16 right-1 box-border overflow-hidden rounded-md border px-2 py-1 text-left shadow-sm"
                         style={{
                           top: createPreview.top,
                           height: Math.max(createPreview.height, 44),
                           ...getShiftTemplateColor(DEFAULT_SHIFT_TEMPLATE_ID).blockStyle,
                         }}
                       >
-                        <ShiftCreateTimeLabel
-                          start={createPreview.start}
-                          end={createPreview.end}
-                          orientation="vertical"
-                        />
-                        <span className="absolute left-10 right-2 top-1 truncate text-xs opacity-80">
+                        <span className="block truncate text-xs opacity-80">
                           {allShiftTemplates[DEFAULT_SHIFT_TEMPLATE_ID].label}
                         </span>
                       </div>
@@ -1561,28 +1578,43 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
               </div>
               <div className="sticky top-0 z-20 flex h-16 items-center border-b bg-card">
                 <div className="relative h-full" style={{ width: TIMELINE_TRACK_WIDTH }}>
-                  {timeOptions.map((slot, index) => {
-                    const isMajor = (slot.minutes - START_MINUTES) % 120 === 0
-                    const isHovered = hoveredSlot?.slot === index
-                    const isNearHovered =
-                      hoveredSlot !== null && hoveredSlot.slot !== index && Math.abs(hoveredSlot.slot - index) <= 2
-                    return (
-                      <span
-                        key={`time-slot-${slot.value}`}
-                        className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-xs transition ${isHovered
-                            ? "font-semibold text-foreground opacity-100"
-                            : isNearHovered
-                              ? "text-muted-foreground opacity-0"
-                              : isMajor
-                                ? "text-muted-foreground opacity-100"
-                                : "text-muted-foreground opacity-0"
-                          }`}
-                        style={{ left: TIMELINE_PADDING_WIDTH + index * SLOT_WIDTH }}
-                      >
-                        {slot.label}
-                      </span>
-                    )
-                  })}
+                  {creatingTimeRange ? (
+                    <div
+                      className="pointer-events-none absolute top-1/2 z-10 -translate-y-1/2"
+                      style={{
+                        left: TIMELINE_PADDING_WIDTH + creatingTimeRange.startSlot * SLOT_WIDTH,
+                      }}
+                    >
+                      <ShiftCreateTimeLabel
+                        start={creatingTimeRange.start}
+                        end={creatingTimeRange.end}
+                        orientation="horizontal"
+                      />
+                    </div>
+                  ) : (
+                    timeOptions.map((slot, index) => {
+                      const isMajor = (slot.minutes - START_MINUTES) % 120 === 0
+                      const isHovered = hoveredSlot?.slot === index
+                      const isNearHovered =
+                        hoveredSlot !== null && hoveredSlot.slot !== index && Math.abs(hoveredSlot.slot - index) <= 2
+                      return (
+                        <span
+                          key={`time-slot-${slot.value}`}
+                          className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-xs transition ${isHovered
+                              ? "font-semibold text-foreground opacity-100"
+                              : isNearHovered
+                                ? "text-muted-foreground opacity-0"
+                                : isMajor
+                                  ? "text-muted-foreground opacity-100"
+                                  : "text-muted-foreground opacity-0"
+                            }`}
+                          style={{ left: TIMELINE_PADDING_WIDTH + index * SLOT_WIDTH }}
+                        >
+                          {slot.label}
+                        </span>
+                      )
+                    })
+                  )}
                 </div>
               </div>
 
@@ -1664,7 +1696,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                         </button>
                         {createPreview ? (
                           <div
-                            className={`pointer-events-none absolute top-2 box-border h-12 overflow-visible rounded-md border text-left ${createPreview.width === SLOT_WIDTH ? "px-0" : "shadow-sm"}`}
+                            className={`pointer-events-none absolute top-2 box-border h-12 overflow-hidden rounded-md border text-left ${createPreview.width === SLOT_WIDTH ? "px-0" : "px-3 shadow-sm"}`}
                             style={{
                               left: createPreview.left,
                               width: createPreview.width,
@@ -1673,14 +1705,9 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                               ...getShiftTemplateColor(DEFAULT_SHIFT_TEMPLATE_ID).blockStyle,
                             }}
                           >
-                            <ShiftCreateTimeLabel
-                              start={createPreview.start}
-                              end={createPreview.end}
-                              orientation="horizontal"
-                            />
                             {createPreview.width > SLOT_WIDTH ? (
-                              <span className="absolute left-3 right-1 top-7 block truncate text-xs opacity-80">
-                                  {allShiftTemplates[DEFAULT_SHIFT_TEMPLATE_ID].label}
+                              <span className="block truncate text-xs opacity-80">
+                                {allShiftTemplates[DEFAULT_SHIFT_TEMPLATE_ID].label}
                               </span>
                             ) : null}
                           </div>
