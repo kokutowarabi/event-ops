@@ -7,16 +7,9 @@ import {
   type PointerEvent,
 } from "react"
 import { createPortal } from "react-dom"
-import { CalendarDays, Check, Download, Layers3, Users, X } from "lucide-react"
 import type { Member } from "@/lib/members"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
 import { downloadCsv } from "@/lib/csv"
-import {
-  formatCompactDate,
-  getOperationPeriodLabel,
-  operationPeriod,
-} from "@/lib/event-schedule"
+import { operationPeriod } from "@/lib/event-schedule"
 import { parseMemberRoles } from "@/lib/member-role"
 import type {
   Shift,
@@ -26,27 +19,20 @@ import type {
   ShiftTemplateId,
 } from "@/lib/shift-data"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select"
-import {
   ShiftAssignmentView,
   type AssignmentCoverageGroup,
 } from "./shift-assignment-view"
 import { ShiftDesktopView } from "./shift-desktop-view"
+import { ShiftDragOverlays } from "./shift-drag-overlays"
+import { ShiftFilterPanel } from "./shift-filter-panel"
+import { ShiftHeader } from "./shift-header"
 import { ShiftMobileView } from "./shift-mobile-view"
 import {
   ShiftAdjustmentDialog,
   ShiftCreationDialog,
   ShiftDetailsDialog,
 } from "./shift-dialogs"
-import {
-  ShiftFilterEmptyState,
-  ShiftFilterPicker,
-  type FilterPanelPosition,
-} from "./shift-filter-ui"
+import type { FilterPanelPosition } from "./shift-filter-ui"
 import {
   addDays,
   adjustConflictingShiftRanges,
@@ -67,7 +53,6 @@ import {
   orderMemberIdsWithPins,
   shiftsEqual,
   shiftTemplates,
-  shouldSplitShiftTimeLabels,
   SLOT_MINUTES,
   START_MINUTES,
   timeSlots,
@@ -1128,79 +1113,16 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
 
   return (
     <div className="mx-auto flex h-[calc(100svh-5.5rem)] max-w-7xl flex-col px-4 py-5 md:py-6">
-      <header className="mb-4 flex shrink-0 flex-wrap items-center gap-2">
-        <CalendarDays className="size-5 text-muted-foreground" />
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">シフト管理</h1>
-        {shiftSchedule ? (
-          <>
-            <div className="flex rounded-md border bg-muted/35 p-0.5">
-              <Button
-                type="button"
-                size="sm"
-                variant={shiftViewMode === "member" ? "secondary" : "ghost"}
-                className="h-7 px-2.5"
-                onClick={() => setShiftViewMode("member")}
-              >
-                <Users className="size-3.5" />
-                個人別
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={shiftViewMode === "assignment" ? "secondary" : "ghost"}
-                className="h-7 px-2.5"
-                onClick={() => setShiftViewMode("assignment")}
-              >
-                <Layers3 className="size-3.5" />
-                担当業務別
-              </Button>
-            </div>
-            <Select value={selectedDate} onValueChange={(value) => value !== null && setSelectedDate(value)}>
-              <SelectTrigger className="h-8 w-auto max-w-full bg-background">
-                <div className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
-                  <CalendarDays className="size-3.5 text-muted-foreground" />
-                  <span>{formatCompactDate(selectedDate)}</span>
-                </div>
-              </SelectTrigger>
-              <SelectContent className="w-max min-w-80">
-                {dateTabs.map((date) => (
-                  <SelectItem
-                    key={date}
-                    value={date}
-                    hideIndicator
-                    className="pr-2 pl-2"
-                  >
-                    <span className="grid size-4 shrink-0 place-items-center">
-                      {date === selectedDate ? <Check className="size-3.5" /> : null}
-                    </span>
-                    <span className={date === selectedDate ? "font-semibold" : ""}>
-                      {formatCompactDate(date)}
-                    </span>
-                    <span
-                      className={`ml-auto pl-5 text-xs font-normal ${
-                        date === selectedDate ? "" : "text-muted-foreground!"
-                      }`}
-                    >
-                      {getOperationPeriodLabel(date)}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={exportShifts}
-              disabled={exportableShifts.length === 0}
-              title="表示中の日付と絞り込み条件でCSV出力"
-            >
-              <Download className="size-4" />
-              CSV
-            </Button>
-          </>
-        ) : null}
-      </header>
+      <ShiftHeader
+        hasSchedule={shiftSchedule !== null}
+        viewMode={shiftViewMode}
+        selectedDate={selectedDate}
+        dates={dateTabs}
+        exportDisabled={exportableShifts.length === 0}
+        onViewModeChange={setShiftViewMode}
+        onDateChange={setSelectedDate}
+        onExport={exportShifts}
+      />
 
       {!shiftSchedule ? (
         <section className="flex min-h-0 flex-1 items-center justify-center rounded-lg border bg-card p-8 text-center">
@@ -1303,146 +1225,44 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
         </>
       )}
 
-      {moving && movingShift ? (
-        <div
-          className={`pointer-events-none fixed z-50 box-border h-12 select-none rounded-md border text-left opacity-90 shadow-lg ${shouldSplitShiftTimeLabels(movingShift.start, movingShift.end) ? "overflow-visible" : "overflow-hidden"} ${moving.canDrop ? "" : "ring-2 ring-destructive"} ${movingShift.end - movingShift.start === SLOT_MINUTES ? "px-0" : "px-3"}`}
-          style={{
-            left: moving.pointerX - moving.pointerOffsetX,
-            top: moving.pointerY - 24,
-            width: ((movingShift.end - movingShift.start) / SLOT_MINUTES) * SLOT_WIDTH + 1,
-            ...getShiftTemplateColor(movingShift.templateId).blockStyle,
-          }}
-        >
-          {!moving.canDrop ? (
-            <span
-              data-slot="invalid-shift-drop-indicator"
-              className="absolute inset-0 z-10 grid place-items-center"
-              aria-hidden="true"
-            >
-              <X className="size-5 text-destructive drop-shadow-sm" strokeWidth={3} />
-            </span>
-          ) : null}
-          {shouldSplitShiftTimeLabels(movingShift.start, movingShift.end) ? (
-            <>
-              <span className="absolute -top-3 right-full mr-2 whitespace-nowrap text-sm font-medium">
-                {formatTime(movingShift.start)}
-              </span>
-              <span className="absolute -top-3 left-full ml-2 whitespace-nowrap text-sm font-medium">
-                {formatTime(movingShift.end)}
-              </span>
-            </>
-          ) : movingShift.end - movingShift.start === SLOT_MINUTES ? null : (
-            <>
-              <span className="block select-none truncate text-sm font-medium">
-                {formatTime(movingShift.start)}-{formatTime(movingShift.end)}
-              </span>
-              <span className="block select-none truncate text-xs opacity-80">
-                {movingShift.note || allShiftTemplates[movingShift.templateId]?.label}
-              </span>
-            </>
-          )}
-        </div>
-      ) : null}
-
-      {copying && copyingShift
-        ? createPortal(
-          <div
-            className={`pointer-events-none fixed z-50 rounded-md border opacity-75 shadow-lg ${copying.canDrop ? "" : "ring-2 ring-destructive"}`}
-            style={{
-              left: copying.stretchRect.left,
-              top: copying.stretchRect.top,
-              width: copying.stretchRect.width,
-              height: copying.stretchRect.height,
-              ...getShiftTemplateColor(copyingShift.templateId).blockStyle,
-            }}
-            aria-hidden="true"
-          >
-            {!copying.canDrop ? (
-              <span className="absolute inset-0 grid place-items-center">
-                <X className="size-6 text-destructive drop-shadow-sm" strokeWidth={3} />
-              </span>
-            ) : null}
-          </div>,
-          document.body,
-        )
-        : null}
+      <ShiftDragOverlays
+        moving={moving}
+        movingShift={movingShift}
+        copying={copying}
+        copyingShift={copyingShift}
+        templates={allShiftTemplates}
+        getTemplateColor={getShiftTemplateColor}
+      />
 
       {filtersOpen && filterPanelPosition
         ? createPortal(
-          <div
-            ref={filterPanelRef}
-            role="region"
-            aria-label="シフト絞り込み"
-            className="fixed z-50 overflow-y-auto rounded-lg border bg-popover p-5 text-popover-foreground shadow-lg"
-            style={{
-              left: filterPanelPosition.left,
-              top: filterPanelPosition.top,
-              width: filterPanelPosition.width,
-              maxHeight: filterPanelPosition.maxHeight,
+          <ShiftFilterPanel
+            panelRef={filterPanelRef}
+            position={filterPanelPosition}
+            shiftFilter={shiftFilter}
+            shiftOptions={shiftFilterOptions}
+            memberFilter={memberSearch}
+            memberOptions={members.map((member) => member.name)}
+            departmentFilter={departmentFilter}
+            departmentOptions={departments}
+            allDepartmentsValue={ALL_DEPARTMENTS}
+            roleFilter={roleFilter}
+            roleOptions={roles}
+            onShiftFilterChange={setShiftFilter}
+            onMemberFilterChange={setMemberSearch}
+            onDepartmentFilterChange={setDepartmentFilter}
+            onRoleFilterChange={setRoleFilter}
+            onClear={() => {
+              setShiftFilter("")
+              setMemberSearch("")
+              setDepartmentFilter(ALL_DEPARTMENTS)
+              setRoleFilter("すべての役職")
             }}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="font-semibold">シフト絞り込み</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  表示するメンバーとシフトを条件で絞り込みます。
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => {
-                  setFiltersOpen(false)
-                  setFilterAnchor(null)
-                }}
-                aria-label="絞り込みカードを閉じる"
-              >
-                <X className="size-4" />
-              </Button>
-            </div>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-1.5">
-                <Label>担当業務</Label>
-                <ShiftFilterPicker label="担当業務" value={shiftFilter} options={shiftFilterOptions} onChange={setShiftFilter} />
-              </div>
-              <div className="grid gap-1.5">
-                <Label>メンバー名</Label>
-                <ShiftFilterPicker label="メンバー名" value={memberSearch} options={members.map((member) => member.name)} onChange={setMemberSearch} />
-              </div>
-              <div className="grid gap-1.5">
-                <Label>所属</Label>
-                <ShiftFilterPicker label="所属" value={departmentFilter} allValue={ALL_DEPARTMENTS} options={departments} onChange={setDepartmentFilter} />
-              </div>
-              <div className="grid gap-1.5">
-                <Label>役職</Label>
-                <ShiftFilterPicker label="役職" value={roleFilter} allValue="すべての役職" options={roles} onChange={setRoleFilter} />
-              </div>
-            </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setShiftFilter("")
-                  setMemberSearch("")
-                  setDepartmentFilter(ALL_DEPARTMENTS)
-                  setRoleFilter("すべての役職")
-                }}
-              >
-                クリア
-              </Button>
-              <Button
-                type="button"
-                onClick={() => {
-                  setFiltersOpen(false)
-                  setFilterAnchor(null)
-                }}
-              >
-                適用
-              </Button>
-            </div>
-          </div>,
+            onClose={() => {
+              setFiltersOpen(false)
+              setFilterAnchor(null)
+            }}
+          />,
           document.body,
         )
         : null}
