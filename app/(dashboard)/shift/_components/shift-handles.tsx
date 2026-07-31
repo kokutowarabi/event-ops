@@ -1,4 +1,5 @@
 import type { PointerEvent } from "react"
+import { GripHorizontal, GripVertical } from "lucide-react"
 import type { Shift } from "@/lib/shift-data"
 import type { ResizeEdge } from "./shift-types"
 
@@ -37,7 +38,7 @@ export function ShiftHandles({
   return (
     <>
       <span
-        className={`pointer-events-auto absolute top-3 z-40 h-10 w-2 cursor-ew-resize rounded-l-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${visibilityClass}`}
+        className={`pointer-events-auto absolute top-2 z-40 grid h-12 w-4 cursor-ew-resize place-items-center rounded-l-md text-foreground/45 transition hover:bg-foreground/10 hover:text-foreground/70 active:bg-foreground/15 ${visibilityClass}`}
         style={{ left }}
         onClick={(event) => event.stopPropagation()}
         onPointerDown={(event) => onStartResize(shift, "start", event)}
@@ -45,19 +46,23 @@ export function ShiftHandles({
         onPointerUp={onStopResize}
         onPointerCancel={onCancelResize}
         aria-hidden="true"
-      />
+      >
+        <GripVertical className="size-4" />
+      </span>
       <span
-        className={`pointer-events-auto absolute top-3 z-40 h-10 w-2 cursor-ew-resize rounded-r-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${visibilityClass}`}
-        style={{ left: left + visualWidth - 8 }}
+        className={`pointer-events-auto absolute top-2 z-40 grid h-12 w-4 cursor-ew-resize place-items-center rounded-r-md text-foreground/45 transition hover:bg-foreground/10 hover:text-foreground/70 active:bg-foreground/15 ${visibilityClass}`}
+        style={{ left: left + visualWidth - 16 }}
         onClick={(event) => event.stopPropagation()}
         onPointerDown={(event) => onStartResize(shift, "end", event)}
         onPointerMove={onMoveResize}
         onPointerUp={onStopResize}
         onPointerCancel={onCancelResize}
         aria-hidden="true"
-      />
+      >
+        <GripVertical className="size-4" />
+      </span>
       <span
-        className={`pointer-events-auto absolute top-2 z-40 h-2 cursor-ns-resize rounded-t-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${visibilityClass}`}
+        className={`pointer-events-auto absolute top-2 z-40 grid h-4 cursor-ns-resize place-items-center rounded-t-md text-foreground/45 transition hover:bg-foreground/10 hover:text-foreground/70 active:bg-foreground/15 ${visibilityClass}`}
         style={{
           left: left + (visualWidth - verticalHandleLength) / 2,
           width: verticalHandleLength,
@@ -68,9 +73,11 @@ export function ShiftHandles({
         onPointerUp={onStopCopy}
         onPointerCancel={onCancelCopy}
         aria-hidden="true"
-      />
+      >
+        <GripHorizontal className="size-4" />
+      </span>
       <span
-        className={`pointer-events-auto absolute top-12 z-40 h-2 cursor-ns-resize rounded-b-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${visibilityClass}`}
+        className={`pointer-events-auto absolute top-10 z-40 grid h-4 cursor-ns-resize place-items-center rounded-b-md text-foreground/45 transition hover:bg-foreground/10 hover:text-foreground/70 active:bg-foreground/15 ${visibilityClass}`}
         style={{
           left: left + (visualWidth - verticalHandleLength) / 2,
           width: verticalHandleLength,
@@ -81,7 +88,9 @@ export function ShiftHandles({
         onPointerUp={onStopCopy}
         onPointerCancel={onCancelCopy}
         aria-hidden="true"
-      />
+      >
+        <GripHorizontal className="size-4" />
+      </span>
     </>
   )
 }
