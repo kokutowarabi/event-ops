@@ -128,6 +128,7 @@ const MOBILE_TIMELINE_PADDING_SLOTS = 2
 const MOBILE_TIMELINE_PADDING_HEIGHT = MOBILE_TIMELINE_PADDING_SLOTS * MOBILE_SLOT_HEIGHT
 const MOBILE_TIMELINE_HEIGHT = ((END_MINUTES - START_MINUTES) / SLOT_MINUTES) * MOBILE_SLOT_HEIGHT
 const MOBILE_TIMELINE_TRACK_HEIGHT = MOBILE_TIMELINE_HEIGHT + MOBILE_TIMELINE_PADDING_HEIGHT * 2
+const MOBILE_TIMELINE_GRID_BACKGROUND = `repeating-linear-gradient(to bottom, transparent 0, transparent ${MOBILE_SLOT_HEIGHT - 1}px, color-mix(in oklch, var(--border), transparent 35%) ${MOBILE_SLOT_HEIGHT - 1}px, color-mix(in oklch, var(--border), transparent 35%) ${MOBILE_SLOT_HEIGHT}px)`
 // MVPでは既存シフトの編集に限定し、新規作成の導線を閉じる。
 const SHIFT_CREATION_ENABLED = false
 // 個人タイムライン上のD&D作成だけは、15分単位で利用できる。
@@ -1430,6 +1431,13 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                     </div>
                   </div>
                   <div className="relative" style={{ height: MOBILE_TIMELINE_TRACK_HEIGHT }}>
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-y-0 left-14 right-0 rounded-lg"
+                      style={{
+                        backgroundImage: MOBILE_TIMELINE_GRID_BACKGROUND,
+                      }}
+                    />
                     {timeOptions
                       .filter((slot) => (slot.minutes - START_MINUTES) % 120 === 0)
                       .map((slot) => (
@@ -1476,8 +1484,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                       style={{
                         top: MOBILE_TIMELINE_PADDING_HEIGHT,
                         height: MOBILE_TIMELINE_HEIGHT,
-                        backgroundImage:
-                          "repeating-linear-gradient(to bottom, transparent 0, transparent 13px, color-mix(in oklch, var(--border), transparent 35%) 13px, color-mix(in oklch, var(--border), transparent 35%) 14px)",
                       }}
                       aria-label={`${member.name}のシフトを追加`}
                     >
@@ -1508,7 +1514,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                         />
                       ) : null}
                     </button>
-                    <div className="absolute bottom-7 left-14 top-7 border-l border-border" />
+                    <div className="absolute inset-y-0 left-14 border-l border-border" />
                     {memberShifts.length === 0 ? (
                       <div className="pointer-events-none absolute left-16 right-0 top-11 rounded-md border border-dashed p-3 text-sm text-muted-foreground">
                         この日のシフトはありません
