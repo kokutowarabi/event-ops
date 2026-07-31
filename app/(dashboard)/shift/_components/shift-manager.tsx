@@ -4,7 +4,6 @@ import {
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
-  type PointerEvent,
 } from "react"
 import { createPortal } from "react-dom"
 import type { Member } from "@/lib/members"
@@ -28,6 +27,8 @@ import { ShiftDragOverlays } from "./shift-drag-overlays"
 import { ShiftFilterPanel } from "./shift-filter-panel"
 import { ShiftHeader } from "./shift-header"
 import { ShiftMobileView } from "./shift-mobile-view"
+import { useShiftCopyActions, useShiftMoveActions } from "./shift-move-actions"
+import { useShiftResizeActions } from "./shift-resize-actions"
 import {
   ShiftAdjustmentDialog,
   ShiftCreationDialog,
@@ -37,10 +38,7 @@ import type { FilterPanelPosition } from "./shift-filter-ui"
 import {
   addDays,
   adjustConflictingShiftRanges,
-  canCopyShiftToMember,
-  canPlaceShift,
   clampShiftEnd,
-  copyShiftForMember,
   COVERAGE_SLOT_MINUTES,
   coverageTimeSlots,
   createShiftTemplateColor,
@@ -52,20 +50,9 @@ import {
   orderMemberIdsWithPins,
   shiftsEqual,
   shiftTemplates,
-  SLOT_MINUTES,
-  START_MINUTES,
   type ShiftTemplateColor,
 } from "./shift-domain"
-import {
-  getMemberIdFromPointer,
-  getMemberRowFromPointer,
-  getNearestMemberRowFromPointer,
-} from "./shift-pointer"
-import {
-  MOVE_LONG_PRESS_MS,
-  SHIFT_CREATION_ENABLED,
-  SLOT_WIDTH,
-} from "./shift-layout"
+import { SHIFT_CREATION_ENABLED } from "./shift-layout"
 import type {
   CopyingShift,
   CreatingShift,
@@ -75,7 +62,6 @@ import type {
   MovingShift,
   PendingMovePress,
   PendingShiftAdjustment,
-  ResizeEdge,
   ResizingShift,
   ShiftViewMode,
 } from "./shift-types"
@@ -556,241 +542,44 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     setTemplateDraft({ label: "", kind: "day", defaultMinutes: 60, note: "" })
   }
 
-  const activateMove = (
-    shift: Shift,
-    element: HTMLDivElement,
-    pointerId: number,
-    clientX: number,
-    clientY: number,
-  ) => {
-    if (!isAdmin || !element.isConnected) return
-    try {
-      element.setPointerCapture(pointerId)
-    } catch {
-      return
-    }
-    const rect = element.getBoundingClientRect()
-    moveInitialShiftsRef.current = shiftsRef.current
-    didMoveShiftRef.current = false
-    setMoving({
-      id: shift.id,
-      originX: clientX,
-      pointerOffsetX: clientX - rect.left,
-      pointerX: clientX,
-      pointerY: clientY,
-      start: shift.start,
-      end: shift.end,
-      previewMemberId: shift.memberId,
-      canDrop: true,
-    })
-  }
+  const {
+    startMovePress,
+    updateMovePress,
+    cancelMovePress,
+    moveShift,
+    stopMove,
+    cancelMove,
+  } = useShiftMoveActions({
+    editable: isAdmin,
+    moving,
+    shiftsRef,
+    initialShiftsRef: moveInitialShiftsRef,
+    pendingPressRef: pendingMovePressRef,
+    didMoveRef: didMoveShiftRef,
+    setMoving,
+    setShiftsWithoutHistory,
+    commitShiftPreview,
+  })
 
-  const startMovePress = (shift: Shift, event: PointerEvent<HTMLDivElement>) => {
-    if (!isAdmin || event.button !== 0) return
-    const previousPending = pendingMovePressRef.current
-    if (previousPending) window.clearTimeout(previousPending.timerId)
-    const pending: PendingMovePress = {
-      timerId: 0,
-      shift,
-      element: event.currentTarget,
-      pointerId: event.pointerId,
-      clientX: event.clientX,
-      clientY: event.clientY,
-    }
-    pending.timerId = window.setTimeout(() => {
-      if (pendingMovePressRef.current !== pending) return
-      pendingMovePressRef.current = null
-      activateMove(
-        pending.shift,
-        pending.element,
-        pending.pointerId,
-        pending.clientX,
-        pending.clientY,
-      )
-    }, MOVE_LONG_PRESS_MS)
-    pendingMovePressRef.current = pending
-  }
+  const { startResize, moveResize, stopResize, cancelResize } = useShiftResizeActions({
+    editable: isAdmin,
+    resizing,
+    shiftsRef,
+    initialShiftsRef: resizeInitialShiftsRef,
+    didResizeRef: didResizeShiftRef,
+    setResizing,
+    setPendingAdjustment: setPendingShiftAdjustment,
+    setShiftsWithoutHistory,
+    commitShiftPreview,
+  })
 
-  const updateMovePress = (event: PointerEvent<HTMLDivElement>) => {
-    const pending = pendingMovePressRef.current
-    if (!pending || pending.pointerId !== event.pointerId) return
-    pending.clientX = event.clientX
-    pending.clientY = event.clientY
-  }
-
-  const cancelMovePress = () => {
-    const pending = pendingMovePressRef.current
-    if (!pending) return
-    window.clearTimeout(pending.timerId)
-    pendingMovePressRef.current = null
-  }
-
-  const moveShift = (event: PointerEvent<HTMLDivElement>) => {
-    if (!moving) return
-    const baseShifts = moveInitialShiftsRef.current ?? shiftsRef.current
-    const shift = baseShifts.find((item) => item.id === moving.id)
-    if (!shift) return
-    const candidateMemberId = getMemberIdFromPointer(event) ?? moving.previewMemberId
-    const deltaSlots = Math.round((event.clientX - moving.originX) / SLOT_WIDTH)
-    if (deltaSlots !== 0) {
-      didMoveShiftRef.current = true
-    }
-    const duration = moving.end - moving.start
-    const start = Math.min(
-      Math.max(moving.start + deltaSlots * SLOT_MINUTES, START_MINUTES),
-      END_MINUTES - duration,
-    )
-    const end = start + duration
-    const canDrop = canPlaceShift(
-      baseShifts,
-      candidateMemberId,
-      shift.date,
-      start,
-      end,
-      moving.id,
-    )
-    setShiftsWithoutHistory(
-      canDrop
-        ? baseShifts.map((item) =>
-          item.id === moving.id ? { ...item, start, end } : item,
-        )
-        : baseShifts,
-    )
-    setMoving((prev) =>
-      prev
-        ? {
-          ...prev,
-          pointerX: event.clientX,
-          pointerY: event.clientY,
-          previewMemberId: candidateMemberId,
-          canDrop,
-        }
-        : prev,
-    )
-  }
-
-  const stopMove = () => {
-    if (moving) {
-      if (!moving.canDrop) {
-        if (moveInitialShiftsRef.current) {
-          setShiftsWithoutHistory(moveInitialShiftsRef.current)
-        }
-        moveInitialShiftsRef.current = null
-        didMoveShiftRef.current = true
-        setMoving(null)
-        return
-      }
-      const shift = shiftsRef.current.find((item) => item.id === moving.id)
-      const memberId = moving.previewMemberId
-      if (shift && memberId && memberId !== shift.memberId) {
-        didMoveShiftRef.current = true
-        setShiftsWithoutHistory(
-          shiftsRef.current.map((item) =>
-            item.id === moving.id ? { ...item, memberId } : item,
-          ),
-        )
-      }
-    }
-    commitShiftPreview(moveInitialShiftsRef.current)
-    moveInitialShiftsRef.current = null
-    setMoving(null)
-  }
-
-  const cancelMove = () => {
-    if (moveInitialShiftsRef.current) {
-      setShiftsWithoutHistory(moveInitialShiftsRef.current)
-    }
-    moveInitialShiftsRef.current = null
-    didMoveShiftRef.current = false
-    setMoving(null)
-  }
-
-  const startResize = (shift: Shift, edge: ResizeEdge, event: PointerEvent<HTMLSpanElement>) => {
-    if (!isAdmin) return
-    event.stopPropagation()
-    event.currentTarget.setPointerCapture(event.pointerId)
-    resizeInitialShiftsRef.current = shiftsRef.current
-    didResizeShiftRef.current = false
-    setResizing({
-      id: shift.id,
-      edge,
-      originX: event.clientX,
-      start: shift.start,
-      end: shift.end,
-      adjustedShiftIds: [],
-    })
-  }
-
-  const moveResize = (event: PointerEvent<HTMLElement>) => {
-    if (!resizing) return
-    const baseShifts = resizeInitialShiftsRef.current ?? shiftsRef.current
-    const shift = baseShifts.find((item) => item.id === resizing.id)
-    if (!shift) return
-    const deltaSlots = Math.round((event.clientX - resizing.originX) / SLOT_WIDTH)
-    if (deltaSlots !== 0) {
-      didResizeShiftRef.current = true
-    }
-    const deltaMinutes = deltaSlots * SLOT_MINUTES
-    const desiredRange =
-      resizing.edge === "start"
-        ? {
-          start: Math.min(
-            Math.max(resizing.start + deltaMinutes, START_MINUTES),
-            resizing.end - SLOT_MINUTES,
-          ),
-          end: resizing.end,
-        }
-        : {
-          start: resizing.start,
-          end: Math.max(
-            Math.min(resizing.end + deltaMinutes, END_MINUTES),
-            resizing.start + SLOT_MINUTES,
-          ),
-        }
-    const conflictResolution = adjustConflictingShiftRanges(
-      baseShifts,
-      shift.memberId,
-      shift.date,
-      desiredRange.start,
-      desiredRange.end,
-      resizing.id,
-    )
-    if (conflictResolution) {
-      setShiftsWithoutHistory(
-        conflictResolution.shifts.map((item) =>
-          item.id === resizing.id ? { ...item, ...desiredRange } : item,
-        ),
-      )
-      setResizing((current) =>
-        current
-          ? { ...current, adjustedShiftIds: conflictResolution.adjustedShiftIds }
-          : current,
-      )
-      return
-    }
-    setShiftsWithoutHistory(baseShifts)
-    setResizing((current) => current ? { ...current, adjustedShiftIds: [] } : current)
-  }
-
-  const stopResize = () => {
-    const baseShifts = resizeInitialShiftsRef.current
-    if (baseShifts && resizing) {
-      const nextShifts = shiftsRef.current
-      const affectedOtherShifts = getShiftAdjustmentChanges(baseShifts, nextShifts, resizing.id)
-      if (affectedOtherShifts.length > 0) {
-        setShiftsWithoutHistory(baseShifts)
-        setPendingShiftAdjustment({
-          baseShifts,
-          nextShifts,
-          changes: getShiftAdjustmentChanges(baseShifts, nextShifts),
-        })
-      } else {
-        commitShiftPreview(baseShifts)
-      }
-    }
-    resizeInitialShiftsRef.current = null
-    setResizing(null)
-  }
+  const { startCopyShift, moveCopyShift, stopCopyShift, cancelCopyShift } = useShiftCopyActions({
+    editable: isAdmin,
+    copying,
+    shiftsRef,
+    setCopying,
+    recordShiftsChange,
+  })
 
   const confirmShiftAdjustment = () => {
     if (!pendingShiftAdjustment) return
@@ -804,81 +593,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
 
   const cancelShiftAdjustment = () => {
     setPendingShiftAdjustment(null)
-  }
-
-  const cancelResize = () => {
-    if (resizeInitialShiftsRef.current) {
-      setShiftsWithoutHistory(resizeInitialShiftsRef.current)
-    }
-    resizeInitialShiftsRef.current = null
-    didResizeShiftRef.current = false
-    setResizing(null)
-  }
-
-  const startCopyShift = (shift: Shift, event: PointerEvent<HTMLSpanElement>) => {
-    if (!isAdmin) return
-    event.stopPropagation()
-    event.currentTarget.setPointerCapture(event.pointerId)
-    const sourceElement = event.currentTarget.parentElement?.querySelector<HTMLElement>("[data-shift-block]")
-    const sourceRect = (sourceElement ?? event.currentTarget).getBoundingClientRect()
-    const copyRect = {
-      left: sourceRect.left,
-      top: sourceRect.top,
-      width: sourceRect.width,
-      height: sourceRect.height,
-    }
-    setCopying({
-      sourceId: shift.id,
-      previewMemberId: shift.memberId,
-      canDrop: false,
-      sourceRect: copyRect,
-      stretchRect: copyRect,
-    })
-  }
-
-  const moveCopyShift = (event: PointerEvent<HTMLSpanElement>) => {
-    if (!copying) return
-    const sourceShift = shiftsRef.current.find((shift) => shift.id === copying.sourceId)
-    if (!sourceShift) return
-    const exactCandidateRow = getMemberRowFromPointer(event)
-    const candidateRow = exactCandidateRow ?? getNearestMemberRowFromPointer(event)
-    const candidateMemberId = candidateRow?.dataset.shiftMemberId ?? copying.previewMemberId
-    const canDrop = canCopyShiftToMember(shiftsRef.current, sourceShift, candidateMemberId)
-    const sourceTop = copying.sourceRect.top
-    const sourceHeight = copying.sourceRect.height
-    const targetTop = candidateRow ? event.clientY - sourceHeight / 2 : sourceTop
-    setCopying((current) =>
-      current
-        ? {
-          ...current,
-          previewMemberId: candidateMemberId,
-          canDrop,
-          stretchRect: {
-            ...current.stretchRect,
-            top: Math.min(sourceTop, targetTop),
-            height: Math.abs(targetTop - sourceTop) + sourceHeight,
-          },
-        }
-        : current,
-    )
-  }
-
-  const stopCopyShift = () => {
-    if (!copying) return
-    const sourceShift = shiftsRef.current.find((shift) => shift.id === copying.sourceId)
-    if (sourceShift && copying.canDrop && copying.previewMemberId !== sourceShift.memberId) {
-      const copiedShift = copyShiftForMember(
-        sourceShift,
-        copying.previewMemberId,
-        `shift-${crypto.randomUUID()}`,
-      )
-      recordShiftsChange((current) => [...current, copiedShift])
-    }
-    setCopying(null)
-  }
-
-  const cancelCopyShift = () => {
-    setCopying(null)
   }
 
   const closeShiftDetail = () => {
