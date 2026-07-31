@@ -24,7 +24,6 @@ describe("vote results loading state", () => {
       <ProjectVote
         projects={[project]}
         votes={[]}
-        connectionState="connecting"
         loading
       />,
     )

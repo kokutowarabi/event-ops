@@ -239,9 +239,6 @@ export function VoteRouteLoading() {
           投票結果
         </h1>
         <LoadingActions includeAdd={false} />
-        <span className="ml-2 rounded-md border px-2.5 py-0.5 text-xs text-muted-foreground">
-          接続中
-        </span>
       </header>
       <VoteDataSkeleton />
     </div>

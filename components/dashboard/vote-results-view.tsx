@@ -1,10 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import {
-  ProjectVote,
-  type VoteConnectionState,
-} from "@/components/project-vote"
+import { ProjectVote } from "@/components/project-vote"
 import { useEventOps } from "@/components/dashboard/event-ops-provider"
 import {
   getSupabaseClient,
@@ -21,10 +18,6 @@ export function VoteResultsView() {
   const voteClient = useMemo(() => getSupabaseClient(), [])
   const [votes, setVotes] = useState<VisitorVote[]>([])
   const [votesLoaded, setVotesLoaded] = useState(!isSupabaseConfigured)
-  const [connectionState, setConnectionState] =
-    useState<VoteConnectionState>(
-      isSupabaseConfigured ? "connecting" : "unconfigured",
-    )
 
   useEffect(() => {
     if (!voteClient) return
@@ -35,7 +28,7 @@ export function VoteResultsView() {
         const nextVotes = await fetchVisitorVotes(voteClient)
         if (active) setVotes(nextVotes)
       } catch {
-        if (active) setConnectionState("error")
+        if (active) setVotes([])
       } finally {
         if (active) setVotesLoaded(true)
       }
@@ -59,13 +52,7 @@ export function VoteResultsView() {
           )
         },
       )
-      .subscribe((status) => {
-        if (!active) return
-        if (status === "SUBSCRIBED") setConnectionState("realtime")
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          setConnectionState("error")
-        }
-      })
+      .subscribe()
 
     return () => {
       active = false
@@ -77,7 +64,6 @@ export function VoteResultsView() {
     <ProjectVote
       projects={projects}
       votes={votes}
-      connectionState={connectionState}
       loading={!votesLoaded}
     />
   )

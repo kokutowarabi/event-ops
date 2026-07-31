@@ -21,12 +21,9 @@ import {
   votesOnDate,
 } from "@/lib/votes"
 
-export type VoteConnectionState = "unconfigured" | "connecting" | "realtime" | "error"
-
 type ProjectVoteProps = {
   projects: EventProject[]
   votes: VisitorVote[]
-  connectionState: VoteConnectionState
   loading?: boolean
 }
 
@@ -37,7 +34,6 @@ const allDepartments = "all"
 export function ProjectVote({
   projects,
   votes,
-  connectionState,
   loading = false,
 }: ProjectVoteProps) {
   const [selectedVoteDate, setSelectedVoteDate] = useState(allVoteDates)
@@ -79,13 +75,6 @@ export function ProjectVote({
     }
   }, [projects, selectedDepartment, selectedVoteDate, votes])
 
-  const connectionLabel = {
-    unconfigured: "Supabase未設定",
-    connecting: "接続中",
-    realtime: "Realtime",
-    error: "接続エラー",
-  }[connectionState]
-
   const exportRanking = () => {
     const voteDateLabel = selectedVoteDate === allVoteDates
       ? "全投票日"
@@ -120,9 +109,6 @@ export function ProjectVote({
           <Download className="size-4" />
           CSV
         </Button>
-        <Badge variant={connectionState === "error" ? "destructive" : "outline"} className="ml-2">
-          {connectionLabel}
-        </Badge>
       </header>
 
       {loading ? (
