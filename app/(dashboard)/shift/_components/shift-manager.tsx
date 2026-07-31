@@ -22,6 +22,7 @@ import {
   ShiftAssignmentView,
   type AssignmentCoverageGroup,
 } from "./shift-assignment-view"
+import { useShiftCreationActions } from "./shift-creation-actions"
 import { ShiftDesktopView } from "./shift-desktop-view"
 import { ShiftDragOverlays } from "./shift-drag-overlays"
 import { ShiftFilterPanel } from "./shift-filter-panel"
@@ -47,15 +48,12 @@ import {
   DEFAULT_SHIFT_TEMPLATE_ID,
   END_MINUTES,
   formatTime,
-  getCreateShiftTimeRange,
   getShiftAdjustmentChanges,
-  isSlotOccupied,
   orderMemberIdsWithPins,
   shiftsEqual,
   shiftTemplates,
   SLOT_MINUTES,
   START_MINUTES,
-  timeSlots,
   type ShiftTemplateColor,
 } from "./shift-domain"
 import {
@@ -64,12 +62,9 @@ import {
   getNearestMemberRowFromPointer,
 } from "./shift-pointer"
 import {
-  MOBILE_SLOT_HEIGHT,
-  MOBILE_TIMELINE_PADDING_HEIGHT,
   MOVE_LONG_PRESS_MS,
   SHIFT_CREATION_ENABLED,
   SLOT_WIDTH,
-  TIMELINE_PADDING_WIDTH,
 } from "./shift-layout"
 import type {
   CopyingShift,
@@ -390,60 +385,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     )
   }
 
-  const getSlotFromPointer = (event: PointerEvent<HTMLButtonElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect()
-    return Math.min(
-      Math.max(Math.floor((event.clientX - rect.left) / SLOT_WIDTH), 0),
-      timeSlots.length - 1,
-    )
-  }
-
-  const getMobileSlotFromPointer = (event: PointerEvent<HTMLButtonElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect()
-    return Math.min(
-      Math.max(Math.floor((event.clientY - rect.top) / MOBILE_SLOT_HEIGHT), 0),
-      timeSlots.length - 1,
-    )
-  }
-
-  const beginCreateMobileShift = (memberId: string, event: PointerEvent<HTMLButtonElement>) => {
-    if (!isAdmin || !shiftSchedule) return
-    const slot = getMobileSlotFromPointer(event)
-    if (isSlotOccupied(shiftsRef.current, memberId, selectedDate, slot)) {
-      setHoveredSlot(null)
-      return
-    }
-    event.currentTarget.setPointerCapture(event.pointerId)
-    createInitialShiftsRef.current = shiftsRef.current
-    setHoveredSlot({ memberId, slot })
-    setCreatingShift({ memberId, startSlot: slot, currentSlot: slot, adjustedShiftIds: [] })
-  }
-
-  const moveCreateMobileShift = (memberId: string, event: PointerEvent<HTMLButtonElement>) => {
-    if (!isAdmin || !creatingShift || creatingShift.memberId !== memberId) return
-    const slot = getMobileSlotFromPointer(event)
-    const { start, end } = getCreateShiftTimeRange(creatingShift.startSlot, slot)
-    const baseShifts = createInitialShiftsRef.current ?? shiftsRef.current
-    const conflictResolution = adjustConflictingShiftRanges(
-      baseShifts,
-      memberId,
-      selectedDate,
-      start,
-      end,
-    )
-    if (!conflictResolution) {
-      setHoveredSlot(null)
-      return
-    }
-    setShiftsWithoutHistory(conflictResolution.shifts)
-    setHoveredSlot({ memberId, slot })
-    setCreatingShift({
-      ...creatingShift,
-      currentSlot: slot,
-      adjustedShiftIds: conflictResolution.adjustedShiftIds,
-    })
-  }
-
   const setShiftsWithoutHistory = (nextShifts: Shift[]) => {
     shiftsRef.current = nextShifts
     setShifts(nextShifts)
@@ -504,112 +445,29 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     recordShiftsChange((prev) => prev.map((shift) => (shift.id === id ? { ...shift, ...update } : shift)))
   }
 
-  const beginCreateShift = (memberId: string, event: PointerEvent<HTMLButtonElement>) => {
-    if (!isAdmin || !shiftSchedule) return
-    const slot = getSlotFromPointer(event)
-    if (isSlotOccupied(shiftsRef.current, memberId, selectedDate, slot)) {
-      setHoveredSlot(null)
-      return
-    }
-    event.currentTarget.setPointerCapture(event.pointerId)
-    createInitialShiftsRef.current = shiftsRef.current
-    setHoveredSlot({ memberId, slot })
-    setCreatingShift({ memberId, startSlot: slot, currentSlot: slot, adjustedShiftIds: [] })
-  }
-
-  const moveCreateShift = (memberId: string, event: PointerEvent<HTMLButtonElement>) => {
-    if (!isAdmin || !creatingShift || creatingShift.memberId !== memberId) return
-    const slot = getSlotFromPointer(event)
-    const { start, end } = getCreateShiftTimeRange(creatingShift.startSlot, slot)
-    const baseShifts = createInitialShiftsRef.current ?? shiftsRef.current
-    const conflictResolution = adjustConflictingShiftRanges(
-      baseShifts,
-      memberId,
-      selectedDate,
-      start,
-      end,
-    )
-    if (!conflictResolution) {
-      setHoveredSlot(null)
-      return
-    }
-    setShiftsWithoutHistory(conflictResolution.shifts)
-    setHoveredSlot({ memberId, slot })
-    setCreatingShift({
-      ...creatingShift,
-      currentSlot: slot,
-      adjustedShiftIds: conflictResolution.adjustedShiftIds,
-    })
-  }
-
-  const finishCreateShift = (memberId: string) => {
-    if (!creatingShift || creatingShift.memberId !== memberId) return
-    const { start, end } = getCreateShiftTimeRange(
-      creatingShift.startSlot,
-      creatingShift.currentSlot,
-    )
-    const baseShifts = createInitialShiftsRef.current
-    setDraftBaseShifts(baseShifts)
-    if (baseShifts) {
-      setShiftsWithoutHistory(baseShifts)
-    }
-    createInitialShiftsRef.current = null
-    setDraftShift({
-      memberId,
-      date: selectedDate,
-      start,
-      end: clampShiftEnd(end, start),
-      templateId: DEFAULT_SHIFT_TEMPLATE_ID,
-      note: allShiftTemplates[DEFAULT_SHIFT_TEMPLATE_ID].note,
-    })
-    setCreatingShift(null)
-    setHoveredSlot(null)
-  }
-
-  const cancelCreateShift = () => {
-    if (createInitialShiftsRef.current) {
-      setShiftsWithoutHistory(createInitialShiftsRef.current)
-    }
-    createInitialShiftsRef.current = null
-    setCreatingShift(null)
-    setHoveredSlot(null)
-  }
-
-  const getCreatePreview = (memberId: string) => {
-    if (!creatingShift || creatingShift.memberId !== memberId) return null
-    const startSlot = Math.min(creatingShift.startSlot, creatingShift.currentSlot)
-    const endSlot = Math.max(creatingShift.startSlot, creatingShift.currentSlot) + 1
-    const { start, end } = getCreateShiftTimeRange(
-      creatingShift.startSlot,
-      creatingShift.currentSlot,
-    )
-    return {
-      left: TIMELINE_PADDING_WIDTH + startSlot * SLOT_WIDTH,
-      width: Math.max((endSlot - startSlot) * SLOT_WIDTH, SLOT_WIDTH),
-      start,
-      end,
-      adjustsConflictingShifts: creatingShift.adjustedShiftIds.length > 0,
-    }
-  }
-
-  const getMobileCreatePreview = (memberId: string) => {
-    if (!creatingShift || creatingShift.memberId !== memberId) return null
-    const startSlot = Math.min(creatingShift.startSlot, creatingShift.currentSlot)
-    const endSlot = Math.max(creatingShift.startSlot, creatingShift.currentSlot) + 1
-    const { start, end } = getCreateShiftTimeRange(
-      creatingShift.startSlot,
-      creatingShift.currentSlot,
-    )
-    return {
-      top: MOBILE_TIMELINE_PADDING_HEIGHT + startSlot * MOBILE_SLOT_HEIGHT,
-      height: Math.max((endSlot - startSlot) * MOBILE_SLOT_HEIGHT, MOBILE_SLOT_HEIGHT),
-      startSlot,
-      endSlot,
-      start,
-      end,
-      adjustsConflictingShifts: creatingShift.adjustedShiftIds.length > 0,
-    }
-  }
+  const {
+    beginCreateShift,
+    moveCreateShift,
+    beginCreateMobileShift,
+    moveCreateMobileShift,
+    finishCreateShift,
+    cancelCreateShift,
+    getCreatePreview,
+    getMobileCreatePreview,
+  } = useShiftCreationActions({
+    editable: isAdmin,
+    hasSchedule: shiftSchedule !== null,
+    selectedDate,
+    creatingShift,
+    shiftsRef,
+    initialShiftsRef: createInitialShiftsRef,
+    templates: allShiftTemplates,
+    setCreatingShift,
+    setHoveredSlot,
+    setDraftBaseShifts,
+    setDraftShift,
+    setShiftsWithoutHistory,
+  })
 
   const openAssignmentDraft = (templateId: ShiftTemplateId, start = 10 * 60) => {
     const template = allShiftTemplates[templateId]
