@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  adjustConflictingShiftRanges,
   canPlaceShift,
   copyShiftForMember,
   createShiftTemplateColor,
@@ -91,6 +92,52 @@ describe("shift placement", () => {
       id: "copy-id",
       memberId: "member-c",
     })
+  })
+
+  it("shrinks the conflicting shift before a selected range", () => {
+    const result = adjustConflictingShiftRanges(
+      shifts,
+      "member-b",
+      "2026-10-31",
+      10 * 60 + 30,
+      12 * 60,
+      "source",
+    )
+
+    expect(result?.adjustedShiftIds).toEqual(["target-existing"])
+    expect(result?.shifts.find((shift) => shift.id === "target-existing")).toMatchObject({
+      start: 10 * 60,
+      end: 10 * 60 + 30,
+    })
+  })
+
+  it("shrinks the conflicting shift after a selected range", () => {
+    const result = adjustConflictingShiftRanges(
+      shifts,
+      "member-b",
+      "2026-10-31",
+      9 * 60,
+      10 * 60 + 30,
+      "source",
+    )
+
+    expect(result?.shifts.find((shift) => shift.id === "target-existing")).toMatchObject({
+      start: 10 * 60 + 30,
+      end: 11 * 60,
+    })
+  })
+
+  it("rejects conflict adjustment when no fifteen-minute target range remains", () => {
+    expect(
+      adjustConflictingShiftRanges(
+        shifts,
+        "member-b",
+        "2026-10-31",
+        9 * 60,
+        12 * 60,
+        "source",
+      ),
+    ).toBeNull()
   })
 
   it("assigns a distinct color to every built-in business", () => {

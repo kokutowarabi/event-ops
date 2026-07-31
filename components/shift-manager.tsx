@@ -82,6 +82,7 @@ type ResizingShift = {
   originX: number
   start: number
   end: number
+  adjustedShiftIds: string[]
 }
 
 type MovingShift = {
@@ -95,6 +96,7 @@ type MovingShift = {
   previewMemberId: string
   canDrop: boolean
   wasAutoShrunk: boolean
+  adjustedShiftIds: string[]
 }
 
 type CopyingShift = {
@@ -473,29 +475,47 @@ export function fitShiftIntoAvailableRange(
   return bestRange ? { ...bestRange, wasShrunk: true } : null
 }
 
+export function adjustConflictingShiftRanges(
+  shifts: Shift[],
+  memberId: string,
+  date: string,
+  start: number,
+  end: number,
+  ignoreShiftId?: string,
+) {
+  if (start < START_MINUTES || end > END_MINUTES || end <= start) return null
+
+  const adjustedShiftIds: string[] = []
+  const adjustedShifts = shifts.map((shift) => {
+    const conflicts =
+      shift.id !== ignoreShiftId
+      && shift.memberId === memberId
+      && shift.date === date
+      && shift.start < end
+      && shift.end > start
+    if (!conflicts) return shift
+
+    const leftDuration = start - shift.start
+    const rightDuration = shift.end - end
+    const canKeepLeft = leftDuration >= SLOT_MINUTES
+    const canKeepRight = rightDuration >= SLOT_MINUTES
+    if (!canKeepLeft && !canKeepRight) return null
+
+    adjustedShiftIds.push(shift.id)
+    return canKeepLeft && (!canKeepRight || leftDuration >= rightDuration)
+      ? { ...shift, end: start }
+      : { ...shift, start: end }
+  })
+
+  if (adjustedShifts.some((shift) => shift === null)) return null
+  return {
+    shifts: adjustedShifts as Shift[],
+    adjustedShiftIds,
+  }
+}
+
 export function copyShiftForMember(shift: Shift, memberId: string, id: string): Shift {
   return { ...shift, id, memberId }
-}
-
-function isRangeFree(shifts: Shift[], memberId: string, date: string, startSlot: number, endSlot: number) {
-  const start = Math.min(startSlot, endSlot)
-  const end = Math.max(startSlot, endSlot)
-  for (let slot = start; slot <= end; slot += 1) {
-    if (isSlotOccupied(shifts, memberId, date, slot)) return false
-  }
-  return true
-}
-
-function getAllowedCreateSlot(shifts: Shift[], memberId: string, date: string, startSlot: number, currentSlot: number) {
-  if (isRangeFree(shifts, memberId, date, startSlot, currentSlot)) return currentSlot
-
-  const direction = currentSlot >= startSlot ? 1 : -1
-  let allowedSlot = startSlot
-  for (let slot = startSlot + direction; slot !== currentSlot + direction; slot += direction) {
-    if (isSlotOccupied(shifts, memberId, date, slot)) break
-    allowedSlot = slot
-  }
-  return allowedSlot
 }
 
 function getMemberIdFromPointer(event: PointerEvent<HTMLElement>) {
@@ -662,6 +682,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const [customShiftTemplates, setCustomShiftTemplates] = useState<Record<ShiftTemplateId, ShiftTemplate>>(initialShiftData.customShiftTemplates)
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null)
   const [draftShift, setDraftShift] = useState<DraftShift | null>(null)
+  const [draftBaseShifts, setDraftBaseShifts] = useState<Shift[] | null>(null)
   const [templateDraft, setTemplateDraft] = useState<DraftShiftTemplate>({
     label: "",
     kind: "day",
@@ -683,6 +704,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const historyRef = useRef<{ past: Shift[][]; future: Shift[][] }>({ past: [], future: [] })
   const moveInitialShiftsRef = useRef<Shift[] | null>(null)
   const resizeInitialShiftsRef = useRef<Shift[] | null>(null)
+  const createInitialShiftsRef = useRef<Shift[] | null>(null)
   const didMoveShiftRef = useRef(false)
   const didResizeShiftRef = useRef(false)
   const syncedShiftDataRef = useRef(JSON.stringify(initialShiftData))
@@ -863,6 +885,15 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
 
   const selectedTemplate = selectedShift ? allShiftTemplates[selectedShift.templateId] : null
   const draftTemplate = draftShift ? allShiftTemplates[draftShift.templateId] : null
+  const draftConflictResolution = draftShift
+    ? adjustConflictingShiftRanges(
+      draftBaseShifts ?? shifts,
+      draftShift.memberId,
+      draftShift.date,
+      draftShift.start,
+      draftShift.end,
+    )
+    : null
   const movingShift = moving ? shifts.find((shift) => shift.id === moving.id) ?? null : null
   const copyingShift = copying ? shifts.find((shift) => shift.id === copying.sourceId) ?? null : null
   const resizingShift = resizing ? shifts.find((shift) => shift.id === resizing.id) ?? null : null
@@ -925,20 +956,30 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       return
     }
     event.currentTarget.setPointerCapture(event.pointerId)
+    createInitialShiftsRef.current = shiftsRef.current
     setHoveredSlot({ memberId, slot })
     setCreatingShift({ memberId, startSlot: slot, currentSlot: slot })
   }
 
   const moveCreateMobileShift = (memberId: string, event: PointerEvent<HTMLButtonElement>) => {
-    if (!isAdmin) return
+    if (!isAdmin || !creatingShift || creatingShift.memberId !== memberId) return
     const slot = getMobileSlotFromPointer(event)
-    const occupied = isSlotOccupied(shiftsRef.current, memberId, selectedDate, slot)
-    setHoveredSlot(occupied ? null : { memberId, slot })
-    setCreatingShift((prev) =>
-      prev && prev.memberId === memberId
-        ? { ...prev, currentSlot: getAllowedCreateSlot(shiftsRef.current, memberId, selectedDate, prev.startSlot, slot) }
-        : prev,
+    const { start, end } = getCreateShiftTimeRange(creatingShift.startSlot, slot)
+    const baseShifts = createInitialShiftsRef.current ?? shiftsRef.current
+    const conflictResolution = adjustConflictingShiftRanges(
+      baseShifts,
+      memberId,
+      selectedDate,
+      start,
+      end,
     )
+    if (!conflictResolution) {
+      setHoveredSlot(null)
+      return
+    }
+    setShiftsWithoutHistory(conflictResolution.shifts)
+    setHoveredSlot({ memberId, slot })
+    setCreatingShift({ ...creatingShift, currentSlot: slot })
   }
 
   const setShiftsWithoutHistory = (nextShifts: Shift[]) => {
@@ -974,6 +1015,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     }
     setSelectedShiftId(null)
     setDraftShift(null)
+    setDraftBaseShifts(null)
     setMoving(null)
     setResizing(null)
     setShiftsWithoutHistory(previous)
@@ -988,6 +1030,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     }
     setSelectedShiftId(null)
     setDraftShift(null)
+    setDraftBaseShifts(null)
     setMoving(null)
     setResizing(null)
     setShiftsWithoutHistory(next)
@@ -1005,20 +1048,30 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       return
     }
     event.currentTarget.setPointerCapture(event.pointerId)
+    createInitialShiftsRef.current = shiftsRef.current
     setHoveredSlot({ memberId, slot })
     setCreatingShift({ memberId, startSlot: slot, currentSlot: slot })
   }
 
   const moveCreateShift = (memberId: string, event: PointerEvent<HTMLButtonElement>) => {
-    if (!isAdmin) return
+    if (!isAdmin || !creatingShift || creatingShift.memberId !== memberId) return
     const slot = getSlotFromPointer(event)
-    const occupied = isSlotOccupied(shiftsRef.current, memberId, selectedDate, slot)
-    setHoveredSlot(occupied ? null : { memberId, slot })
-    setCreatingShift((prev) =>
-      prev && prev.memberId === memberId
-        ? { ...prev, currentSlot: getAllowedCreateSlot(shiftsRef.current, memberId, selectedDate, prev.startSlot, slot) }
-        : prev,
+    const { start, end } = getCreateShiftTimeRange(creatingShift.startSlot, slot)
+    const baseShifts = createInitialShiftsRef.current ?? shiftsRef.current
+    const conflictResolution = adjustConflictingShiftRanges(
+      baseShifts,
+      memberId,
+      selectedDate,
+      start,
+      end,
     )
+    if (!conflictResolution) {
+      setHoveredSlot(null)
+      return
+    }
+    setShiftsWithoutHistory(conflictResolution.shifts)
+    setHoveredSlot({ memberId, slot })
+    setCreatingShift({ ...creatingShift, currentSlot: slot })
   }
 
   const finishCreateShift = (memberId: string) => {
@@ -1027,6 +1080,12 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       creatingShift.startSlot,
       creatingShift.currentSlot,
     )
+    const baseShifts = createInitialShiftsRef.current
+    setDraftBaseShifts(baseShifts)
+    if (baseShifts) {
+      setShiftsWithoutHistory(baseShifts)
+    }
+    createInitialShiftsRef.current = null
     setDraftShift({
       memberId,
       date: selectedDate,
@@ -1040,6 +1099,10 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   }
 
   const cancelCreateShift = () => {
+    if (createInitialShiftsRef.current) {
+      setShiftsWithoutHistory(createInitialShiftsRef.current)
+    }
+    createInitialShiftsRef.current = null
     setCreatingShift(null)
     setHoveredSlot(null)
   }
@@ -1091,6 +1154,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
         ),
       ) ?? scheduledMembers[0]
     if (!availableMember) return
+    setDraftBaseShifts(null)
     setDraftShift({
       memberId: availableMember.id,
       date: selectedDate,
@@ -1114,8 +1178,27 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       kind: template.kind,
       note: draftShift.note.trim() || template.note,
     }
-    recordShiftsChange((prev) => [...prev, shift])
+    const baseShifts = draftBaseShifts ?? shiftsRef.current
+    const conflictResolution = adjustConflictingShiftRanges(
+      baseShifts,
+      draftShift.memberId,
+      draftShift.date,
+      draftShift.start,
+      draftShift.end,
+    )
+    if (!conflictResolution) return
+    historyRef.current = {
+      past: [...historyRef.current.past, baseShifts].slice(-100),
+      future: [],
+    }
+    setShiftsWithoutHistory([...conflictResolution.shifts, shift])
     setDraftShift(null)
+    setDraftBaseShifts(null)
+  }
+
+  const closeDraftShift = () => {
+    setDraftShift(null)
+    setDraftBaseShifts(null)
   }
 
   const createShiftTemplate = () => {
@@ -1177,12 +1260,14 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       previewMemberId: shift.memberId,
       canDrop: true,
       wasAutoShrunk: false,
+      adjustedShiftIds: [],
     })
   }
 
   const moveShift = (event: PointerEvent<HTMLDivElement>) => {
     if (!moving) return
-    const shift = shiftsRef.current.find((item) => item.id === moving.id)
+    const baseShifts = moveInitialShiftsRef.current ?? shiftsRef.current
+    const shift = baseShifts.find((item) => item.id === moving.id)
     if (!shift) return
     const candidateMemberId = getMemberIdFromPointer(event) ?? moving.previewMemberId
     const deltaSlots = Math.round((event.clientX - moving.originX) / SLOT_WIDTH)
@@ -1194,17 +1279,36 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       Math.max(moving.start + deltaSlots * SLOT_MINUTES, START_MINUTES),
       END_MINUTES - duration,
     )
-    const fittedRange = fitShiftIntoAvailableRange(
-      shiftsRef.current,
+    const end = start + duration
+    const conflictResolution = adjustConflictingShiftRanges(
+      baseShifts,
       candidateMemberId,
       shift.date,
       start,
-      start + duration,
+      end,
       moving.id,
     )
-    if (fittedRange) {
+    const fittedRange = conflictResolution
+      ? null
+      : fitShiftIntoAvailableRange(
+        baseShifts,
+        candidateMemberId,
+        shift.date,
+        start,
+        end,
+        moving.id,
+      )
+    if (conflictResolution) {
       setShiftsWithoutHistory(
-        shiftsRef.current.map((item) =>
+        conflictResolution.shifts.map((item) =>
+          item.id === moving.id
+            ? { ...item, start, end }
+            : item,
+        ),
+      )
+    } else if (fittedRange) {
+      setShiftsWithoutHistory(
+        baseShifts.map((item) =>
           item.id === moving.id
             ? { ...item, start: fittedRange.start, end: fittedRange.end }
             : item,
@@ -1218,8 +1322,9 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
           pointerX: event.clientX,
           pointerY: event.clientY,
           previewMemberId: candidateMemberId,
-          canDrop: fittedRange !== null,
+          canDrop: conflictResolution !== null || fittedRange !== null,
           wasAutoShrunk: fittedRange?.wasShrunk ?? false,
+          adjustedShiftIds: conflictResolution?.adjustedShiftIds ?? [],
         }
         : prev,
     )
@@ -1239,14 +1344,12 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       const shift = shiftsRef.current.find((item) => item.id === moving.id)
       const memberId = moving.previewMemberId
       if (shift && memberId && memberId !== shift.memberId) {
-        if (canPlaceShift(shiftsRef.current, memberId, shift.date, shift.start, shift.end, moving.id)) {
-          didMoveShiftRef.current = true
-          setShiftsWithoutHistory(
-            shiftsRef.current.map((item) =>
-              item.id === moving.id ? { ...item, memberId } : item,
-            ),
-          )
-        }
+        didMoveShiftRef.current = true
+        setShiftsWithoutHistory(
+          shiftsRef.current.map((item) =>
+            item.id === moving.id ? { ...item, memberId } : item,
+          ),
+        )
       }
     }
     commitShiftPreview(moveInitialShiftsRef.current)
@@ -1269,29 +1372,81 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     event.currentTarget.setPointerCapture(event.pointerId)
     resizeInitialShiftsRef.current = shiftsRef.current
     didResizeShiftRef.current = false
-    setResizing({ id: shift.id, edge, originX: event.clientX, start: shift.start, end: shift.end })
+    setResizing({
+      id: shift.id,
+      edge,
+      originX: event.clientX,
+      start: shift.start,
+      end: shift.end,
+      adjustedShiftIds: [],
+    })
   }
 
   const moveResize = (event: PointerEvent<HTMLElement>) => {
     if (!resizing) return
-    const shift = shiftsRef.current.find((item) => item.id === resizing.id)
+    const baseShifts = resizeInitialShiftsRef.current ?? shiftsRef.current
+    const shift = baseShifts.find((item) => item.id === resizing.id)
     if (!shift) return
     const deltaSlots = Math.round((event.clientX - resizing.originX) / SLOT_WIDTH)
     if (deltaSlots !== 0) {
       didResizeShiftRef.current = true
     }
     const deltaMinutes = deltaSlots * SLOT_MINUTES
-    const { previousEnd, nextStart } = getResizeBounds({ ...shift, start: resizing.start, end: resizing.end })
-    const update =
+    const desiredRange =
       resizing.edge === "start"
         ? {
-          start: Math.min(Math.max(resizing.start + deltaMinutes, previousEnd), resizing.end - SLOT_MINUTES),
+          start: Math.min(
+            Math.max(resizing.start + deltaMinutes, START_MINUTES),
+            resizing.end - SLOT_MINUTES,
+          ),
+          end: resizing.end,
         }
         : {
-          end: Math.max(Math.min(resizing.end + deltaMinutes, nextStart), resizing.start + SLOT_MINUTES),
+          start: resizing.start,
+          end: Math.max(
+            Math.min(resizing.end + deltaMinutes, END_MINUTES),
+            resizing.start + SLOT_MINUTES,
+          ),
         }
+    const conflictResolution = adjustConflictingShiftRanges(
+      baseShifts,
+      shift.memberId,
+      shift.date,
+      desiredRange.start,
+      desiredRange.end,
+      resizing.id,
+    )
+    if (conflictResolution) {
+      setShiftsWithoutHistory(
+        conflictResolution.shifts.map((item) =>
+          item.id === resizing.id ? { ...item, ...desiredRange } : item,
+        ),
+      )
+      setResizing((current) =>
+        current
+          ? { ...current, adjustedShiftIds: conflictResolution.adjustedShiftIds }
+          : current,
+      )
+      return
+    }
+
+    const { previousEnd, nextStart } = getResizeBounds(shift, baseShifts)
+    const fallbackRange = resizing.edge === "start"
+      ? {
+        start: Math.min(Math.max(desiredRange.start, previousEnd), resizing.end - SLOT_MINUTES),
+        end: resizing.end,
+      }
+      : {
+        start: resizing.start,
+        end: Math.max(Math.min(desiredRange.end, nextStart), resizing.start + SLOT_MINUTES),
+      }
     setShiftsWithoutHistory(
-      shiftsRef.current.map((item) => (item.id === resizing.id ? { ...item, ...update } : item)),
+      baseShifts.map((item) =>
+        item.id === resizing.id ? { ...item, ...fallbackRange } : item,
+      ),
+    )
+    setResizing((current) =>
+      current ? { ...current, adjustedShiftIds: [] } : current,
     )
   }
 
@@ -2019,6 +2174,8 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                           const isEditingShift = isMovingShift || isResizingShift
                           const hasSplitEditingTimes =
                             isEditingShift && shouldSplitShiftTimeLabels(shift.start, shift.end)
+                          const adjustsConflictingShifts =
+                            isResizingShift && resizing.adjustedShiftIds.length > 0
                           const isMovingAlias = isMovingShift && movingPreviewShift?.memberId !== shift.memberId
                           const isMovingSource = isMovingShift && !isMovingAlias
                           const isMovingSourceAlias = isMovingSource && moving?.previewMemberId === shift.memberId
@@ -2060,7 +2217,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                   cancelResize()
                                 }}
                                 aria-label={`${member.name} ${formatTime(shift.start)}-${formatTime(shift.end)}の詳細`}
-                                className={`${isInteractionAlias ? "pointer-events-none" : "pointer-events-auto"} absolute top-2 box-border h-12 select-none rounded-md border text-left transition hover:z-30 hover:ring-2 hover:ring-inset hover:ring-ring/40 ${hasSplitEditingTimes ? "overflow-visible" : "overflow-hidden"} ${isHiddenMovingSource ? "opacity-0" : ""} ${isMovingAlias || isMovingSourceAlias || isCopyingAlias ? "opacity-40 ring-2 ring-inset ring-ring/30" : ""} ${isCopyingAlias && !copying?.canDrop ? "ring-destructive" : ""} ${isSingleSlotShift ? "px-0" : "px-3 shadow-sm"} ${isAdmin && !isInteractionAlias ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
+                                className={`${isInteractionAlias ? "pointer-events-none" : "pointer-events-auto"} absolute top-2 box-border h-12 select-none rounded-md border text-left transition hover:z-30 hover:ring-2 hover:ring-inset hover:ring-ring/40 ${hasSplitEditingTimes || adjustsConflictingShifts ? "overflow-visible" : "overflow-hidden"} ${isHiddenMovingSource ? "opacity-0" : ""} ${isMovingAlias || isMovingSourceAlias || isCopyingAlias ? "opacity-40 ring-2 ring-inset ring-ring/30" : ""} ${isCopyingAlias && !copying?.canDrop ? "ring-destructive" : ""} ${isSingleSlotShift ? "px-0" : "px-3 shadow-sm"} ${isAdmin && !isInteractionAlias ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
                                   }`}
                                 style={{
                                   left,
@@ -2087,6 +2244,11 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                     <span className="block select-none truncate text-xs opacity-80">{shift.note || template.label}</span>
                                   </>
                                 )}
+                                {adjustsConflictingShifts ? (
+                                  <span className="absolute left-0 top-full z-50 mt-2 w-72 rounded-md border border-amber-500/40 bg-background px-2 py-1.5 text-xs text-amber-700 shadow-sm">
+                                    重なった他のシフトの時間帯が変更される可能性があります。
+                                  </span>
+                                ) : null}
                               </div>
                               {isAdmin && !isInteractionAlias ? (
                                 <>
@@ -2192,9 +2354,11 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
               </span>
             </>
           )}
-          {moving.wasAutoShrunk ? (
+          {moving.wasAutoShrunk || moving.adjustedShiftIds.length > 0 ? (
             <span className="absolute left-0 top-full mt-2 w-72 rounded-md border border-amber-500/40 bg-background px-2 py-1.5 text-xs text-amber-700 shadow-sm">
-              重なりを避けるため、このシフトの時間帯が変更される可能性があります。
+              {moving.adjustedShiftIds.length > 0
+                ? "重なった他のシフトの時間帯が変更される可能性があります。"
+                : "重なりを避けるため、このシフトの時間帯が変更される可能性があります。"}
             </span>
           ) : null}
         </div>
@@ -2280,7 +2444,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
         )
         : null}
 
-      <Dialog open={draftShift !== null} onOpenChange={(open) => !open && setDraftShift(null)}>
+      <Dialog open={draftShift !== null} onOpenChange={(open) => !open && closeDraftShift()}>
         <DialogContent className="sm:max-w-lg">
           {draftShift && draftTemplate ? (
             <>
@@ -2453,12 +2617,21 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                     placeholder="例: 受付、会場準備など"
                   />
                 </div>
+                {!draftConflictResolution ? (
+                  <p className="text-sm text-destructive">
+                    重なったシフトを15分以上残せないため、この時間帯では作成できません。
+                  </p>
+                ) : draftConflictResolution.adjustedShiftIds.length > 0 ? (
+                  <p className="text-sm text-amber-700">
+                    重なった他のシフトの時間帯もあわせて変更されます。
+                  </p>
+                ) : null}
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setDraftShift(null)}>
+                <Button type="button" variant="outline" onClick={closeDraftShift}>
                   キャンセル
                 </Button>
-                <Button type="button" onClick={createDraftShift}>
+                <Button type="button" onClick={createDraftShift} disabled={!draftConflictResolution}>
                   作成
                 </Button>
               </DialogFooter>
