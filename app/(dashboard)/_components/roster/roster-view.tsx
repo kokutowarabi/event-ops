@@ -1,8 +1,8 @@
 "use client"
 
 import { useMemo } from "react"
-import { RosterManager } from "@/components/roster-manager"
-import { useEventOps } from "@/components/dashboard/event-ops-provider"
+import { useEventOps } from "../event-ops-provider"
+import { RosterManager } from "./roster-manager"
 import { parseMemberRoles } from "@/lib/member-role"
 
 export function RosterView() {

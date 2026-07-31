@@ -14,7 +14,7 @@ import {
 } from "lucide-react"
 import { formatCompactDate, operationPeriod } from "@/lib/event-schedule"
 import { siteConfig } from "@/lib/site-config"
-import { VoteDataSkeleton } from "@/components/dashboard/vote-data-skeleton"
+import { VoteDataSkeleton } from "../vote/_components/vote-data-skeleton"
 
 const loadingRows = Array.from({ length: 8 }, (_, index) => index)
 

@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { ShiftManager } from "@/components/shift-manager"
-import { useEventOps } from "@/components/dashboard/event-ops-provider"
+import { useEventOps } from "../../_components/event-ops-provider"
+import { ShiftManager } from "./shift-manager"
 import type { ShiftData } from "@/lib/shift-data"
 
 export function ShiftView({

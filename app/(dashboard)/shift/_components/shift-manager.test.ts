@@ -11,7 +11,7 @@ import {
   orderMemberIdsWithPins,
   shouldSplitShiftTimeLabels,
   type Shift,
-} from "@/components/shift-manager"
+} from "./shift-manager"
 
 const shifts: Shift[] = [
   {

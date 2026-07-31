@@ -2,7 +2,7 @@ import { Suspense } from "react"
 import {
   VoteResultsLoadingView,
   VoteResultsView,
-} from "@/components/dashboard/vote-results-view"
+} from "./_components/vote-results-view"
 import { fetchVisitorVotesSnapshot } from "@/lib/supabase/server-votes"
 import type { VisitorVote } from "@/lib/supabase/votes"
 

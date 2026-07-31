@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 import { BarChart3, CalendarDays, Download, Trophy } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { VoteDataSkeleton } from "@/components/dashboard/vote-data-skeleton"
+import { VoteDataSkeleton } from "./vote-data-skeleton"
 import {
   Select,
   SelectContent,

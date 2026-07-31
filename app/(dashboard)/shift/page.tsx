@@ -1,4 +1,4 @@
-import { ShiftView } from "@/components/dashboard/shift-view"
+import { ShiftView } from "./_components/shift-view"
 import { createInitialShiftData } from "@/lib/initial-data"
 
 export default function ShiftPage() {

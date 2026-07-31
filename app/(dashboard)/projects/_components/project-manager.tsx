@@ -18,8 +18,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { SearchHeader, SelectHeader } from "@/components/table-column-header"
-import { EditableSelectCell, EditableTextCell } from "@/components/editable-cell"
+import { EditableSelectCell, EditableTextCell } from "@/components/common/editable-cell"
+import { SearchHeader, SelectHeader } from "@/components/common/table-column-header"
 import { downloadCsv } from "@/lib/csv"
 import { type EventDepartment, type EventProject, type ProjectStatus } from "@/lib/event-data"
 import { matchesSelectedValues } from "@/lib/table-filters"

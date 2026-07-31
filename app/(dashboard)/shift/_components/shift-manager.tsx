@@ -10,7 +10,7 @@ import {
 } from "react"
 import { createPortal } from "react-dom"
 import { CalendarDays, Check, Download, Eye, Layers3, ListFilter, Pin, Plus, Search, Trash2, Users, X } from "lucide-react"
-import type { Member } from "../lib/members"
+import type { Member } from "@/lib/members"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -30,7 +30,7 @@ import {
   operationPeriod,
 } from "@/lib/event-schedule"
 import { memberDepartmentBadgeClass } from "@/lib/member-department"
-import { MemberRoleBadges } from "@/components/member-role-badges"
+import { MemberRoleBadges } from "@/components/common/member-role-badges"
 import { parseMemberRoles } from "@/lib/member-role"
 import type {
   Shift,
@@ -1946,6 +1946,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
             ) : null}
             {visibleInvitedMembers.map((member) => {
               const isPinned = visiblePinnedMemberIdSet.has(member.id)
+              const hoveredMemberSlot = hoveredSlot?.memberId === member.id ? hoveredSlot.slot : null
               const memberShifts = (isPinned ? selectedDateShifts : visibleSelectedDateShifts)
                 .filter((shift) => shift.memberId === member.id)
                 .sort((left, right) => left.start - right.start)
@@ -2037,11 +2038,11 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                           />
                         )
                       })}
-                      {hoveredSlot?.memberId === member.id ? (
+                      {hoveredMemberSlot !== null ? (
                         <span
                           className="pointer-events-none absolute inset-x-0 border-b bg-muted"
                           style={{
-                            top: hoveredSlot.slot * MOBILE_SLOT_HEIGHT,
+                            top: hoveredMemberSlot * MOBILE_SLOT_HEIGHT,
                             height: MOBILE_SLOT_HEIGHT,
                             borderBottomColor: "color-mix(in oklch, var(--border), transparent 35%)",
                           }}
@@ -2159,6 +2160,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                 const isPinned = visiblePinnedMemberIdSet.has(member.id)
                 const pinnedIndex = visiblePinnedMemberIds.indexOf(member.id)
                 const pinnedTop = DESKTOP_TIMELINE_HEADER_HEIGHT + pinnedIndex * DESKTOP_MEMBER_ROW_HEIGHT
+                const hoveredMemberSlot = hoveredSlot?.memberId === member.id ? hoveredSlot.slot : null
                 const movingPreviewShift = moving
                   ? selectedDateShifts.find((shift) => shift.id === moving.id) ?? null
                   : null
@@ -2246,11 +2248,11 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                               />
                             )
                           })}
-                          {hoveredSlot?.memberId === member.id ? (
+                          {hoveredMemberSlot !== null ? (
                             <span
-                              className={`pointer-events-none absolute inset-y-0 border-r bg-muted ${getHoveredSlotRadiusClass(hoveredSlot.slot)}`}
+                              className={`pointer-events-none absolute inset-y-0 border-r bg-muted ${getHoveredSlotRadiusClass(hoveredMemberSlot)}`}
                               style={{
-                                left: hoveredSlot.slot * SLOT_WIDTH,
+                                left: hoveredMemberSlot * SLOT_WIDTH,
                                 width: SLOT_WIDTH,
                                 borderRightColor: "color-mix(in oklch, var(--border), transparent 35%)",
                               }}

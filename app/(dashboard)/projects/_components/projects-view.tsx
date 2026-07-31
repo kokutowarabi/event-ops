@@ -1,7 +1,7 @@
 "use client"
 
-import { ProjectManager } from "@/components/project-manager"
-import { useEventOps } from "@/components/dashboard/event-ops-provider"
+import { useEventOps } from "../../_components/event-ops-provider"
+import { ProjectManager } from "./project-manager"
 
 export function ProjectsView() {
   const { projects, setProjects } = useEventOps()

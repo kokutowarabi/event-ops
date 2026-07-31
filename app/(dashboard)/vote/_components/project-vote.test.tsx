@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
-import { ProjectVote } from "@/components/project-vote"
+import { ProjectVote } from "./project-vote"
 import type { EventProject } from "@/lib/event-data"
 
 const project: EventProject = {

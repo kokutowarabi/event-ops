@@ -1,7 +1,7 @@
 "use client"
 
-import { OrganizationManager } from "@/components/organization-manager"
-import { useEventOps } from "@/components/dashboard/event-ops-provider"
+import { useEventOps } from "../../_components/event-ops-provider"
+import { OrganizationManager } from "./organization-manager"
 
 export function OrganizationsView() {
   const {

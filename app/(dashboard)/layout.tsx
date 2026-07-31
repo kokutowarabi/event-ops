@@ -1,5 +1,5 @@
-import { DashboardNavigation } from "@/components/dashboard/dashboard-navigation"
-import { EventOpsProvider } from "@/components/dashboard/event-ops-provider"
+import { DashboardNavigation } from "./_components/dashboard-navigation"
+import { EventOpsProvider } from "./_components/event-ops-provider"
 import { createInitialDashboardState } from "@/lib/initial-data"
 import { siteConfig } from "@/lib/site-config"
 

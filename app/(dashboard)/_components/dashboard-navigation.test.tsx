@@ -1,6 +1,6 @@
 import { cleanup, render, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { DashboardNavigation } from "@/components/dashboard/dashboard-navigation"
+import { DashboardNavigation } from "./dashboard-navigation"
 
 const navigation = vi.hoisted(() => ({
   pathname: "/",

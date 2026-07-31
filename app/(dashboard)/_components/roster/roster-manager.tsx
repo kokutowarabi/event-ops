@@ -6,7 +6,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react"
-import { exportToCsv, memberDepartments, memberRoles, type Member, type SortKey, type SortOrder } from "../lib/members"
+import { exportToCsv, memberDepartments, memberRoles, type Member, type SortKey, type SortOrder } from "@/lib/members"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -18,9 +18,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { SearchHeader, SelectHeader } from "@/components/table-column-header"
-import { EditableMultiSelectCell, EditableSelectCell, EditableTextCell } from "@/components/editable-cell"
-import { MemberRoleBadges } from "@/components/member-role-badges"
+import { EditableMultiSelectCell, EditableSelectCell, EditableTextCell } from "@/components/common/editable-cell"
+import { MemberRoleBadges } from "@/components/common/member-role-badges"
+import { SearchHeader, SelectHeader } from "@/components/common/table-column-header"
 import {
   Dialog,
   DialogContent,
