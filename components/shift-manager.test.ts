@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   canPlaceShift,
   createShiftTemplateColor,
+  getCreateShiftTimeRange,
   type Shift,
 } from "@/components/shift-manager"
 
@@ -47,5 +48,19 @@ describe("shift placement", () => {
       (_, index) => createShiftTemplateColor(index).blockStyle.backgroundColor,
     )
     expect(new Set(backgrounds)).toHaveLength(8)
+  })
+
+  it("creates a minimum fifteen-minute shift from one slot", () => {
+    expect(getCreateShiftTimeRange(0, 0)).toEqual({
+      start: 6 * 60,
+      end: 6 * 60 + 15,
+    })
+  })
+
+  it("keeps fifteen-minute slots when dragging backwards", () => {
+    expect(getCreateShiftTimeRange(3, 1)).toEqual({
+      start: 6 * 60 + 15,
+      end: 7 * 60,
+    })
   })
 })

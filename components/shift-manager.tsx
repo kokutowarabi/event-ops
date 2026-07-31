@@ -130,6 +130,8 @@ const MOBILE_TIMELINE_HEIGHT = ((END_MINUTES - START_MINUTES) / SLOT_MINUTES) * 
 const MOBILE_TIMELINE_TRACK_HEIGHT = MOBILE_TIMELINE_HEIGHT + MOBILE_TIMELINE_PADDING_HEIGHT * 2
 // MVPでは既存シフトの編集に限定し、新規作成の導線を閉じる。
 const SHIFT_CREATION_ENABLED = false
+// 個人タイムライン上のD&D作成だけは、15分単位で利用できる。
+const SHIFT_DND_CREATION_ENABLED = true
 
 const shiftKinds: Record<ShiftKind, { label: string }> = {
   morning: { label: "オレンジ" },
@@ -201,6 +203,18 @@ function formatDate(key: string) {
 
 function formatTime(minutes: number) {
   return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}`
+}
+
+export function getCreateShiftTimeRange(
+  startSlot: number,
+  currentSlot: number,
+) {
+  const firstSlot = Math.min(startSlot, currentSlot)
+  const lastSlotExclusive = Math.max(startSlot, currentSlot) + 1
+  return {
+    start: START_MINUTES + firstSlot * SLOT_MINUTES,
+    end: START_MINUTES + lastSlotExclusive * SLOT_MINUTES,
+  }
 }
 
 function parseTime(value: string) {
@@ -786,10 +800,10 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
 
   const finishCreateShift = (memberId: string) => {
     if (!creatingShift || creatingShift.memberId !== memberId) return
-    const startSlot = Math.min(creatingShift.startSlot, creatingShift.currentSlot)
-    const endSlot = Math.max(creatingShift.startSlot, creatingShift.currentSlot) + 1
-    const start = START_MINUTES + startSlot * SLOT_MINUTES
-    const end = START_MINUTES + endSlot * SLOT_MINUTES
+    const { start, end } = getCreateShiftTimeRange(
+      creatingShift.startSlot,
+      creatingShift.currentSlot,
+    )
     setDraftShift({
       memberId,
       date: selectedDate,
@@ -811,11 +825,15 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     if (!creatingShift || creatingShift.memberId !== memberId) return null
     const startSlot = Math.min(creatingShift.startSlot, creatingShift.currentSlot)
     const endSlot = Math.max(creatingShift.startSlot, creatingShift.currentSlot) + 1
+    const { start, end } = getCreateShiftTimeRange(
+      creatingShift.startSlot,
+      creatingShift.currentSlot,
+    )
     return {
       left: TIMELINE_PADDING_WIDTH + startSlot * SLOT_WIDTH,
       width: Math.max((endSlot - startSlot) * SLOT_WIDTH, SLOT_WIDTH),
-      start: START_MINUTES + startSlot * SLOT_MINUTES,
-      end: START_MINUTES + endSlot * SLOT_MINUTES,
+      start,
+      end,
     }
   }
 
@@ -823,11 +841,15 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     if (!creatingShift || creatingShift.memberId !== memberId) return null
     const startSlot = Math.min(creatingShift.startSlot, creatingShift.currentSlot)
     const endSlot = Math.max(creatingShift.startSlot, creatingShift.currentSlot) + 1
+    const { start, end } = getCreateShiftTimeRange(
+      creatingShift.startSlot,
+      creatingShift.currentSlot,
+    )
     return {
       top: MOBILE_TIMELINE_PADDING_HEIGHT + startSlot * MOBILE_SLOT_HEIGHT,
       height: Math.max((endSlot - startSlot) * MOBILE_SLOT_HEIGHT, MOBILE_SLOT_HEIGHT),
-      start: START_MINUTES + startSlot * SLOT_MINUTES,
-      end: START_MINUTES + endSlot * SLOT_MINUTES,
+      start,
+      end,
     }
   }
 
@@ -1379,7 +1401,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                       ))}
                     <button
                       type="button"
-                      disabled={!SHIFT_CREATION_ENABLED || !isAdmin}
+                      disabled={!SHIFT_DND_CREATION_ENABLED || !isAdmin}
                       data-shift-member-id={member.id}
                       onPointerDown={(event) => beginCreateMobileShift(member.id, event)}
                       onPointerMove={(event) => moveCreateMobileShift(member.id, event)}
@@ -1553,7 +1575,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                       <div className="relative h-16" style={{ width: TIMELINE_TRACK_WIDTH }}>
                         <button
                           type="button"
-                          disabled={!SHIFT_CREATION_ENABLED || !isAdmin}
+                          disabled={!SHIFT_DND_CREATION_ENABLED || !isAdmin}
                           data-shift-member-id={member.id}
                           onPointerDown={(event) => beginCreateShift(member.id, event)}
                           onPointerMove={(event) => moveCreateShift(member.id, event)}
