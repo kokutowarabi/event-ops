@@ -3,14 +3,12 @@ import {
   useMemo,
   useRef,
   useState,
-  type KeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent,
 } from "react"
 import { createPortal } from "react-dom"
-import { CalendarDays, Check, Download, Layers3, ListFilter, Pin, Plus, Users, X } from "lucide-react"
+import { CalendarDays, Check, Download, Layers3, Users, X } from "lucide-react"
 import type { Member } from "@/lib/members"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { downloadCsv } from "@/lib/csv"
@@ -19,8 +17,6 @@ import {
   getOperationPeriodLabel,
   operationPeriod,
 } from "@/lib/event-schedule"
-import { memberDepartmentBadgeClass } from "@/lib/member-department"
-import { MemberRoleBadges } from "@/components/common/member-role-badges"
 import { parseMemberRoles } from "@/lib/member-role"
 import type {
   Shift,
@@ -35,7 +31,12 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select"
-import { ShiftCreateTimeLabel } from "./shift-create-time-label"
+import {
+  ShiftAssignmentView,
+  type AssignmentCoverageGroup,
+} from "./shift-assignment-view"
+import { ShiftDesktopView } from "./shift-desktop-view"
+import { ShiftMobileView } from "./shift-mobile-view"
 import {
   ShiftAdjustmentDialog,
   ShiftCreationDialog,
@@ -69,7 +70,6 @@ import {
   shouldSplitShiftTimeLabels,
   SLOT_MINUTES,
   START_MINUTES,
-  timeOptions,
   timeSlots,
   type ShiftTemplateColor,
 } from "./shift-domain"
@@ -78,6 +78,14 @@ import {
   getMemberRowFromPointer,
   getNearestMemberRowFromPointer,
 } from "./shift-pointer"
+import {
+  MOBILE_SLOT_HEIGHT,
+  MOBILE_TIMELINE_PADDING_HEIGHT,
+  MOVE_LONG_PRESS_MS,
+  SHIFT_CREATION_ENABLED,
+  SLOT_WIDTH,
+  TIMELINE_PADDING_WIDTH,
+} from "./shift-layout"
 import type {
   CopyingShift,
   CreatingShift,
@@ -95,30 +103,6 @@ import type {
 export type { Shift, ShiftData, ShiftSchedule, ShiftTemplate } from "@/lib/shift-data"
 
 const ALL_DEPARTMENTS = "すべてのセクション"
-const SLOT_WIDTH = 16
-const MOVE_LONG_PRESS_MS = 180
-const TIMELINE_PADDING_SLOTS = 2
-const TIMELINE_PADDING_WIDTH = TIMELINE_PADDING_SLOTS * SLOT_WIDTH
-const TIMELINE_WIDTH = ((END_MINUTES - START_MINUTES) / SLOT_MINUTES) * SLOT_WIDTH
-const TIMELINE_TRACK_WIDTH = TIMELINE_WIDTH + TIMELINE_PADDING_WIDTH * 2
-const MOBILE_SLOT_HEIGHT = 14
-const MOBILE_TIMELINE_PADDING_SLOTS = 2
-const MOBILE_TIMELINE_PADDING_HEIGHT = MOBILE_TIMELINE_PADDING_SLOTS * MOBILE_SLOT_HEIGHT
-const MOBILE_TIMELINE_HEIGHT = ((END_MINUTES - START_MINUTES) / SLOT_MINUTES) * MOBILE_SLOT_HEIGHT
-const MOBILE_TIMELINE_TRACK_HEIGHT = MOBILE_TIMELINE_HEIGHT + MOBILE_TIMELINE_PADDING_HEIGHT * 2
-const DESKTOP_TIMELINE_HEADER_HEIGHT = 64
-const DESKTOP_MEMBER_ROW_HEIGHT = 88
-const MOBILE_TIMELINE_GRID_BACKGROUND = `repeating-linear-gradient(to bottom, transparent 0, transparent ${MOBILE_SLOT_HEIGHT - 1}px, color-mix(in oklch, var(--border), transparent 35%) ${MOBILE_SLOT_HEIGHT - 1}px, color-mix(in oklch, var(--border), transparent 35%) ${MOBILE_SLOT_HEIGHT}px)`
-// MVPでは既存シフトの編集に限定し、新規作成の導線を閉じる。
-const SHIFT_CREATION_ENABLED = false
-// 個人タイムライン上のD&D作成だけは、15分単位で利用できる。
-const SHIFT_DND_CREATION_ENABLED = true
-
-function getHoveredSlotRadiusClass(slot: number) {
-  if (slot === 0) return "rounded-l-lg"
-  if (slot === timeSlots.length - 1) return "rounded-r-lg"
-  return ""
-}
 
 function isTextEditingTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false
@@ -358,18 +342,19 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       ...selectedDateShifts.map((shift) => shift.note),
     ].filter(Boolean)
   }, [allShiftTemplates, selectedDateShifts])
-  const assignmentCoverage = useMemo(() => {
+  const assignmentCoverage = useMemo<AssignmentCoverageGroup[]>(() => {
     return Object.entries(allShiftTemplates)
       .map(([templateId, template]) => {
+        const typedTemplateId = templateId as ShiftTemplateId
         const assignments = selectedDateShifts
-          .filter((shift) => shift.templateId === templateId)
+          .filter((shift) => shift.templateId === typedTemplateId)
           .sort((left, right) => left.start - right.start || left.memberId.localeCompare(right.memberId))
         const slotCounts = coverageTimeSlots.map((slotStart) => {
           const slotEnd = slotStart + COVERAGE_SLOT_MINUTES
           return assignments.filter((shift) => shift.start < slotEnd && shift.end > slotStart).length
         })
         return {
-          templateId,
+          templateId: typedTemplateId,
           template,
           assignments,
           slotCounts,
@@ -1227,672 +1212,94 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       ) : (
         <>
           {shiftViewMode === "assignment" ? (
-            <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-card p-3 md:p-4">
-              <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <h2 className="font-semibold">担当業務別の配置</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    色の数字は同じ時間帯に入っている人数です。時間帯または割り当てをクリックして編集できます。
-                  </p>
-                </div>
-                <Badge variant="outline">{assignmentCoverage.length}業務</Badge>
-              </div>
-              <div className="grid gap-4">
-                {assignmentCoverage.map((group) => (
-                  <section key={`coverage-${group.templateId}`} className="rounded-xl border bg-background p-4">
-                    <div className="flex flex-wrap items-start gap-3">
-                      <div
-                        className="mt-1 size-3 shrink-0 rounded-full"
-                        style={getShiftTemplateColor(group.templateId).dotStyle}
-                      />
-                      <div>
-                        <h3 className="font-semibold">{group.template.label}</h3>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {group.memberCount}名・延べ
-                          {(group.totalMinutes / 60).toLocaleString("ja-JP", { maximumFractionDigits: 1 })}時間・
-                          最大{group.maxOverlap}名重複
-                        </p>
-                      </div>
-                      {SHIFT_CREATION_ENABLED ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="ml-auto"
-                          onClick={() => openAssignmentDraft(group.templateId)}
-                        >
-                          <Plus className="size-3.5" />
-                          割り当て追加
-                        </Button>
-                      ) : null}
-                    </div>
-
-                    <div className="mt-4 overflow-x-auto">
-                      <div className="min-w-180">
-                        <div
-                          className="grid gap-0.5"
-                          style={{ gridTemplateColumns: `repeat(${coverageTimeSlots.length}, minmax(20px, 1fr))` }}
-                        >
-                          {group.slotCounts.map((count, index) => {
-                            const start = coverageTimeSlots[index]
-                            const overlapClass =
-                              count === 0
-                                ? "bg-muted/25 text-muted-foreground/45"
-                                : count === 1
-                                  ? "bg-sky-500/15 text-sky-800"
-                                  : count <= 3
-                                    ? "bg-amber-500/25 text-amber-900"
-                                    : "bg-rose-500/30 text-rose-900"
-                            return (
-                              <button
-                                key={`${group.templateId}-${start}`}
-                                type="button"
-                                disabled={!SHIFT_CREATION_ENABLED}
-                                className={`h-9 rounded-sm text-[11px] font-semibold transition enabled:hover:ring-2 enabled:hover:ring-ring/40 ${overlapClass}`}
-                                title={`${formatTime(start)}〜${formatTime(start + COVERAGE_SLOT_MINUTES)}: ${count}名`}
-                                onClick={() => openAssignmentDraft(group.templateId, start)}
-                              >
-                                {count}
-                              </button>
-                            )
-                          })}
-                        </div>
-                        <div
-                          className="mt-1 grid gap-0.5 text-[10px] text-muted-foreground"
-                          style={{ gridTemplateColumns: `repeat(${coverageTimeSlots.length}, minmax(20px, 1fr))` }}
-                        >
-                          {coverageTimeSlots.map((start, index) => (
-                            <span key={`coverage-time-${start}`} className="truncate">
-                              {index % 4 === 0 ? formatTime(start) : ""}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex max-h-40 flex-wrap gap-2 overflow-auto">
-                      {group.assignments.map((shift) => (
-                        <button
-                          key={`coverage-assignment-${shift.id}`}
-                          type="button"
-                          className="rounded-lg border px-2.5 py-2 text-left text-xs transition hover:ring-2 hover:ring-ring/30"
-                          style={getShiftTemplateColor(shift.templateId).blockStyle}
-                          onClick={() => openShiftDetail(shift.id)}
-                        >
-                          <span className="font-semibold">{memberName(shift.memberId)}</span>
-                          <span className="ml-2 opacity-75">
-                            {formatTime(shift.start)}〜{formatTime(shift.end)}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </section>
-                ))}
-              </div>
-            </div>
+            <ShiftAssignmentView
+              groups={assignmentCoverage}
+              creationEnabled={SHIFT_CREATION_ENABLED}
+              getTemplateColor={getShiftTemplateColor}
+              getMemberName={memberName}
+              onOpenDraft={openAssignmentDraft}
+              onOpenShift={openShiftDetail}
+            />
           ) : null}
 
-          <div className={`${shiftViewMode === "member" ? "space-y-3 md:hidden" : "hidden"} min-h-0 flex-1 overflow-auto select-none`}>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full min-w-0 justify-start"
-              onClick={(event) => toggleFilters("mobile", event)}
-              title={filterSummary || "絞り込み"}
-              aria-expanded={filtersOpen && filterAnchor === "mobile"}
-            >
-              <ListFilter className="size-4" />
-              <span className="shrink-0">絞り込み</span>
-              {filterSummary ? (
-                <span className="min-w-0 truncate border-l pl-2 text-xs font-normal text-muted-foreground">
-                  {filterSummary}
-                </span>
-              ) : null}
-            </Button>
-            {visiblePinnedMembers.length > 0 ? (
-              <div className="sticky top-0 z-30 rounded-lg border bg-card/95 p-2 shadow-sm backdrop-blur">
-                <div className="mb-1.5 text-xs font-medium text-muted-foreground">ピン留め</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {visiblePinnedMembers.map((member) => (
-                    <Button
-                      key={`mobile-pinned-${member.id}`}
-                      type="button"
-                      size="xs"
-                      variant="secondary"
-                      aria-label={`${member.name}のピン留めを解除`}
-                      onClick={() => toggleMemberPin(member.id)}
-                    >
-                      <Pin className="size-3 fill-current" />
-                      {member.name}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-            {hasNoFilterResults ? (
-              <ShiftFilterEmptyState className="rounded-lg border bg-card" />
-            ) : null}
-            {visibleInvitedMembers.map((member) => {
-              const isPinned = visiblePinnedMemberIdSet.has(member.id)
-              const hoveredMemberSlot = hoveredSlot?.memberId === member.id ? hoveredSlot.slot : null
-              const memberShifts = (isPinned ? selectedDateShifts : visibleSelectedDateShifts)
-                .filter((shift) => shift.memberId === member.id)
-                .sort((left, right) => left.start - right.start)
-              const allMemberShifts = selectedDateShifts.filter((shift) => shift.memberId === member.id)
-              const createPreview = getMobileCreatePreview(member.id)
-              return (
-                <section key={`mobile-member-${member.id}`} className="rounded-lg border bg-card p-3">
-                  <div className="mb-3 flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="font-medium">{member.name}</div>
-                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                        <Badge
-                          variant="outline"
-                          className={`font-normal ${memberDepartmentBadgeClass(member.department)}`}
-                        >
-                          {member.department}
-                        </Badge>
-                        <MemberRoleBadges value={member.role} />
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      size="icon-sm"
-                      variant={isPinned ? "secondary" : "ghost"}
-                      aria-label={isPinned ? `${member.name}のピン留めを解除` : `${member.name}をピン留め`}
-                      aria-pressed={isPinned}
-                      onClick={() => toggleMemberPin(member.id)}
-                    >
-                      <Pin className={`size-4 ${isPinned ? "fill-current" : ""}`} />
-                    </Button>
-                  </div>
-                  <div className="relative" style={{ height: MOBILE_TIMELINE_TRACK_HEIGHT }}>
-                    <div
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-y-0 left-14 right-0 rounded-lg"
-                      style={{
-                        backgroundImage: MOBILE_TIMELINE_GRID_BACKGROUND,
-                      }}
-                    />
-                    {timeOptions
-                      .filter((slot) => (slot.minutes - START_MINUTES) % 120 === 0)
-                      .map((slot) => {
-                        const slotIndex = (slot.minutes - START_MINUTES) / SLOT_MINUTES
-                        return (
-                          <div
-                            key={`mobile-time-${member.id}-${slot.value}`}
-                            className="absolute left-0 right-0 border-t border-dashed border-border/70"
-                            style={{ top: MOBILE_TIMELINE_PADDING_HEIGHT + slotIndex * MOBILE_SLOT_HEIGHT }}
-                          >
-                            <span className="-mt-2.5 inline-block w-12 bg-card pr-2 text-xs text-muted-foreground">
-                              {slot.label}
-                            </span>
-                          </div>
-                        )
-                      })}
-                    <button
-                      type="button"
-                      disabled={!SHIFT_DND_CREATION_ENABLED || !isAdmin}
-                      data-shift-member-id={member.id}
-                      onPointerDown={(event) => beginCreateMobileShift(member.id, event)}
-                      onPointerMove={(event) => moveCreateMobileShift(member.id, event)}
-                      onPointerUp={() => finishCreateShift(member.id)}
-                      onPointerCancel={cancelCreateShift}
-                      onPointerLeave={() => {
-                        if (!creatingShift || creatingShift.memberId !== member.id) {
-                          setHoveredSlot(null)
-                        }
-                      }}
-                      className="absolute left-14 right-0 rounded-lg border border-dashed border-border/80 text-left transition enabled:cursor-copy enabled:hover:bg-muted/30 disabled:cursor-default"
-                      style={{
-                        top: MOBILE_TIMELINE_PADDING_HEIGHT,
-                        height: MOBILE_TIMELINE_HEIGHT,
-                      }}
-                      aria-label={`${member.name}のシフトを追加`}
-                    >
-                      {allMemberShifts.map((shift) => {
-                        const blockedTop = ((shift.start - START_MINUTES) / SLOT_MINUTES) * MOBILE_SLOT_HEIGHT
-                        const blockedHeight = ((shift.end - shift.start) / SLOT_MINUTES) * MOBILE_SLOT_HEIGHT
-                        return (
-                          <span
-                            key={`mobile-blocked-slot-${shift.id}`}
-                            className="absolute inset-x-0 cursor-not-allowed"
-                            style={{ top: blockedTop, height: blockedHeight }}
-                            onPointerDown={(event) => event.stopPropagation()}
-                            onPointerEnter={() => setHoveredSlot(null)}
-                            onPointerMove={(event) => event.stopPropagation()}
-                            onPointerUp={(event) => event.stopPropagation()}
-                            aria-hidden="true"
-                          />
-                        )
-                      })}
-                      {hoveredMemberSlot !== null ? (
-                        <span
-                          className="pointer-events-none absolute inset-x-0 border-b bg-muted"
-                          style={{
-                            top: hoveredMemberSlot * MOBILE_SLOT_HEIGHT,
-                            height: MOBILE_SLOT_HEIGHT,
-                            borderBottomColor: "color-mix(in oklch, var(--border), transparent 35%)",
-                          }}
-                        />
-                      ) : null}
-                    </button>
-                    <div className="absolute inset-y-0 left-14 border-l border-border" />
-                    {memberShifts.length === 0 ? (
-                      <div className="pointer-events-none absolute left-16 right-0 top-11 rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-                        この日のシフトはありません
-                      </div>
-                    ) : null}
-                    {createPreview ? (
-                      <div
-                        className="pointer-events-none absolute left-16 right-1 z-50 box-border overflow-visible rounded-md border px-2 py-1 text-left shadow-sm"
-                        style={{
-                          top: createPreview.top,
-                          height: Math.max(createPreview.height, 44),
-                          ...getShiftTemplateColor(DEFAULT_SHIFT_TEMPLATE_ID).blockStyle,
-                        }}
-                      >
-                        <div className="flex min-w-0 items-center gap-2">
-                          <ShiftCreateTimeLabel
-                            start={createPreview.start}
-                            end={createPreview.end}
-                            orientation="horizontal"
-                          />
-                          <span className="truncate text-xs opacity-80">
-                            {allShiftTemplates[DEFAULT_SHIFT_TEMPLATE_ID].label}
-                          </span>
-                        </div>
-                        {createPreview.adjustsConflictingShifts ? (
-                          <span className="absolute left-0 top-full mt-2 w-64 rounded-md border border-amber-500/40 bg-background px-2 py-1.5 text-xs text-amber-700 shadow-sm">
-                            他のシフトの時間帯が変更される可能性があります。
-                          </span>
-                        ) : null}
-                      </div>
-                    ) : null}
-                    {memberShifts.map((shift) => {
-                      const top = MOBILE_TIMELINE_PADDING_HEIGHT + ((shift.start - START_MINUTES) / SLOT_MINUTES) * MOBILE_SLOT_HEIGHT
-                      const height = Math.max(((shift.end - shift.start) / SLOT_MINUTES) * MOBILE_SLOT_HEIGHT, 44)
-                      const template = allShiftTemplates[shift.templateId]
-                      return (
-                        <button
-                          key={`mobile-shift-${shift.id}`}
-                          type="button"
-                          onClick={() => openShiftDetail(shift.id)}
-                          className="absolute left-16 right-0 rounded-md border px-3 py-2 text-left shadow-sm"
-                          style={{ top, height, ...getShiftTemplateColor(shift.templateId).blockStyle }}
-                        >
-                          <span className="block text-sm font-medium">
-                            {formatTime(shift.start)}-{formatTime(shift.end)}
-                          </span>
-                          <span className="mt-0.5 block truncate text-xs opacity-80">
-                            {shift.note || template.label}
-                          </span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </section>
-              )
-            })}
-          </div>
+          <ShiftMobileView
+            visible={shiftViewMode === "member"}
+            filterSummary={filterSummary}
+            filtersOpen={filtersOpen && filterAnchor === "mobile"}
+            hasNoFilterResults={hasNoFilterResults}
+            pinnedMembers={visiblePinnedMembers}
+            members={visibleInvitedMembers}
+            pinnedMemberIds={visiblePinnedMemberIdSet}
+            selectedDateShifts={selectedDateShifts}
+            visibleDateShifts={visibleSelectedDateShifts}
+            hoveredSlot={hoveredSlot}
+            editable={isAdmin}
+            templates={allShiftTemplates}
+            getTemplateColor={getShiftTemplateColor}
+            getCreatePreview={getMobileCreatePreview}
+            onToggleFilters={(event) => toggleFilters("mobile", event)}
+            onTogglePin={toggleMemberPin}
+            onBeginCreate={beginCreateMobileShift}
+            onMoveCreate={moveCreateMobileShift}
+            onFinishCreate={finishCreateShift}
+            onCancelCreate={cancelCreateShift}
+            onLeaveTimeline={(memberId) => {
+              if (!creatingShift || creatingShift.memberId !== memberId) {
+                setHoveredSlot(null)
+              }
+            }}
+            onClearHover={() => setHoveredSlot(null)}
+            onOpenShift={openShiftDetail}
+          />
 
-          <div className={`${shiftViewMode === "member" ? "hidden md:block" : "hidden"} min-h-0 flex-1 select-none overflow-auto rounded-lg border bg-card`}>
-            <div className="grid min-w-300 grid-cols-[15rem_1fr]">
-              <div className="sticky left-0 top-0 z-30 flex h-16 items-center border-b border-r bg-card px-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="w-full min-w-0 justify-start"
-                  onClick={(event) => toggleFilters("table", event)}
-                  title={filterSummary || "絞り込み"}
-                  aria-expanded={filtersOpen && filterAnchor === "table"}
-                >
-                  <ListFilter className="size-4" />
-                  <span className="shrink-0">絞り込み</span>
-                  {filterSummary ? (
-                    <span className="min-w-0 truncate border-l pl-2 text-xs font-normal text-muted-foreground">
-                      {filterSummary}
-                    </span>
-                  ) : null}
-                </Button>
-              </div>
-              <div className="sticky top-0 z-20 flex h-16 items-center border-b bg-card">
-                <div className="relative h-full" style={{ width: TIMELINE_TRACK_WIDTH }}>
-                  {timeOptions.map((slot, index) => {
-                    const isMajor = (slot.minutes - START_MINUTES) % 120 === 0
-                    const isHovered =
-                      creatingShift === null
-                      && moving === null
-                      && resizing === null
-                      && hoveredSlot?.slot === index
-                    return (
-                      <span
-                        key={`time-slot-${slot.value}`}
-                        className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-xs transition ${isHovered
-                            ? "font-semibold text-foreground opacity-100"
-                            : isMajor
-                              ? "text-muted-foreground opacity-100"
-                              : "text-muted-foreground opacity-0"
-                          }`}
-                        style={{ left: TIMELINE_PADDING_WIDTH + index * SLOT_WIDTH }}
-                      >
-                        {slot.label}
-                      </span>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {visibleInvitedMembers.map((member) => {
-                const isPinned = visiblePinnedMemberIdSet.has(member.id)
-                const pinnedIndex = visiblePinnedMemberIds.indexOf(member.id)
-                const pinnedTop = DESKTOP_TIMELINE_HEADER_HEIGHT + pinnedIndex * DESKTOP_MEMBER_ROW_HEIGHT
-                const hoveredMemberSlot = hoveredSlot?.memberId === member.id ? hoveredSlot.slot : null
-                const movingPreviewShift = moving
-                  ? selectedDateShifts.find((shift) => shift.id === moving.id) ?? null
-                  : null
-                const memberShifts = (isPinned ? selectedDateShifts : visibleSelectedDateShifts)
-                  .filter((shift) => shift.memberId === member.id)
-                const allMemberShifts = selectedDateShifts.filter((shift) => shift.memberId === member.id)
-                const movingMemberShifts =
-                  movingPreviewShift && moving?.previewMemberId === member.id && movingPreviewShift.memberId !== member.id
-                    ? [...memberShifts, { ...movingPreviewShift, memberId: member.id }]
-                    : memberShifts
-                const visibleMemberShifts =
-                  copyingShift && copying?.previewMemberId === member.id && copyingShift.memberId !== member.id
-                    ? [...movingMemberShifts, { ...copyingShift, memberId: member.id }]
-                    : movingMemberShifts
-                const createPreview = getCreatePreview(member.id)
-                return (
-                  <div key={`member-row-${member.id}`} className="contents">
-                    <div
-                      className={`sticky left-0 border-r border-b bg-card p-4 ${isPinned ? "z-25 h-[88px] shadow-sm" : "z-10"}`}
-                      style={isPinned ? { top: pinnedTop } : undefined}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 font-medium">{member.name}</div>
-                        <Button
-                          type="button"
-                          size="icon-sm"
-                          variant={isPinned ? "secondary" : "ghost"}
-                          aria-label={isPinned ? `${member.name}のピン留めを解除` : `${member.name}をピン留め`}
-                          aria-pressed={isPinned}
-                          onClick={() => toggleMemberPin(member.id)}
-                        >
-                          <Pin className={`size-4 ${isPinned ? "fill-current" : ""}`} />
-                        </Button>
-                      </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-                        <Badge
-                          variant="outline"
-                          className={`font-normal ${memberDepartmentBadgeClass(member.department)}`}
-                        >
-                          {member.department}
-                        </Badge>
-                        <MemberRoleBadges value={member.role} />
-                      </div>
-                    </div>
-                    <div
-                      className={`border-b py-3 ${isPinned ? "sticky z-15 h-[88px] bg-card shadow-sm" : ""}`}
-                      style={isPinned ? { top: pinnedTop } : undefined}
-                    >
-                      <div className="relative h-16" style={{ width: TIMELINE_TRACK_WIDTH }}>
-                        <button
-                          type="button"
-                          disabled={!SHIFT_DND_CREATION_ENABLED || !isAdmin}
-                          data-shift-member-id={member.id}
-                          onPointerDown={(event) => beginCreateShift(member.id, event)}
-                          onPointerMove={(event) => moveCreateShift(member.id, event)}
-                          onPointerUp={() => finishCreateShift(member.id)}
-                          onPointerCancel={cancelCreateShift}
-                          onPointerLeave={() => {
-                            if (!creatingShift || creatingShift.memberId !== member.id) {
-                              setHoveredSlot(null)
-                            }
-                          }}
-                          className="absolute inset-y-0 rounded-lg border border-dashed border-border/80 text-left transition enabled:cursor-copy enabled:hover:bg-muted/30 disabled:cursor-default"
-                          style={{
-                            left: TIMELINE_PADDING_WIDTH,
-                            width: TIMELINE_WIDTH,
-                            backgroundImage:
-                              "repeating-linear-gradient(to right, transparent 0, transparent 15px, color-mix(in oklch, var(--border), transparent 35%) 15px, color-mix(in oklch, var(--border), transparent 35%) 16px)",
-                          }}
-                          aria-label={`${member.name}のシフトを追加`}
-                        >
-                          {allMemberShifts.map((shift) => {
-                            const blockedLeft = ((shift.start - START_MINUTES) / SLOT_MINUTES) * SLOT_WIDTH
-                            const blockedWidth = ((shift.end - shift.start) / SLOT_MINUTES) * SLOT_WIDTH
-                            return (
-                              <span
-                                key={`blocked-slot-${shift.id}`}
-                                className="absolute inset-y-0 cursor-not-allowed"
-                                style={{ left: blockedLeft, width: blockedWidth }}
-                                onPointerDown={(event) => event.stopPropagation()}
-                                onPointerEnter={() => setHoveredSlot(null)}
-                                onPointerMove={(event) => event.stopPropagation()}
-                                onPointerUp={(event) => event.stopPropagation()}
-                                aria-hidden="true"
-                              />
-                            )
-                          })}
-                          {hoveredMemberSlot !== null ? (
-                            <span
-                              className={`pointer-events-none absolute inset-y-0 border-r bg-muted ${getHoveredSlotRadiusClass(hoveredMemberSlot)}`}
-                              style={{
-                                left: hoveredMemberSlot * SLOT_WIDTH,
-                                width: SLOT_WIDTH,
-                                borderRightColor: "color-mix(in oklch, var(--border), transparent 35%)",
-                              }}
-                            />
-                          ) : null}
-                        </button>
-                        {createPreview ? (
-                          <div
-                            className={`pointer-events-none absolute top-2 z-50 box-border h-12 overflow-visible rounded-md border text-left ${createPreview.width === SLOT_WIDTH ? "px-0" : "px-3 shadow-sm"}`}
-                            style={{
-                              left: createPreview.left,
-                              width: createPreview.width,
-                              minWidth: createPreview.width,
-                              maxWidth: createPreview.width,
-                              ...getShiftTemplateColor(DEFAULT_SHIFT_TEMPLATE_ID).blockStyle,
-                            }}
-                          >
-                            {shouldSplitShiftTimeLabels(createPreview.start, createPreview.end) ? (
-                              <>
-                                <span className="absolute -top-3 right-full mr-2 whitespace-nowrap text-sm font-medium">
-                                  {formatTime(createPreview.start)}
-                                </span>
-                                <span className="absolute -top-3 left-full ml-2 whitespace-nowrap text-sm font-medium">
-                                  {formatTime(createPreview.end)}
-                                </span>
-                              </>
-                            ) : (
-                              <div className="absolute left-1 top-1 z-10">
-                                <ShiftCreateTimeLabel
-                                  start={createPreview.start}
-                                  end={createPreview.end}
-                                  orientation="horizontal"
-                                />
-                              </div>
-                            )}
-                            {createPreview.width > SLOT_WIDTH ? (
-                              <span className="absolute left-1 top-7 block truncate text-xs opacity-80">
-                                {allShiftTemplates[DEFAULT_SHIFT_TEMPLATE_ID].label}
-                              </span>
-                            ) : null}
-                            {createPreview.adjustsConflictingShifts ? (
-                              <span className="absolute left-0 top-full mt-2 w-72 rounded-md border border-amber-500/40 bg-background px-2 py-1.5 text-xs text-amber-700 shadow-sm">
-                                他のシフトの時間帯が変更される可能性があります。
-                              </span>
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </div>
-                      <div className="pointer-events-none relative -mt-16 h-16" style={{ width: TIMELINE_TRACK_WIDTH }}>
-                        {visibleMemberShifts.map((shift) => {
-                          const left =
-                            TIMELINE_PADDING_WIDTH + ((shift.start - START_MINUTES) / SLOT_MINUTES) * SLOT_WIDTH
-                          const width = ((shift.end - shift.start) / SLOT_MINUTES) * SLOT_WIDTH
-                          const visualWidth = width + 1
-                          const template = allShiftTemplates[shift.templateId]
-                          const isSingleSlotShift = shift.end - shift.start === SLOT_MINUTES
-                          const isMovingShift = moving?.id === shift.id
-                          const isResizingShift = resizing?.id === shift.id
-                          const isEditingShift = isMovingShift || isResizingShift
-                          const hasSplitEditingTimes =
-                            isEditingShift && shouldSplitShiftTimeLabels(shift.start, shift.end)
-                          const adjustsConflictingShifts =
-                            isResizingShift && resizing.adjustedShiftIds.length > 0
-                          const isMovingAlias = isMovingShift && movingPreviewShift?.memberId !== shift.memberId
-                          const isMovingSource = isMovingShift && !isMovingAlias
-                          const isMovingSourceAlias = isMovingSource && moving?.previewMemberId === shift.memberId
-                          const isHiddenMovingSource = isMovingSource && !isMovingSourceAlias
-                          const isCopyingAlias =
-                            copying?.sourceId === shift.id
-                            && copying.previewMemberId === member.id
-                            && copyingShift?.memberId !== member.id
-                          const isCopyingSource = copying?.sourceId === shift.id && !isCopyingAlias
-                          const isInteractionAlias = isMovingAlias || isCopyingAlias
-                          const verticalHandleLength = Math.min(40, visualWidth)
-                          return (
-                            <div key={`${shift.id}-${isCopyingAlias ? "copy" : "shift"}`} className="group contents">
-                              <div
-                                data-shift-block
-                                role="button"
-                                tabIndex={0}
-                                onClick={() => {
-                                  if (!isInteractionAlias) openShiftDetail(shift.id)
-                                }}
-                                onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
-                                  if (event.key === "Enter" || event.key === " ") {
-                                    event.preventDefault()
-                                    openShiftDetail(shift.id)
-                                  }
-                                }}
-                                onPointerDown={(event) => {
-                                  if (!isInteractionAlias) startMovePress(shift, event)
-                                }}
-                                onPointerMove={(event) => {
-                                  updateMovePress(event)
-                                  moveShift(event)
-                                  moveResize(event)
-                                }}
-                                onPointerUp={() => {
-                                  cancelMovePress()
-                                  stopMove()
-                                  stopResize()
-                                }}
-                                onPointerCancel={() => {
-                                  cancelMovePress()
-                                  cancelMove()
-                                  cancelResize()
-                                }}
-                                aria-label={`${member.name} ${formatTime(shift.start)}-${formatTime(shift.end)}の詳細`}
-                                className={`${isInteractionAlias ? "pointer-events-none" : "pointer-events-auto"} absolute top-2 box-border h-12 select-none rounded-md border text-left transition hover:z-30 hover:ring-2 hover:ring-inset hover:ring-ring/40 ${hasSplitEditingTimes || adjustsConflictingShifts ? "overflow-visible" : "overflow-hidden"} ${isHiddenMovingSource ? "opacity-0" : ""} ${isMovingAlias || isMovingSourceAlias || isCopyingAlias ? "opacity-40 ring-2 ring-inset ring-ring/30" : ""} ${isCopyingAlias && !copying?.canDrop ? "ring-destructive" : ""} ${isSingleSlotShift ? "px-0" : "px-3 shadow-sm"} ${isAdmin && !isInteractionAlias ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
-                                  }`}
-                                style={{
-                                  left,
-                                  width: visualWidth,
-                                  minWidth: visualWidth,
-                                  maxWidth: visualWidth,
-                                  ...getShiftTemplateColor(shift.templateId).blockStyle,
-                                }}
-                              >
-                                {hasSplitEditingTimes ? (
-                                  <>
-                                    <span className="absolute -top-3 right-full mr-2 whitespace-nowrap text-sm font-medium">
-                                      {formatTime(shift.start)}
-                                    </span>
-                                    <span className="absolute -top-3 left-full ml-2 whitespace-nowrap text-sm font-medium">
-                                      {formatTime(shift.end)}
-                                    </span>
-                                  </>
-                                ) : isSingleSlotShift ? null : (
-                                  <>
-                                    <span className="block select-none truncate text-sm font-medium">
-                                      {formatTime(shift.start)}-{formatTime(shift.end)}
-                                    </span>
-                                    <span className="block select-none truncate text-xs opacity-80">{shift.note || template.label}</span>
-                                  </>
-                                )}
-                                {adjustsConflictingShifts ? (
-                                  <span className="absolute left-0 top-full z-50 mt-2 w-72 rounded-md border border-amber-500/40 bg-background px-2 py-1.5 text-xs text-amber-700 shadow-sm">
-                                    他のシフトの時間帯が変更される可能性があります。
-                                  </span>
-                                ) : null}
-                              </div>
-                              {isAdmin && !isInteractionAlias ? (
-                                <>
-                                  <span
-                                    className={`pointer-events-auto absolute top-3 z-40 h-10 w-2 cursor-w-resize rounded-l-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${isMovingShift || isCopyingSource ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}
-                                    style={{
-                                      left,
-                                      cursor: "url('/cursors/resize-left.svg') 12 12, w-resize",
-                                    }}
-                                    onClick={(event) => event.stopPropagation()}
-                                    onPointerDown={(event) => startResize(shift, "start", event)}
-                                    onPointerMove={(event) => moveResize(event)}
-                                    onPointerUp={stopResize}
-                                    onPointerCancel={cancelResize}
-                                    aria-hidden="true"
-                                  />
-                                  <span
-                                    className={`pointer-events-auto absolute top-3 z-40 h-10 w-2 cursor-e-resize rounded-r-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${isMovingShift || isCopyingSource ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}
-                                    style={{
-                                      left: left + visualWidth - 8,
-                                      cursor: "url('/cursors/resize-right.svg') 12 12, e-resize",
-                                    }}
-                                    onClick={(event) => event.stopPropagation()}
-                                    onPointerDown={(event) => startResize(shift, "end", event)}
-                                    onPointerMove={(event) => moveResize(event)}
-                                    onPointerUp={stopResize}
-                                    onPointerCancel={cancelResize}
-                                    aria-hidden="true"
-                                  />
-                                  <span
-                                    className={`pointer-events-auto absolute top-2 z-40 h-2 cursor-n-resize rounded-t-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${isMovingShift || isCopyingSource ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}
-                                    style={{
-                                      left: left + (visualWidth - verticalHandleLength) / 2,
-                                      width: verticalHandleLength,
-                                      cursor: "url('/cursors/resize-up.svg') 12 12, n-resize",
-                                    }}
-                                    onClick={(event) => event.stopPropagation()}
-                                    onPointerDown={(event) => startCopyShift(shift, event)}
-                                    onPointerMove={moveCopyShift}
-                                    onPointerUp={stopCopyShift}
-                                    onPointerCancel={cancelCopyShift}
-                                    aria-hidden="true"
-                                  />
-                                  <span
-                                    className={`pointer-events-auto absolute top-12 z-40 h-2 cursor-s-resize rounded-b-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${isMovingShift || isCopyingSource ? "opacity-0" : "opacity-0 group-hover:opacity-100"}`}
-                                    style={{
-                                      left: left + (visualWidth - verticalHandleLength) / 2,
-                                      width: verticalHandleLength,
-                                      cursor: "url('/cursors/resize-down.svg') 12 12, s-resize",
-                                    }}
-                                    onClick={(event) => event.stopPropagation()}
-                                    onPointerDown={(event) => startCopyShift(shift, event)}
-                                    onPointerMove={moveCopyShift}
-                                    onPointerUp={stopCopyShift}
-                                    onPointerCancel={cancelCopyShift}
-                                    aria-hidden="true"
-                                  />
-                                </>
-                              ) : null}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-            {hasNoFilterResults ? (
-              <ShiftFilterEmptyState className="sticky left-0 min-h-40 w-full border-b" />
-            ) : null}
-          </div>
+          <ShiftDesktopView
+            visible={shiftViewMode === "member"}
+            filterSummary={filterSummary}
+            filtersOpen={filtersOpen && filterAnchor === "table"}
+            hasNoFilterResults={hasNoFilterResults}
+            members={visibleInvitedMembers}
+            pinnedMemberIds={visiblePinnedMemberIds}
+            pinnedMemberIdSet={visiblePinnedMemberIdSet}
+            selectedDateShifts={selectedDateShifts}
+            visibleDateShifts={visibleSelectedDateShifts}
+            hoveredSlot={hoveredSlot}
+            creatingShift={creatingShift}
+            moving={moving}
+            resizing={resizing}
+            copying={copying}
+            copyingShift={copyingShift}
+            editable={isAdmin}
+            templates={allShiftTemplates}
+            getTemplateColor={getShiftTemplateColor}
+            getCreatePreview={getCreatePreview}
+            onToggleFilters={(event) => toggleFilters("table", event)}
+            onTogglePin={toggleMemberPin}
+            onBeginCreate={beginCreateShift}
+            onMoveCreate={moveCreateShift}
+            onFinishCreate={finishCreateShift}
+            onCancelCreate={cancelCreateShift}
+            onLeaveTimeline={(memberId) => {
+              if (!creatingShift || creatingShift.memberId !== memberId) {
+                setHoveredSlot(null)
+              }
+            }}
+            onClearHover={() => setHoveredSlot(null)}
+            onOpenShift={openShiftDetail}
+            onStartMovePress={startMovePress}
+            onUpdateMovePress={updateMovePress}
+            onMoveShift={moveShift}
+            onStopMove={stopMove}
+            onCancelMovePress={cancelMovePress}
+            onCancelMove={cancelMove}
+            onStartResize={startResize}
+            onMoveResize={moveResize}
+            onStopResize={stopResize}
+            onCancelResize={cancelResize}
+            onStartCopy={startCopyShift}
+            onMoveCopy={moveCopyShift}
+            onStopCopy={stopCopyShift}
+            onCancelCopy={cancelCopyShift}
+          />
         </>
       )}
 
