@@ -465,8 +465,13 @@ export function copyShiftForMember(shift: Shift, memberId: string, id: string): 
 
 export function canCopyShiftToMember(shifts: Shift[], sourceShift: Shift, memberId: string) {
   return memberId !== sourceShift.memberId
-    && !shifts.some(
-      (shift) => shift.memberId === memberId && shift.date === sourceShift.date,
+    && canPlaceShift(
+      shifts,
+      memberId,
+      sourceShift.date,
+      sourceShift.start,
+      sourceShift.end,
+      sourceShift.id,
     )
 }
 

@@ -57,9 +57,24 @@ describe("shift placement", () => {
     })
   })
 
-  it("copies vertically only to a member without a shift on that date", () => {
-    expect(canCopyShiftToMember(shifts, shifts[0], "member-b")).toBe(false)
+  it("copies vertically when the destination member is free at the same time", () => {
+    expect(canCopyShiftToMember(shifts, shifts[0], "member-b")).toBe(true)
     expect(canCopyShiftToMember(shifts, shifts[0], "member-c")).toBe(true)
+    expect(
+      canCopyShiftToMember(
+        [
+          ...shifts,
+          {
+            ...shifts[1],
+            id: "target-overlap",
+            start: 9 * 60 + 30,
+            end: 10 * 60 + 30,
+          },
+        ],
+        shifts[0],
+        "member-b",
+      ),
+    ).toBe(false)
   })
 
   it("keeps a vertical copy preview active between member rows", () => {
