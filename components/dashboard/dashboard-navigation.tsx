@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   BarChart3,
   Building2,
@@ -41,16 +41,12 @@ function DashboardRouteLink({
   route: DashboardRoute
   active: boolean
 }) {
-  const [prefetchEnabled, setPrefetchEnabled] = useState(false)
   const Icon = route.icon
 
   return (
     <Link
       href={route.href}
-      prefetch={prefetchEnabled}
-      onMouseEnter={() => setPrefetchEnabled(true)}
-      onFocus={() => setPrefetchEnabled(true)}
-      onTouchStart={() => setPrefetchEnabled(true)}
+      prefetch
       aria-current={active ? "page" : undefined}
       className={cn(
         buttonVariants({
@@ -72,6 +68,10 @@ function MobileDashboardNavigation({
 }) {
   const router = useRouter()
   const [pendingHref, setPendingHref] = useState<string | null>(null)
+
+  useEffect(() => {
+    dashboardRoutes.forEach((route) => router.prefetch(route.href))
+  }, [router])
 
   return (
     <div className="relative min-w-0 flex-1 md:hidden">
