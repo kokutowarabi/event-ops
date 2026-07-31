@@ -8,3 +8,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 - Never take an action that can incur a charge for this project.
 - Use local development and free tooling only. Do not create or deploy paid infrastructure, services, domains, or subscriptions.
+
+# Code quality
+
+- Apply continuous refactoring pressure whenever code is touched: improve naming, responsibility boundaries, duplication, and oversized files within the task's scope.
+- Keep refactors incremental and behavior-preserving; do not expand into unrelated rewrites.
