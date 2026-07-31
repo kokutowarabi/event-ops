@@ -1,6 +1,9 @@
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
-import { ShiftCreateTimeLabel } from "@/components/shift-manager"
+import {
+  ShiftCreateTimeLabel,
+  ShiftTimelineRangeMarks,
+} from "@/components/shift-manager"
 
 afterEach(cleanup)
 
@@ -25,5 +28,23 @@ describe("shift creation preview label", () => {
     expect(
       Array.from(label.children, (child) => child.textContent),
     ).toEqual(["6:00", "〜", "6:15"])
+  })
+})
+
+describe("shift timeline range marks", () => {
+  it("keeps compact times together with a separator", () => {
+    render(<ShiftTimelineRangeMarks startSlot={0} endSlot={1} />)
+
+    const marks = screen.getByLabelText("6:00〜6:15")
+    expect(marks.getAttribute("data-layout")).toBe("compact")
+    expect(marks.textContent).toBe("6:00〜6:15")
+  })
+
+  it("places a separator between distributed boundary times", () => {
+    render(<ShiftTimelineRangeMarks startSlot={0} endSlot={4} />)
+
+    const marks = screen.getByLabelText("6:00〜7:00")
+    expect(marks.getAttribute("data-layout")).toBe("distributed")
+    expect(Array.from(marks.children, (child) => child.textContent)).toEqual(["6:00", "〜", "7:00"])
   })
 })

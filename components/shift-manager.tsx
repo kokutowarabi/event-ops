@@ -278,6 +278,62 @@ export function ShiftCreateTimeLabel({
   )
 }
 
+export function ShiftTimelineRangeMarks({
+  startSlot,
+  endSlot,
+}: {
+  startSlot: number
+  endSlot: number
+}) {
+  const startLabel = formatTime(START_MINUTES + startSlot * SLOT_MINUTES)
+  const endLabel = formatTime(START_MINUTES + endSlot * SLOT_MINUTES)
+  const isCompact = endSlot - startSlot <= 2
+  const label = `${startLabel}〜${endLabel}`
+
+  if (isCompact) {
+    return (
+      <span
+        data-layout="compact"
+        className="pointer-events-none absolute top-1/2 z-10 -translate-y-1/2 text-xs font-semibold text-foreground"
+        style={{ left: TIMELINE_PADDING_WIDTH + startSlot * SLOT_WIDTH }}
+        aria-label={label}
+      >
+        <span className="relative inline-block -translate-x-1/2 whitespace-nowrap" aria-hidden="true">
+          <span>{startLabel}</span>
+          <span className="absolute left-full top-0">〜{endLabel}</span>
+        </span>
+      </span>
+    )
+  }
+
+  const middleSlot = (startSlot + endSlot) / 2
+  return (
+    <span data-layout="distributed" className="contents" aria-label={label}>
+      <span
+        className="pointer-events-none absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-xs font-semibold text-foreground"
+        style={{ left: TIMELINE_PADDING_WIDTH + startSlot * SLOT_WIDTH }}
+        aria-hidden="true"
+      >
+        {startLabel}
+      </span>
+      <span
+        className="pointer-events-none absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 text-xs font-semibold text-foreground"
+        style={{ left: TIMELINE_PADDING_WIDTH + middleSlot * SLOT_WIDTH }}
+        aria-hidden="true"
+      >
+        〜
+      </span>
+      <span
+        className="pointer-events-none absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-xs font-semibold text-foreground"
+        style={{ left: TIMELINE_PADDING_WIDTH + endSlot * SLOT_WIDTH }}
+        aria-hidden="true"
+      >
+        {endLabel}
+      </span>
+    </span>
+  )
+}
+
 function parseTime(value: string) {
   const [hour, minute] = value.split(":").map(Number)
   return hour * 60 + minute
@@ -1729,9 +1785,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                     const isCreatingStart = timelineTimeRange?.startSlot === index
                     const isCreatingEnd = timelineTimeRange?.endSlot === index
                     const isCreatingBoundary = isCreatingStart || isCreatingEnd
-                    const isCompactCreatingRange =
-                      timelineTimeRange !== null
-                      && timelineTimeRange.endSlot - timelineTimeRange.startSlot <= 2
                     const isNearCreatingBoundary =
                       timelineTimeRange !== null
                       && !isCreatingBoundary
@@ -1746,19 +1799,11 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                       && hoveredSlot.slot !== index
                       && Math.abs(hoveredSlot.slot - index) <= 2
                     const isFadedHoveredMajor = fadedHoveredMajorSlots.includes(index)
-                    const horizontalAlignment =
-                      isCompactCreatingRange && isCreatingEnd
-                        ? "translate-x-6"
-                        : "-translate-x-1/2"
-                    const displayedSlot =
-                      isCompactCreatingRange && isCreatingEnd
-                        ? timelineTimeRange.startSlot
-                        : index
                     return (
                       <span
                         key={`time-slot-${slot.value}`}
-                        className={`absolute top-1/2 -translate-y-1/2 whitespace-nowrap text-xs transition ${horizontalAlignment} ${isCreatingBoundary
-                            ? "font-semibold text-foreground opacity-100"
+                        className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-xs transition ${isCreatingBoundary
+                            ? "text-muted-foreground opacity-0"
                             : isNearCreatingBoundary
                               ? "text-muted-foreground opacity-0"
                               : isHovered
@@ -1771,12 +1816,18 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                     ? "text-muted-foreground opacity-100"
                                     : "text-muted-foreground opacity-0"
                           }`}
-                        style={{ left: TIMELINE_PADDING_WIDTH + displayedSlot * SLOT_WIDTH }}
+                        style={{ left: TIMELINE_PADDING_WIDTH + index * SLOT_WIDTH }}
                       >
                         {slot.label}
                       </span>
                     )
                   })}
+                  {timelineTimeRange ? (
+                    <ShiftTimelineRangeMarks
+                      startSlot={timelineTimeRange.startSlot}
+                      endSlot={timelineTimeRange.endSlot}
+                    />
+                  ) : null}
                 </div>
               </div>
 
