@@ -97,14 +97,10 @@ export function ProjectVote({ projects, votes, connectionState }: ProjectVotePro
       <header className="mb-4 flex shrink-0 flex-wrap items-center gap-2">
         <BarChart3 className="size-5 text-muted-foreground" />
         <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">投票結果</h1>
-        <Badge variant={connectionState === "error" ? "destructive" : "outline"} className="ml-2">
-          {connectionLabel}
-        </Badge>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="ml-auto"
           onClick={exportRanking}
           disabled={rankingStats.ranking.length === 0}
           title="選択中の日付・部門ランキングをCSV出力"
@@ -112,6 +108,9 @@ export function ProjectVote({ projects, votes, connectionState }: ProjectVotePro
           <Download className="size-4" />
           CSV
         </Button>
+        <Badge variant={connectionState === "error" ? "destructive" : "outline"} className="ml-2">
+          {connectionLabel}
+        </Badge>
       </header>
 
       <div className="min-h-0 flex-1 overflow-auto">
