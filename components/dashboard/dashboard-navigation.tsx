@@ -1,12 +1,14 @@
 "use client"
 
-import Link from "next/link"
+import Link, { useLinkStatus } from "next/link"
 import { usePathname, useRouter } from "next/navigation"
+import { useState } from "react"
 import {
   BarChart3,
   Building2,
   CalendarDays,
   ClipboardList,
+  LoaderCircle,
   MonitorSmartphone,
   Users,
   type LucideIcon,
@@ -33,20 +35,77 @@ function isCurrentRoute(pathname: string, href: string) {
   return href === "/" ? pathname === href : pathname.startsWith(href)
 }
 
-export function DashboardNavigation() {
-  const pathname = usePathname()
-  const router = useRouter()
-  const activeRoute =
-    dashboardRoutes.find((route) => isCurrentRoute(pathname, route.href))
-    ?? dashboardRoutes[0]
+function NavigationIcon({
+  icon: Icon,
+  label,
+}: Pick<DashboardRoute, "icon" | "label">) {
+  const { pending } = useLinkStatus()
 
   return (
     <>
+      {pending ? (
+        <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+      ) : (
+        <Icon className="size-4" aria-hidden="true" />
+      )}
+      <span className="sr-only" aria-live="polite">
+        {pending ? `${label}を読み込み中` : ""}
+      </span>
+    </>
+  )
+}
+
+function DashboardRouteLink({
+  route,
+  active,
+}: {
+  route: DashboardRoute
+  active: boolean
+}) {
+  const [prefetchEnabled, setPrefetchEnabled] = useState(false)
+
+  return (
+    <Link
+      href={route.href}
+      prefetch={prefetchEnabled}
+      onMouseEnter={() => setPrefetchEnabled(true)}
+      onFocus={() => setPrefetchEnabled(true)}
+      onTouchStart={() => setPrefetchEnabled(true)}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        buttonVariants({
+          size: "sm",
+          variant: active ? "default" : "ghost",
+        }),
+      )}
+    >
+      <NavigationIcon icon={route.icon} label={route.label} />
+      {route.label}
+    </Link>
+  )
+}
+
+function MobileDashboardNavigation({
+  activeRoute,
+}: {
+  activeRoute: DashboardRoute
+}) {
+  const router = useRouter()
+  const [pendingHref, setPendingHref] = useState<string | null>(null)
+
+  return (
+    <div className="relative min-w-0 flex-1 md:hidden">
       <select
-        value={activeRoute.href}
-        onChange={(event) => router.push(event.target.value)}
-        className="h-8 min-w-0 flex-1 rounded-lg border border-input bg-background px-2 text-sm md:hidden"
+        value={pendingHref ?? activeRoute.href}
+        onChange={(event) => {
+          const href = event.target.value
+          if (href === activeRoute.href) return
+          setPendingHref(href)
+          router.push(href)
+        }}
+        className="h-8 w-full rounded-lg border border-input bg-background px-2 pr-8 text-sm"
         aria-label="画面を選択"
+        aria-busy={pendingHref !== null}
       >
         {dashboardRoutes.map((route) => (
           <option key={route.href} value={route.href}>
@@ -54,27 +113,35 @@ export function DashboardNavigation() {
           </option>
         ))}
       </select>
+      {pendingHref ? (
+        <LoaderCircle
+          className="pointer-events-none absolute right-2 top-1/2 size-4 -translate-y-1/2 animate-spin bg-background text-muted-foreground"
+          aria-hidden="true"
+        />
+      ) : null}
+    </div>
+  )
+}
+
+export function DashboardNavigation() {
+  const pathname = usePathname()
+  const activeRoute =
+    dashboardRoutes.find((route) => isCurrentRoute(pathname, route.href))
+    ?? dashboardRoutes[0]
+
+  return (
+    <>
+      <MobileDashboardNavigation key={pathname} activeRoute={activeRoute} />
 
       <div className="hidden min-w-0 flex-1 items-center gap-1 overflow-x-auto md:flex">
         {dashboardRoutes.map((route) => {
-          const Icon = route.icon
           const active = isCurrentRoute(pathname, route.href)
           return (
-            <Link
+            <DashboardRouteLink
               key={route.href}
-              href={route.href}
-              prefetch={false}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                buttonVariants({
-                  size: "sm",
-                  variant: active ? "default" : "ghost",
-                }),
-              )}
-            >
-              <Icon className="size-4" />
-              {route.label}
-            </Link>
+              route={route}
+              active={active}
+            />
           )
         })}
       </div>
