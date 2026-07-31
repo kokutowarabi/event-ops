@@ -96,8 +96,6 @@ type MovingShift = {
   end: number
   previewMemberId: string
   canDrop: boolean
-  wasAutoShrunk: boolean
-  adjustedShiftIds: string[]
 }
 
 type CopyingShift = {
@@ -389,59 +387,6 @@ export function canPlaceShift(
       shift.start < end &&
       shift.end > start,
   )
-}
-
-export function fitShiftIntoAvailableRange(
-  shifts: Shift[],
-  memberId: string,
-  date: string,
-  start: number,
-  end: number,
-  ignoreShiftId: string,
-) {
-  if (start < START_MINUTES || end > END_MINUTES || end <= start) return null
-  if (canPlaceShift(shifts, memberId, date, start, end, ignoreShiftId)) {
-    return { start, end, wasShrunk: false }
-  }
-
-  const occupiedRanges = shifts
-    .filter(
-      (shift) =>
-        shift.id !== ignoreShiftId
-        && shift.memberId === memberId
-        && shift.date === date
-        && shift.start < end
-        && shift.end > start,
-    )
-    .sort((left, right) => left.start - right.start)
-  const freeRanges: Array<{ start: number; end: number }> = []
-  let cursor = start
-
-  for (const occupied of occupiedRanges) {
-    const occupiedStart = Math.max(start, occupied.start)
-    const occupiedEnd = Math.min(end, occupied.end)
-    if (occupiedStart > cursor) {
-      freeRanges.push({ start: cursor, end: occupiedStart })
-    }
-    cursor = Math.max(cursor, occupiedEnd)
-    if (cursor >= end) break
-  }
-  if (cursor < end) {
-    freeRanges.push({ start: cursor, end })
-  }
-
-  const candidateCenter = (start + end) / 2
-  const bestRange = freeRanges
-    .filter((range) => range.end - range.start >= SLOT_MINUTES)
-    .sort((left, right) => {
-      const durationDifference = (right.end - right.start) - (left.end - left.start)
-      if (durationDifference !== 0) return durationDifference
-      const leftDistance = Math.abs((left.start + left.end) / 2 - candidateCenter)
-      const rightDistance = Math.abs((right.start + right.end) / 2 - candidateCenter)
-      return leftDistance - rightDistance || left.start - right.start
-    })[0]
-
-  return bestRange ? { ...bestRange, wasShrunk: true } : null
 }
 
 export function adjustConflictingShiftRanges(
@@ -1233,8 +1178,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       end: shift.end,
       previewMemberId: shift.memberId,
       canDrop: true,
-      wasAutoShrunk: false,
-      adjustedShiftIds: [],
     })
   }
 
@@ -1254,7 +1197,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       END_MINUTES - duration,
     )
     const end = start + duration
-    const conflictResolution = adjustConflictingShiftRanges(
+    const canDrop = canPlaceShift(
       baseShifts,
       candidateMemberId,
       shift.date,
@@ -1262,33 +1205,13 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       end,
       moving.id,
     )
-    const fittedRange = conflictResolution
-      ? null
-      : fitShiftIntoAvailableRange(
-        baseShifts,
-        candidateMemberId,
-        shift.date,
-        start,
-        end,
-        moving.id,
-      )
-    if (conflictResolution) {
-      setShiftsWithoutHistory(
-        conflictResolution.shifts.map((item) =>
-          item.id === moving.id
-            ? { ...item, start, end }
-            : item,
-        ),
-      )
-    } else if (fittedRange) {
-      setShiftsWithoutHistory(
-        baseShifts.map((item) =>
-          item.id === moving.id
-            ? { ...item, start: fittedRange.start, end: fittedRange.end }
-            : item,
-        ),
-      )
-    }
+    setShiftsWithoutHistory(
+      canDrop
+        ? baseShifts.map((item) =>
+          item.id === moving.id ? { ...item, start, end } : item,
+        )
+        : baseShifts,
+    )
     setMoving((prev) =>
       prev
         ? {
@@ -1296,9 +1219,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
           pointerX: event.clientX,
           pointerY: event.clientY,
           previewMemberId: candidateMemberId,
-          canDrop: conflictResolution !== null || fittedRange !== null,
-          wasAutoShrunk: fittedRange?.wasShrunk ?? false,
-          adjustedShiftIds: conflictResolution?.adjustedShiftIds ?? [],
+          canDrop,
         }
         : prev,
     )
@@ -2321,7 +2242,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
 
       {moving && movingShift ? (
         <div
-          className={`pointer-events-none fixed z-50 box-border h-12 select-none rounded-md border text-left opacity-90 shadow-lg ${shouldSplitShiftTimeLabels(movingShift.start, movingShift.end) || moving.wasAutoShrunk ? "overflow-visible" : "overflow-hidden"} ${moving.canDrop ? "" : "ring-2 ring-destructive"} ${movingShift.end - movingShift.start === SLOT_MINUTES ? "px-0" : "px-3"}`}
+          className={`pointer-events-none fixed z-50 box-border h-12 select-none rounded-md border text-left opacity-90 shadow-lg ${shouldSplitShiftTimeLabels(movingShift.start, movingShift.end) ? "overflow-visible" : "overflow-hidden"} ${moving.canDrop ? "" : "ring-2 ring-destructive"} ${movingShift.end - movingShift.start === SLOT_MINUTES ? "px-0" : "px-3"}`}
           style={{
             left: moving.pointerX - moving.pointerOffsetX,
             top: moving.pointerY - 24,
@@ -2357,13 +2278,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
               </span>
             </>
           )}
-          {moving.wasAutoShrunk || moving.adjustedShiftIds.length > 0 ? (
-            <span className="absolute left-0 top-full mt-2 w-72 rounded-md border border-amber-500/40 bg-background px-2 py-1.5 text-xs text-amber-700 shadow-sm">
-              {moving.adjustedShiftIds.length > 0
-                ? "他のシフトの時間帯が変更される可能性があります。"
-                : "重なりを避けるため、このシフトの時間帯が変更される可能性があります。"}
-            </span>
-          ) : null}
         </div>
       ) : null}
 

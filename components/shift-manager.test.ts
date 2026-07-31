@@ -5,7 +5,6 @@ import {
   canPlaceShift,
   copyShiftForMember,
   createShiftTemplateColor,
-  fitShiftIntoAvailableRange,
   getCreateShiftTimeRange,
   getShiftDetailPosition,
   shouldSplitShiftTimeLabels,
@@ -46,45 +45,6 @@ describe("shift placement", () => {
     expect(
       canPlaceShift(shifts, "member-b", "2026-10-31", 11 * 60, 12 * 60, "source"),
     ).toBe(true)
-  })
-
-  it("shrinks a moving shift to the longest free range before an overlap", () => {
-    expect(
-      fitShiftIntoAvailableRange(
-        shifts,
-        "member-b",
-        "2026-10-31",
-        9 * 60,
-        11 * 60,
-        "source",
-      ),
-    ).toEqual({ start: 9 * 60, end: 10 * 60, wasShrunk: true })
-  })
-
-  it("shrinks a moving shift to the free range after an overlap", () => {
-    expect(
-      fitShiftIntoAvailableRange(
-        shifts,
-        "member-b",
-        "2026-10-31",
-        10 * 60,
-        12 * 60,
-        "source",
-      ),
-    ).toEqual({ start: 11 * 60, end: 12 * 60, wasShrunk: true })
-  })
-
-  it("rejects a move when the candidate range has no free slot", () => {
-    expect(
-      fitShiftIntoAvailableRange(
-        shifts,
-        "member-b",
-        "2026-10-31",
-        10 * 60,
-        10 * 60 + 30,
-        "source",
-      ),
-    ).toBeNull()
   })
 
   it("copies a shift to another member without changing its contents", () => {
