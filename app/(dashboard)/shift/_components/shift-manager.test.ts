@@ -7,11 +7,11 @@ import {
   createShiftTemplateColor,
   getCreateShiftTimeRange,
   getShiftAdjustmentChanges,
-  getNearestVerticalRectIndex,
   orderMemberIdsWithPins,
   shouldSplitShiftTimeLabels,
   type Shift,
-} from "./shift-manager"
+} from "./shift-domain"
+import { getNearestVerticalRectIndex } from "./shift-pointer"
 
 const shifts: Shift[] = [
   {

@@ -2,7 +2,7 @@ import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 import {
   ShiftCreateTimeLabel,
-} from "./shift-manager"
+} from "./shift-create-time-label"
 
 afterEach(cleanup)
 
