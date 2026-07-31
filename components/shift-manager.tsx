@@ -559,10 +559,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
         endSlot: Math.max(creatingShift.startSlot, creatingShift.currentSlot) + 1,
       }
     : null
-  const fadedHoveredMajorSlots =
-    creatingTimeRange === null && hoveredSlot !== null
-      ? getNearestTimelineMajorSlots(hoveredSlot.slot)
-      : []
   const shiftsRef = useRef(shifts)
   const historyRef = useRef<{ past: Shift[][]; future: Shift[][] }>({ past: [], future: [] })
   const moveInitialShiftsRef = useRef<Shift[] | null>(null)
@@ -748,6 +744,19 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const selectedTemplate = selectedShift ? allShiftTemplates[selectedShift.templateId] : null
   const draftTemplate = draftShift ? allShiftTemplates[draftShift.templateId] : null
   const movingShift = moving ? shifts.find((shift) => shift.id === moving.id) ?? null : null
+  const resizingShift = resizing ? shifts.find((shift) => shift.id === resizing.id) ?? null : null
+  const editingTimelineShift = resizingShift ?? movingShift
+  const timelineTimeRange = creatingTimeRange
+    ?? (editingTimelineShift
+      ? {
+          startSlot: (editingTimelineShift.start - START_MINUTES) / SLOT_MINUTES,
+          endSlot: (editingTimelineShift.end - START_MINUTES) / SLOT_MINUTES,
+        }
+      : null)
+  const fadedHoveredMajorSlots =
+    timelineTimeRange === null && hoveredSlot !== null
+      ? getNearestTimelineMajorSlots(hoveredSlot.slot)
+      : []
   const exportShifts = () => {
     const membersById = new Map(members.map((member) => [member.id, member]))
     downloadCsv(
@@ -1659,22 +1668,22 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                 <div className="relative h-full" style={{ width: TIMELINE_TRACK_WIDTH }}>
                   {timeOptions.map((slot, index) => {
                     const isMajor = (slot.minutes - START_MINUTES) % 120 === 0
-                    const isCreatingStart = creatingTimeRange?.startSlot === index
-                    const isCreatingEnd = creatingTimeRange?.endSlot === index
+                    const isCreatingStart = timelineTimeRange?.startSlot === index
+                    const isCreatingEnd = timelineTimeRange?.endSlot === index
                     const isCreatingBoundary = isCreatingStart || isCreatingEnd
                     const isCompactCreatingRange =
-                      creatingTimeRange !== null
-                      && creatingTimeRange.endSlot - creatingTimeRange.startSlot <= 2
+                      timelineTimeRange !== null
+                      && timelineTimeRange.endSlot - timelineTimeRange.startSlot <= 2
                     const isNearCreatingBoundary =
-                      creatingTimeRange !== null
+                      timelineTimeRange !== null
                       && !isCreatingBoundary
                       && Math.min(
-                        Math.abs(index - creatingTimeRange.startSlot),
-                        Math.abs(index - creatingTimeRange.endSlot),
+                        Math.abs(index - timelineTimeRange.startSlot),
+                        Math.abs(index - timelineTimeRange.endSlot),
                       ) <= 2
-                    const isHovered = creatingTimeRange === null && hoveredSlot?.slot === index
+                    const isHovered = timelineTimeRange === null && hoveredSlot?.slot === index
                     const isNearHovered =
-                      creatingTimeRange === null
+                      timelineTimeRange === null
                       && hoveredSlot !== null
                       && hoveredSlot.slot !== index
                       && Math.abs(hoveredSlot.slot - index) <= 2
@@ -1685,7 +1694,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                         : "-translate-x-1/2"
                     const displayedSlot =
                       isCompactCreatingRange && isCreatingEnd
-                        ? creatingTimeRange.startSlot
+                        ? timelineTimeRange.startSlot
                         : index
                     return (
                       <span
@@ -1835,6 +1844,10 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                           const template = allShiftTemplates[shift.templateId]
                           const isSingleSlotShift = shift.end - shift.start === SLOT_MINUTES
                           const isMovingShift = moving?.id === shift.id
+                          const isResizingShift = resizing?.id === shift.id
+                          const isEditingShift = isMovingShift || isResizingShift
+                          const hasSplitEditingTimes =
+                            isEditingShift && shouldSplitShiftTimeLabels(shift.start, shift.end)
                           const isMovingAlias = isMovingShift && movingPreviewShift?.memberId !== shift.memberId
                           const isMovingSource = isMovingShift && !isMovingAlias
                           const isMovingSourceAlias = isMovingSource && moving?.previewMemberId === shift.memberId
@@ -1869,7 +1882,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                   cancelResize()
                                 }}
                                 aria-label={`${member.name} ${formatTime(shift.start)}-${formatTime(shift.end)}の詳細`}
-                                className={`${isMovingAlias ? "pointer-events-none" : "pointer-events-auto"} absolute top-2 box-border h-12 select-none overflow-hidden rounded-md border text-left transition hover:z-30 hover:ring-2 hover:ring-inset hover:ring-ring/40 ${isHiddenMovingSource ? "opacity-0" : ""} ${isMovingAlias || isMovingSourceAlias ? "opacity-40 ring-2 ring-inset ring-ring/30" : ""} ${isSingleSlotShift ? "px-0" : "px-3 shadow-sm"} ${isAdmin && !isMovingAlias ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
+                                className={`${isMovingAlias ? "pointer-events-none" : "pointer-events-auto"} absolute top-2 box-border h-12 select-none rounded-md border text-left transition hover:z-30 hover:ring-2 hover:ring-inset hover:ring-ring/40 ${hasSplitEditingTimes ? "overflow-visible" : "overflow-hidden"} ${isHiddenMovingSource ? "opacity-0" : ""} ${isMovingAlias || isMovingSourceAlias ? "opacity-40 ring-2 ring-inset ring-ring/30" : ""} ${isSingleSlotShift ? "px-0" : "px-3 shadow-sm"} ${isAdmin && !isMovingAlias ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
                                   }`}
                                 style={{
                                   left,
@@ -1879,7 +1892,16 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                   ...getShiftTemplateColor(shift.templateId).blockStyle,
                                 }}
                               >
-                                {isSingleSlotShift ? null : (
+                                {hasSplitEditingTimes ? (
+                                  <>
+                                    <span className="absolute right-full top-1 mr-2 whitespace-nowrap text-xs font-medium">
+                                      {formatTime(shift.start)}
+                                    </span>
+                                    <span className="absolute left-full top-1 ml-2 whitespace-nowrap text-xs font-medium">
+                                      {formatTime(shift.end)}
+                                    </span>
+                                  </>
+                                ) : isSingleSlotShift ? null : (
                                   <>
                                     <span className="block select-none truncate text-sm font-medium">
                                       {formatTime(shift.start)}-{formatTime(shift.end)}
@@ -1930,7 +1952,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
 
       {moving && movingShift ? (
         <div
-          className={`pointer-events-none fixed z-50 box-border h-12 select-none overflow-hidden rounded-md border text-left opacity-90 shadow-lg ${moving.canDrop ? "" : "ring-2 ring-destructive"} ${movingShift.end - movingShift.start === SLOT_MINUTES ? "px-0" : "px-3"}`}
+          className={`pointer-events-none fixed z-50 box-border h-12 select-none rounded-md border text-left opacity-90 shadow-lg ${shouldSplitShiftTimeLabels(movingShift.start, movingShift.end) ? "overflow-visible" : "overflow-hidden"} ${moving.canDrop ? "" : "ring-2 ring-destructive"} ${movingShift.end - movingShift.start === SLOT_MINUTES ? "px-0" : "px-3"}`}
           style={{
             left: moving.pointerX - moving.pointerOffsetX,
             top: moving.pointerY - 24,
@@ -1947,7 +1969,16 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
               <X className="size-5 text-destructive drop-shadow-sm" strokeWidth={3} />
             </span>
           ) : null}
-          {movingShift.end - movingShift.start === SLOT_MINUTES ? null : (
+          {shouldSplitShiftTimeLabels(movingShift.start, movingShift.end) ? (
+            <>
+              <span className="absolute right-full top-1 mr-2 whitespace-nowrap text-xs font-medium">
+                {formatTime(movingShift.start)}
+              </span>
+              <span className="absolute left-full top-1 ml-2 whitespace-nowrap text-xs font-medium">
+                {formatTime(movingShift.end)}
+              </span>
+            </>
+          ) : movingShift.end - movingShift.start === SLOT_MINUTES ? null : (
             <>
               <span className="block select-none truncate text-sm font-medium">
                 {formatTime(movingShift.start)}-{formatTime(movingShift.end)}
