@@ -217,6 +217,44 @@ export function getCreateShiftTimeRange(
   }
 }
 
+export function ShiftCreateTimeLabel({
+  start,
+  end,
+  orientation,
+}: {
+  start: number
+  end: number
+  orientation: "horizontal" | "vertical"
+}) {
+  const startLabel = formatTime(start)
+  const endLabel = formatTime(end)
+  const label = `${startLabel}〜${endLabel}`
+
+  if (orientation === "vertical") {
+    return (
+      <span
+        data-orientation="vertical"
+        className="flex w-max shrink-0 flex-col items-center text-[10px] font-semibold leading-[0.7rem]"
+        aria-label={label}
+      >
+        <span aria-hidden="true">{startLabel}</span>
+        <span aria-hidden="true">〜</span>
+        <span aria-hidden="true">{endLabel}</span>
+      </span>
+    )
+  }
+
+  return (
+    <span
+      data-orientation="horizontal"
+      className="absolute left-0 top-1 z-10 inline-flex w-max items-center whitespace-nowrap rounded-sm bg-background/90 px-1 text-xs font-semibold shadow-sm"
+      aria-label={label}
+    >
+      {label}
+    </span>
+  )
+}
+
 function parseTime(value: string) {
   const [hour, minute] = value.split(":").map(Number)
   return hour * 60 + minute
@@ -1456,17 +1494,19 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                     ) : null}
                     {createPreview ? (
                       <div
-                        className="pointer-events-none absolute left-16 right-1 box-border overflow-hidden rounded-md border px-3 py-2 text-left shadow-sm"
+                        className="pointer-events-none absolute left-16 right-1 box-border overflow-visible rounded-md border px-2 py-1 text-left shadow-sm"
                         style={{
                           top: createPreview.top,
                           height: Math.max(createPreview.height, 44),
                           ...getShiftTemplateColor(DEFAULT_SHIFT_TEMPLATE_ID).blockStyle,
                         }}
                       >
-                        <span className="block truncate text-sm font-medium">
-                          {formatTime(createPreview.start)}-{formatTime(createPreview.end)}
-                        </span>
-                        <span className="block truncate text-xs opacity-80">
+                        <ShiftCreateTimeLabel
+                          start={createPreview.start}
+                          end={createPreview.end}
+                          orientation="vertical"
+                        />
+                        <span className="absolute left-10 right-2 top-1 truncate text-xs opacity-80">
                           {allShiftTemplates[DEFAULT_SHIFT_TEMPLATE_ID].label}
                         </span>
                       </div>
@@ -1624,7 +1664,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                         </button>
                         {createPreview ? (
                           <div
-                            className={`pointer-events-none absolute top-2 box-border h-12 overflow-hidden rounded-md border text-left ${createPreview.width === SLOT_WIDTH ? "px-0" : "px-3 shadow-sm"}`}
+                            className={`pointer-events-none absolute top-2 box-border h-12 overflow-visible rounded-md border text-left ${createPreview.width === SLOT_WIDTH ? "px-0" : "shadow-sm"}`}
                             style={{
                               left: createPreview.left,
                               width: createPreview.width,
@@ -1633,15 +1673,15 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                               ...getShiftTemplateColor(DEFAULT_SHIFT_TEMPLATE_ID).blockStyle,
                             }}
                           >
+                            <ShiftCreateTimeLabel
+                              start={createPreview.start}
+                              end={createPreview.end}
+                              orientation="horizontal"
+                            />
                             {createPreview.width > SLOT_WIDTH ? (
-                              <>
-                                <span className="block truncate text-sm font-medium">
-                                  {formatTime(createPreview.start)}-{formatTime(createPreview.end)}
-                                </span>
-                                <span className="block truncate text-xs opacity-80">
+                              <span className="absolute left-3 right-1 top-7 block truncate text-xs opacity-80">
                                   {allShiftTemplates[DEFAULT_SHIFT_TEMPLATE_ID].label}
-                                </span>
-                              </>
+                              </span>
                             ) : null}
                           </div>
                         ) : null}
