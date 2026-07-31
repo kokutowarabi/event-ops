@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   canPlaceShift,
   createShiftTemplateColor,
+  fitShiftIntoAvailableRange,
   getCreateShiftTimeRange,
   getNearestTimelineMajorSlots,
   shouldSplitShiftTimeLabels,
@@ -42,6 +43,45 @@ describe("shift placement", () => {
     expect(
       canPlaceShift(shifts, "member-b", "2026-10-31", 11 * 60, 12 * 60, "source"),
     ).toBe(true)
+  })
+
+  it("shrinks a moving shift to the longest free range before an overlap", () => {
+    expect(
+      fitShiftIntoAvailableRange(
+        shifts,
+        "member-b",
+        "2026-10-31",
+        9 * 60,
+        11 * 60,
+        "source",
+      ),
+    ).toEqual({ start: 9 * 60, end: 10 * 60, wasShrunk: true })
+  })
+
+  it("shrinks a moving shift to the free range after an overlap", () => {
+    expect(
+      fitShiftIntoAvailableRange(
+        shifts,
+        "member-b",
+        "2026-10-31",
+        10 * 60,
+        12 * 60,
+        "source",
+      ),
+    ).toEqual({ start: 11 * 60, end: 12 * 60, wasShrunk: true })
+  })
+
+  it("rejects a move when the candidate range has no free slot", () => {
+    expect(
+      fitShiftIntoAvailableRange(
+        shifts,
+        "member-b",
+        "2026-10-31",
+        10 * 60,
+        10 * 60 + 30,
+        "source",
+      ),
+    ).toBeNull()
   })
 
   it("assigns a distinct color to every built-in business", () => {
