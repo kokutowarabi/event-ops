@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   adjustConflictingShiftRanges,
+  canCopyShiftToMember,
   canPlaceShift,
   copyShiftForMember,
   createShiftTemplateColor,
@@ -92,6 +93,11 @@ describe("shift placement", () => {
       id: "copy-id",
       memberId: "member-c",
     })
+  })
+
+  it("copies vertically only to a member without a shift on that date", () => {
+    expect(canCopyShiftToMember(shifts, shifts[0], "member-b")).toBe(false)
+    expect(canCopyShiftToMember(shifts, shifts[0], "member-c")).toBe(true)
   })
 
   it("shrinks the conflicting shift before a selected range", () => {

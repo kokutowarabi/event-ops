@@ -104,6 +104,18 @@ type CopyingShift = {
   sourceId: string
   previewMemberId: string
   canDrop: boolean
+  sourceRect: {
+    left: number
+    top: number
+    width: number
+    height: number
+  }
+  stretchRect: {
+    left: number
+    top: number
+    width: number
+    height: number
+  }
 }
 
 type SearchPickerProps = {
@@ -475,7 +487,14 @@ export function copyShiftForMember(shift: Shift, memberId: string, id: string): 
   return { ...shift, id, memberId }
 }
 
-function getMemberIdFromPointer(event: PointerEvent<HTMLElement>) {
+export function canCopyShiftToMember(shifts: Shift[], sourceShift: Shift, memberId: string) {
+  return memberId !== sourceShift.memberId
+    && !shifts.some(
+      (shift) => shift.memberId === memberId && shift.date === sourceShift.date,
+    )
+}
+
+function getMemberRowFromPointer(event: PointerEvent<HTMLElement>) {
   const rows = document.querySelectorAll<HTMLElement>("[data-shift-member-id]")
   for (const row of rows) {
     const rect = row.getBoundingClientRect()
@@ -485,10 +504,14 @@ function getMemberIdFromPointer(event: PointerEvent<HTMLElement>) {
       event.clientY >= rect.top &&
       event.clientY <= rect.bottom
     ) {
-      return row.dataset.shiftMemberId ?? null
+      return row
     }
   }
   return null
+}
+
+function getMemberIdFromPointer(event: PointerEvent<HTMLElement>) {
+  return getMemberRowFromPointer(event)?.dataset.shiftMemberId ?? null
 }
 
 function uniqueSearchOptions(options: string[], query: string) {
@@ -1420,27 +1443,48 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     if (!isAdmin) return
     event.stopPropagation()
     event.currentTarget.setPointerCapture(event.pointerId)
-    setCopying({ sourceId: shift.id, previewMemberId: shift.memberId, canDrop: false })
+    const sourceElement = event.currentTarget.parentElement?.querySelector<HTMLElement>("[data-shift-block]")
+    const sourceRect = (sourceElement ?? event.currentTarget).getBoundingClientRect()
+    const copyRect = {
+      left: sourceRect.left,
+      top: sourceRect.top,
+      width: sourceRect.width,
+      height: sourceRect.height,
+    }
+    setCopying({
+      sourceId: shift.id,
+      previewMemberId: shift.memberId,
+      canDrop: false,
+      sourceRect: copyRect,
+      stretchRect: copyRect,
+    })
   }
 
   const moveCopyShift = (event: PointerEvent<HTMLSpanElement>) => {
     if (!copying) return
     const sourceShift = shiftsRef.current.find((shift) => shift.id === copying.sourceId)
     if (!sourceShift) return
-    const candidateMemberId = getMemberIdFromPointer(event) ?? copying.previewMemberId
-    const canDrop =
-      candidateMemberId !== sourceShift.memberId
-      && canPlaceShift(
-        shiftsRef.current,
-        candidateMemberId,
-        sourceShift.date,
-        sourceShift.start,
-        sourceShift.end,
-        sourceShift.id,
-      )
+    const candidateRow = getMemberRowFromPointer(event)
+    const candidateMemberId = candidateRow?.dataset.shiftMemberId ?? copying.previewMemberId
+    const canDrop = canCopyShiftToMember(shiftsRef.current, sourceShift, candidateMemberId)
+    const candidateRect = candidateRow?.getBoundingClientRect()
+    const sourceTop = copying.sourceRect.top
+    const sourceHeight = copying.sourceRect.height
+    const targetTop = candidateRect
+      ? candidateRect.top + (candidateRect.height - sourceHeight) / 2
+      : sourceTop
     setCopying((current) =>
       current
-        ? { ...current, previewMemberId: candidateMemberId, canDrop }
+        ? {
+          ...current,
+          previewMemberId: candidateMemberId,
+          canDrop,
+          stretchRect: {
+            ...current.stretchRect,
+            top: Math.min(sourceTop, targetTop),
+            height: Math.abs(targetTop - sourceTop) + sourceHeight,
+          },
+        }
         : current,
     )
   }
@@ -2148,6 +2192,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                           return (
                             <div key={`${shift.id}-${isCopyingAlias ? "copy" : "shift"}`} className="group contents">
                               <div
+                                data-shift-block
                                 role="button"
                                 tabIndex={0}
                                 onClick={(event) => {
@@ -2321,6 +2366,23 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
           ) : null}
         </div>
       ) : null}
+
+      {copying && copyingShift
+        ? createPortal(
+          <div
+            className={`pointer-events-none fixed z-50 rounded-md border opacity-75 shadow-lg ${copying.canDrop ? "" : "ring-2 ring-destructive"}`}
+            style={{
+              left: copying.stretchRect.left,
+              top: copying.stretchRect.top,
+              width: copying.stretchRect.width,
+              height: copying.stretchRect.height,
+              ...getShiftTemplateColor(copyingShift.templateId).blockStyle,
+            }}
+            aria-hidden="true"
+          />,
+          document.body,
+        )
+        : null}
 
       {filtersOpen && filterPanelPosition
         ? createPortal(
