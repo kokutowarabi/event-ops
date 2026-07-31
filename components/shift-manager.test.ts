@@ -8,6 +8,7 @@ import {
   getCreateShiftTimeRange,
   getShiftAdjustmentChanges,
   getShiftDetailPosition,
+  getNearestVerticalRectIndex,
   shouldSplitShiftTimeLabels,
   type Shift,
 } from "@/components/shift-manager"
@@ -59,6 +60,15 @@ describe("shift placement", () => {
   it("copies vertically only to a member without a shift on that date", () => {
     expect(canCopyShiftToMember(shifts, shifts[0], "member-b")).toBe(false)
     expect(canCopyShiftToMember(shifts, shifts[0], "member-c")).toBe(true)
+  })
+
+  it("keeps a vertical copy preview active between member rows", () => {
+    const rows = [
+      { top: 0, bottom: 40 },
+      { top: 60, bottom: 100 },
+    ]
+    expect(getNearestVerticalRectIndex(rows, 45)).toBe(0)
+    expect(getNearestVerticalRectIndex(rows, 55)).toBe(1)
   })
 
   it("shrinks the conflicting shift before a selected range", () => {

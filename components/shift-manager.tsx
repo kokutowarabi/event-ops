@@ -486,6 +486,44 @@ function getMemberRowFromPointer(event: PointerEvent<HTMLElement>) {
   return null
 }
 
+export function getNearestVerticalRectIndex(
+  rects: Array<{ top: number; bottom: number }>,
+  pointerY: number,
+) {
+  if (rects.length === 0) return -1
+  return rects.reduce((nearestIndex, rect, index) => {
+    const distance = pointerY < rect.top
+      ? rect.top - pointerY
+      : pointerY > rect.bottom
+        ? pointerY - rect.bottom
+        : 0
+    const nearestRect = rects[nearestIndex]
+    const nearestDistance = pointerY < nearestRect.top
+      ? nearestRect.top - pointerY
+      : pointerY > nearestRect.bottom
+        ? pointerY - nearestRect.bottom
+        : 0
+    return distance < nearestDistance ? index : nearestIndex
+  }, 0)
+}
+
+function getNearestMemberRowFromPointer(event: PointerEvent<HTMLElement>) {
+  const rows = Array.from(document.querySelectorAll<HTMLElement>("[data-shift-member-id]"))
+    .map((row) => ({ row, rect: row.getBoundingClientRect() }))
+    .filter(
+      ({ rect }) =>
+        rect.width > 0
+        && rect.height > 0
+        && event.clientX >= rect.left
+        && event.clientX <= rect.right,
+    )
+  const nearestIndex = getNearestVerticalRectIndex(
+    rows.map(({ rect }) => rect),
+    event.clientY,
+  )
+  return nearestIndex >= 0 ? rows[nearestIndex].row : null
+}
+
 function getMemberIdFromPointer(event: PointerEvent<HTMLElement>) {
   return getMemberRowFromPointer(event)?.dataset.shiftMemberId ?? null
 }
@@ -1451,15 +1489,13 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     if (!copying) return
     const sourceShift = shiftsRef.current.find((shift) => shift.id === copying.sourceId)
     if (!sourceShift) return
-    const candidateRow = getMemberRowFromPointer(event)
+    const exactCandidateRow = getMemberRowFromPointer(event)
+    const candidateRow = exactCandidateRow ?? getNearestMemberRowFromPointer(event)
     const candidateMemberId = candidateRow?.dataset.shiftMemberId ?? copying.previewMemberId
     const canDrop = canCopyShiftToMember(shiftsRef.current, sourceShift, candidateMemberId)
-    const candidateRect = candidateRow?.getBoundingClientRect()
     const sourceTop = copying.sourceRect.top
     const sourceHeight = copying.sourceRect.height
-    const targetTop = candidateRect
-      ? candidateRect.top + (candidateRect.height - sourceHeight) / 2
-      : sourceTop
+    const targetTop = candidateRow ? event.clientY - sourceHeight / 2 : sourceTop
     setCopying((current) =>
       current
         ? {
@@ -2359,7 +2395,13 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
               ...getShiftTemplateColor(copyingShift.templateId).blockStyle,
             }}
             aria-hidden="true"
-          />,
+          >
+            {!copying.canDrop ? (
+              <span className="absolute inset-0 grid place-items-center">
+                <X className="size-6 text-destructive drop-shadow-sm" strokeWidth={3} />
+              </span>
+            ) : null}
+          </div>,
           document.body,
         )
         : null}
