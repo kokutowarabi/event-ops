@@ -1869,10 +1869,10 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                           >
                             {shouldSplitShiftTimeLabels(createPreview.start, createPreview.end) ? (
                               <>
-                                <span className="absolute right-full top-1 mr-2 whitespace-nowrap text-xs font-medium">
+                                <span className="absolute -top-3 right-full mr-2 whitespace-nowrap text-xs font-medium">
                                   {formatTime(createPreview.start)}
                                 </span>
-                                <span className="absolute left-full top-1 ml-2 whitespace-nowrap text-xs font-medium">
+                                <span className="absolute -top-3 left-full ml-2 whitespace-nowrap text-xs font-medium">
                                   {formatTime(createPreview.end)}
                                 </span>
                               </>
@@ -1952,10 +1952,10 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                               >
                                 {hasSplitEditingTimes ? (
                                   <>
-                                    <span className="absolute right-full top-1 mr-2 whitespace-nowrap text-xs font-medium">
+                                    <span className="absolute -top-3 right-full mr-2 whitespace-nowrap text-xs font-medium">
                                       {formatTime(shift.start)}
                                     </span>
-                                    <span className="absolute left-full top-1 ml-2 whitespace-nowrap text-xs font-medium">
+                                    <span className="absolute -top-3 left-full ml-2 whitespace-nowrap text-xs font-medium">
                                       {formatTime(shift.end)}
                                     </span>
                                   </>
@@ -2029,10 +2029,10 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
           ) : null}
           {shouldSplitShiftTimeLabels(movingShift.start, movingShift.end) ? (
             <>
-              <span className="absolute right-full top-1 mr-2 whitespace-nowrap text-xs font-medium">
+              <span className="absolute -top-3 right-full mr-2 whitespace-nowrap text-xs font-medium">
                 {formatTime(movingShift.start)}
               </span>
-              <span className="absolute left-full top-1 ml-2 whitespace-nowrap text-xs font-medium">
+              <span className="absolute -top-3 left-full ml-2 whitespace-nowrap text-xs font-medium">
                 {formatTime(movingShift.end)}
               </span>
             </>
