@@ -235,7 +235,7 @@ export function ShiftCreateTimeLabel({
     return (
       <span
         data-orientation="vertical"
-        className="flex w-max shrink-0 flex-col items-center text-[10px] font-semibold leading-[0.7rem]"
+        className="flex w-max shrink-0 flex-col items-center text-xs leading-3 text-muted-foreground"
         aria-label={label}
       >
         <span aria-hidden="true">{startLabel}</span>
@@ -248,10 +248,13 @@ export function ShiftCreateTimeLabel({
   return (
     <span
       data-orientation="horizontal"
-      className="inline-flex w-max items-center whitespace-nowrap rounded-sm bg-card/95 px-1 text-xs font-semibold shadow-sm"
+      className="relative inline-block -translate-x-1/2 whitespace-nowrap text-xs text-muted-foreground"
       aria-label={label}
     >
-      {label}
+      <span aria-hidden="true">{startLabel}</span>
+      <span aria-hidden="true" className="absolute left-full top-0">
+        〜{endLabel}
+      </span>
     </span>
   )
 }
@@ -916,6 +919,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     return {
       top: MOBILE_TIMELINE_PADDING_HEIGHT + startSlot * MOBILE_SLOT_HEIGHT,
       height: Math.max((endSlot - startSlot) * MOBILE_SLOT_HEIGHT, MOBILE_SLOT_HEIGHT),
+      startSlot,
       start,
       end,
     }
@@ -1466,24 +1470,29 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                     />
                     {timeOptions
                       .filter((slot) => (slot.minutes - START_MINUTES) % 120 === 0)
-                      .map((slot) => (
-                        <div
-                          key={`mobile-time-${member.id}-${slot.value}`}
-                          className="absolute left-0 right-0 border-t border-dashed border-border/70"
-                          style={{ top: MOBILE_TIMELINE_PADDING_HEIGHT + ((slot.minutes - START_MINUTES) / SLOT_MINUTES) * MOBILE_SLOT_HEIGHT }}
-                        >
-                          <span
-                            className={`-mt-2.5 inline-block w-12 bg-card pr-2 text-xs text-muted-foreground transition-opacity ${
-                              createPreview ? "opacity-0" : "opacity-100"
-                            }`}
+                      .map((slot) => {
+                        const slotIndex = (slot.minutes - START_MINUTES) / SLOT_MINUTES
+                        const isNearCreatingTime =
+                          createPreview !== null && Math.abs(slotIndex - createPreview.startSlot) <= 3
+                        return (
+                          <div
+                            key={`mobile-time-${member.id}-${slot.value}`}
+                            className="absolute left-0 right-0 border-t border-dashed border-border/70"
+                            style={{ top: MOBILE_TIMELINE_PADDING_HEIGHT + slotIndex * MOBILE_SLOT_HEIGHT }}
                           >
-                            {slot.label}
-                          </span>
-                        </div>
-                      ))}
+                            <span
+                              className={`-mt-2.5 inline-block w-12 bg-card pr-2 text-xs text-muted-foreground transition-opacity ${
+                                isNearCreatingTime ? "opacity-0" : "opacity-100"
+                              }`}
+                            >
+                              {slot.label}
+                            </span>
+                          </div>
+                        )
+                      })}
                     {createPreview ? (
                       <div
-                        className="pointer-events-none absolute left-0 z-10 -translate-y-[0.35rem] bg-card pr-2"
+                        className="pointer-events-none absolute left-0 z-10 -translate-y-1.5"
                         style={{ top: createPreview.top }}
                       >
                         <ShiftCreateTimeLabel
@@ -1610,6 +1619,35 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
               </div>
               <div className="sticky top-0 z-20 flex h-16 items-center border-b bg-card">
                 <div className="relative h-full" style={{ width: TIMELINE_TRACK_WIDTH }}>
+                  {timeOptions.map((slot, index) => {
+                    const isMajor = (slot.minutes - START_MINUTES) % 120 === 0
+                    const isNearCreatingTime =
+                      creatingTimeRange !== null && Math.abs(creatingTimeRange.startSlot - index) <= 4
+                    const isHovered = creatingTimeRange === null && hoveredSlot?.slot === index
+                    const isNearHovered =
+                      creatingTimeRange === null
+                      && hoveredSlot !== null
+                      && hoveredSlot.slot !== index
+                      && Math.abs(hoveredSlot.slot - index) <= 2
+                    return (
+                      <span
+                        key={`time-slot-${slot.value}`}
+                        className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-xs transition ${isNearCreatingTime
+                            ? "text-muted-foreground opacity-0"
+                            : isHovered
+                              ? "font-semibold text-foreground opacity-100"
+                              : isNearHovered
+                                ? "text-muted-foreground opacity-0"
+                                : isMajor
+                                  ? "text-muted-foreground opacity-100"
+                                  : "text-muted-foreground opacity-0"
+                          }`}
+                        style={{ left: TIMELINE_PADDING_WIDTH + index * SLOT_WIDTH }}
+                      >
+                        {slot.label}
+                      </span>
+                    )
+                  })}
                   {creatingTimeRange ? (
                     <div
                       className="pointer-events-none absolute top-1/2 z-10 -translate-y-1/2"
@@ -1623,30 +1661,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                         orientation="horizontal"
                       />
                     </div>
-                  ) : (
-                    timeOptions.map((slot, index) => {
-                      const isMajor = (slot.minutes - START_MINUTES) % 120 === 0
-                      const isHovered = hoveredSlot?.slot === index
-                      const isNearHovered =
-                        hoveredSlot !== null && hoveredSlot.slot !== index && Math.abs(hoveredSlot.slot - index) <= 2
-                      return (
-                        <span
-                          key={`time-slot-${slot.value}`}
-                          className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-xs transition ${isHovered
-                              ? "font-semibold text-foreground opacity-100"
-                              : isNearHovered
-                                ? "text-muted-foreground opacity-0"
-                                : isMajor
-                                  ? "text-muted-foreground opacity-100"
-                                  : "text-muted-foreground opacity-0"
-                            }`}
-                          style={{ left: TIMELINE_PADDING_WIDTH + index * SLOT_WIDTH }}
-                        >
-                          {slot.label}
-                        </span>
-                      )
-                    })
-                  )}
+                  ) : null}
                 </div>
               </div>
 
