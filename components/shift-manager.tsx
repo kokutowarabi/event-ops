@@ -1658,9 +1658,9 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                     const isCreatingStart = creatingTimeRange?.startSlot === index
                     const isCreatingEnd = creatingTimeRange?.endSlot === index
                     const isCreatingBoundary = isCreatingStart || isCreatingEnd
-                    const isShortCreatingRange =
+                    const isCompactCreatingRange =
                       creatingTimeRange !== null
-                      && creatingTimeRange.endSlot - creatingTimeRange.startSlot === 1
+                      && creatingTimeRange.endSlot - creatingTimeRange.startSlot <= 2
                     const isNearCreatingBoundary =
                       creatingTimeRange !== null
                       && !isCreatingBoundary
@@ -1676,11 +1676,13 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                       && Math.abs(hoveredSlot.slot - index) <= 2
                     const isFadedHoveredMajor = fadedHoveredMajorSlots.includes(index)
                     const horizontalAlignment =
-                      isShortCreatingRange && isCreatingStart
-                        ? "-translate-x-full"
-                        : isShortCreatingRange && isCreatingEnd
-                          ? "translate-x-0"
-                          : "-translate-x-1/2"
+                      isCompactCreatingRange && isCreatingEnd
+                        ? "translate-x-6"
+                        : "-translate-x-1/2"
+                    const displayedSlot =
+                      isCompactCreatingRange && isCreatingEnd
+                        ? creatingTimeRange.startSlot
+                        : index
                     return (
                       <span
                         key={`time-slot-${slot.value}`}
@@ -1698,7 +1700,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                     ? "text-muted-foreground opacity-100"
                                     : "text-muted-foreground opacity-0"
                           }`}
-                        style={{ left: TIMELINE_PADDING_WIDTH + index * SLOT_WIDTH }}
+                        style={{ left: TIMELINE_PADDING_WIDTH + displayedSlot * SLOT_WIDTH }}
                       >
                         {slot.label}
                       </span>
