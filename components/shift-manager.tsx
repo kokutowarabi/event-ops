@@ -478,6 +478,22 @@ function SearchPicker({ label, value, options, allValue, onChange }: SearchPicke
   )
 }
 
+function ShiftFilterEmptyState({ className = "" }: { className?: string }) {
+  return (
+    <div
+      role="status"
+      className={`flex items-center justify-center p-8 text-center ${className}`}
+    >
+      <div>
+        <p className="font-medium">絞り込み結果がありません</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          条件を変更して、もう一度お試しください。
+        </p>
+      </div>
+    </div>
+  )
+}
+
 type ShiftManagerProps = {
   members: Member[]
   initialShiftData: ShiftData
@@ -663,6 +679,13 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
         .join("・"),
     [departmentFilter, memberSearch, roleFilter, shiftFilter],
   )
+  const hasActiveFilters = Boolean(
+    shiftFilter.trim()
+    || memberSearch.trim()
+    || departmentFilter !== ALL_DEPARTMENTS
+    || roleFilter !== "すべての役職",
+  )
+  const hasNoFilterResults = hasActiveFilters && visibleInvitedMembers.length === 0
   const shiftFilterOptions = useMemo(() => {
     return [
       ...Object.values(allShiftTemplates).map((template) => template.label),
@@ -1410,6 +1433,9 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                 </span>
               ) : null}
             </Button>
+            {hasNoFilterResults ? (
+              <ShiftFilterEmptyState className="rounded-lg border bg-card" />
+            ) : null}
             {visibleInvitedMembers.map((member) => {
               const memberShifts = visibleSelectedDateShifts
                 .filter((shift) => shift.memberId === member.id)
@@ -1623,6 +1649,10 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                   )}
                 </div>
               </div>
+
+              {hasNoFilterResults ? (
+                <ShiftFilterEmptyState className="col-span-2 min-h-40 border-b" />
+              ) : null}
 
               {visibleInvitedMembers.map((member) => {
                 const movingPreviewShift = moving
