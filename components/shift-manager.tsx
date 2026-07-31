@@ -72,6 +72,7 @@ type CreatingShift = {
   memberId: string
   startSlot: number
   currentSlot: number
+  adjustedShiftIds: string[]
 }
 
 type ResizeEdge = "start" | "end"
@@ -898,7 +899,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     event.currentTarget.setPointerCapture(event.pointerId)
     createInitialShiftsRef.current = shiftsRef.current
     setHoveredSlot({ memberId, slot })
-    setCreatingShift({ memberId, startSlot: slot, currentSlot: slot })
+    setCreatingShift({ memberId, startSlot: slot, currentSlot: slot, adjustedShiftIds: [] })
   }
 
   const moveCreateMobileShift = (memberId: string, event: PointerEvent<HTMLButtonElement>) => {
@@ -919,7 +920,11 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     }
     setShiftsWithoutHistory(conflictResolution.shifts)
     setHoveredSlot({ memberId, slot })
-    setCreatingShift({ ...creatingShift, currentSlot: slot })
+    setCreatingShift({
+      ...creatingShift,
+      currentSlot: slot,
+      adjustedShiftIds: conflictResolution.adjustedShiftIds,
+    })
   }
 
   const setShiftsWithoutHistory = (nextShifts: Shift[]) => {
@@ -990,7 +995,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     event.currentTarget.setPointerCapture(event.pointerId)
     createInitialShiftsRef.current = shiftsRef.current
     setHoveredSlot({ memberId, slot })
-    setCreatingShift({ memberId, startSlot: slot, currentSlot: slot })
+    setCreatingShift({ memberId, startSlot: slot, currentSlot: slot, adjustedShiftIds: [] })
   }
 
   const moveCreateShift = (memberId: string, event: PointerEvent<HTMLButtonElement>) => {
@@ -1011,7 +1016,11 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     }
     setShiftsWithoutHistory(conflictResolution.shifts)
     setHoveredSlot({ memberId, slot })
-    setCreatingShift({ ...creatingShift, currentSlot: slot })
+    setCreatingShift({
+      ...creatingShift,
+      currentSlot: slot,
+      adjustedShiftIds: conflictResolution.adjustedShiftIds,
+    })
   }
 
   const finishCreateShift = (memberId: string) => {
@@ -1060,6 +1069,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       width: Math.max((endSlot - startSlot) * SLOT_WIDTH, SLOT_WIDTH),
       start,
       end,
+      adjustsConflictingShifts: creatingShift.adjustedShiftIds.length > 0,
     }
   }
 
@@ -1078,6 +1088,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       endSlot,
       start,
       end,
+      adjustsConflictingShifts: creatingShift.adjustedShiftIds.length > 0,
     }
   }
 
@@ -1887,7 +1898,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                     ) : null}
                     {createPreview ? (
                       <div
-                        className="pointer-events-none absolute left-16 right-1 z-50 box-border overflow-hidden rounded-md border px-2 py-1 text-left shadow-sm"
+                        className="pointer-events-none absolute left-16 right-1 z-50 box-border overflow-visible rounded-md border px-2 py-1 text-left shadow-sm"
                         style={{
                           top: createPreview.top,
                           height: Math.max(createPreview.height, 44),
@@ -1904,6 +1915,11 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                             {allShiftTemplates[DEFAULT_SHIFT_TEMPLATE_ID].label}
                           </span>
                         </div>
+                        {createPreview.adjustsConflictingShifts ? (
+                          <span className="absolute left-0 top-full mt-2 w-64 rounded-md border border-amber-500/40 bg-background px-2 py-1.5 text-xs text-amber-700 shadow-sm">
+                            他のシフトの時間帯が変更される可能性があります。
+                          </span>
+                        ) : null}
                       </div>
                     ) : null}
                     {memberShifts.map((shift) => {
@@ -2095,6 +2111,11 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                 {allShiftTemplates[DEFAULT_SHIFT_TEMPLATE_ID].label}
                               </span>
                             ) : null}
+                            {createPreview.adjustsConflictingShifts ? (
+                              <span className="absolute left-0 top-full mt-2 w-72 rounded-md border border-amber-500/40 bg-background px-2 py-1.5 text-xs text-amber-700 shadow-sm">
+                                他のシフトの時間帯が変更される可能性があります。
+                              </span>
+                            ) : null}
                           </div>
                         ) : null}
                       </div>
@@ -2183,7 +2204,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                 )}
                                 {adjustsConflictingShifts ? (
                                   <span className="absolute left-0 top-full z-50 mt-2 w-72 rounded-md border border-amber-500/40 bg-background px-2 py-1.5 text-xs text-amber-700 shadow-sm">
-                                    重なった他のシフトの時間帯が変更される可能性があります。
+                                    他のシフトの時間帯が変更される可能性があります。
                                   </span>
                                 ) : null}
                               </div>
@@ -2294,7 +2315,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
           {moving.wasAutoShrunk || moving.adjustedShiftIds.length > 0 ? (
             <span className="absolute left-0 top-full mt-2 w-72 rounded-md border border-amber-500/40 bg-background px-2 py-1.5 text-xs text-amber-700 shadow-sm">
               {moving.adjustedShiftIds.length > 0
-                ? "重なった他のシフトの時間帯が変更される可能性があります。"
+                ? "他のシフトの時間帯が変更される可能性があります。"
                 : "重なりを避けるため、このシフトの時間帯が変更される可能性があります。"}
             </span>
           ) : null}
@@ -2560,7 +2581,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                   </p>
                 ) : draftConflictResolution.adjustedShiftIds.length > 0 ? (
                   <p className="text-sm text-amber-700">
-                    重なった他のシフトの時間帯もあわせて変更されます。
+                    他のシフトの時間帯もあわせて変更されます。
                   </p>
                 ) : null}
               </div>
