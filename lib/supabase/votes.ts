@@ -24,11 +24,12 @@ export async function castVisitorVote(
   projectId: string,
   votedOn: string,
 ) {
-  const { error } = await client.rpc("cast_visitor_vote", {
+  const { data, error } = await client.rpc("cast_visitor_vote", {
     p_device_id: deviceId,
     p_project_id: projectId,
     p_voted_on: votedOn,
   })
 
   if (error) throw error
+  return data !== false
 }

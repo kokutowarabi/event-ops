@@ -20,6 +20,10 @@ import { getSitePreviewStatus } from "@/lib/site-preview"
 const votingDeviceStorageKey = "hoshihama-voting-device-id"
 const initialPreviewDateTime = `${eventSchedule.festivalDays[0].date}T12:00`
 
+function voteKey(projectId: string, votedOn: string) {
+  return `${votedOn}:${projectId}`
+}
+
 function currentLocalDateTime() {
   const now = new Date()
   const offset = now.getTimezoneOffset() * 60_000
@@ -41,7 +45,7 @@ type SitePreviewProps = {
     deviceId: string,
     projectId: string,
     votedOn: string,
-  ) => Promise<void>
+  ) => Promise<boolean>
 }
 
 export function SitePreview({
@@ -53,7 +57,9 @@ export function SitePreview({
   const [page, setPage] = useState<"home" | "projects">("home")
   const [query, setQuery] = useState("")
   const [submittingProjectId, setSubmittingProjectId] = useState("")
-  const [votedProjectId, setVotedProjectId] = useState("")
+  const [votedProjectKeys, setVotedProjectKeys] = useState<Set<string>>(
+    () => new Set(),
+  )
   const [message, setMessage] = useState("")
   const status = getSitePreviewStatus(previewDateTime)
 
@@ -72,12 +78,21 @@ export function SitePreview({
 
   const vote = async (project: EventProject) => {
     if (!status.votingOpen || !status.voteDate || !votingConfigured) return
+    const voteDate = status.voteDate
     setSubmittingProjectId(project.id)
     setMessage("")
     try {
-      await onVote(getVotingDeviceId(), project.id, status.voteDate)
-      setVotedProjectId(project.id)
-      setMessage(`「${project.title}」へ${formatJapaneseDate(status.voteDate, false)}の票として投票しました`)
+      const accepted = await onVote(getVotingDeviceId(), project.id, voteDate)
+      setVotedProjectKeys((currentKeys) => {
+        const nextKeys = new Set(currentKeys)
+        nextKeys.add(voteKey(project.id, voteDate))
+        return nextKeys
+      })
+      setMessage(
+        accepted
+          ? `「${project.title}」へ${formatJapaneseDate(voteDate, false)}の票として投票しました`
+          : `「${project.title}」は${formatJapaneseDate(voteDate, false)}に投票済みです`,
+      )
     } catch {
       setMessage("投票を送信できませんでした。Supabaseの設定を確認してください。")
     } finally {
@@ -179,7 +194,9 @@ export function SitePreview({
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {visibleProjects.map((project) => {
-                const voted = votedProjectId === project.id
+                const voted = status.voteDate
+                  ? votedProjectKeys.has(voteKey(project.id, status.voteDate))
+                  : false
                 const voteEligible = /^project-(?:[1-9]|[1-3]\d|40)$/.test(project.id)
                 return (
                   <article key={project.id} className="flex flex-col rounded-2xl border border-slate-900/10 bg-white p-5 shadow-sm">
@@ -201,7 +218,7 @@ export function SitePreview({
                       type="button"
                       className="mt-5 w-full"
                       variant={voted ? "outline" : "default"}
-                      disabled={!status.votingOpen || !votingConfigured || !voteEligible || Boolean(submittingProjectId)}
+                      disabled={voted || !status.votingOpen || !votingConfigured || !voteEligible || Boolean(submittingProjectId)}
                       onClick={() => vote(project)}
                     >
                       {voted ? <Check className="size-4" /> : <Heart className="size-4" />}

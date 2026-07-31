@@ -13,7 +13,7 @@ export function SitePreviewView() {
   const castPreviewVote = useCallback(
     async (deviceId: string, projectId: string, votedOn: string) => {
       if (!voteClient) throw new Error("Supabase is not configured")
-      await castVisitorVote(voteClient, deviceId, projectId, votedOn)
+      return castVisitorVote(voteClient, deviceId, projectId, votedOn)
     },
     [voteClient],
   )

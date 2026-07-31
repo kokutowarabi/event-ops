@@ -14,6 +14,7 @@ import {
   fetchVisitorVotes,
   type VisitorVote,
 } from "@/lib/supabase/votes"
+import { appendVisitorVote } from "@/lib/votes"
 
 export function VoteResultsView() {
   const { projects } = useEventOps()
@@ -47,11 +48,16 @@ export function VoteResultsView() {
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "visitor_votes",
         },
-        loadVotes,
+        (payload) => {
+          if (!active) return
+          setVotes((currentVotes) =>
+            appendVisitorVote(currentVotes, payload.new as VisitorVote),
+          )
+        },
       )
       .subscribe((status) => {
         if (!active) return

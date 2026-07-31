@@ -20,7 +20,7 @@ afterEach(cleanup)
 
 describe("site preview project synchronization", () => {
   it("re-renders project management changes on the site side", () => {
-    const onVote = vi.fn(async () => undefined)
+    const onVote = vi.fn(async () => true)
     const { rerender } = render(
       <SitePreview projects={[project]} votingConfigured={false} onVote={onVote} />,
     )
@@ -49,5 +49,20 @@ describe("site preview project synchronization", () => {
     expect(screen.getByText("確定")).toBeTruthy()
     expect(screen.getByText("担当: 演出局")).toBeTruthy()
     expect(screen.getByText("サイトに反映された紹介")).toBeTruthy()
+  })
+
+  it("disables a project after voting for it on the selected date", async () => {
+    const onVote = vi.fn(async () => true)
+    render(
+      <SitePreview projects={[project]} votingConfigured onVote={onVote} />,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "企画" }))
+    fireEvent.click(screen.getByRole("button", { name: "この企画に投票" }))
+
+    const votedButton = await screen.findByRole("button", { name: "投票済み" })
+    expect(votedButton).toHaveProperty("disabled", true)
+    fireEvent.click(votedButton)
+    expect(onVote).toHaveBeenCalledTimes(1)
   })
 })

@@ -8,6 +8,20 @@ export function totalVotes(votes: VisitorVote[]) {
   return votes.length
 }
 
+export function appendVisitorVote(
+  votes: VisitorVote[],
+  nextVote: VisitorVote,
+) {
+  const alreadyIncluded = votes.some(
+    (vote) =>
+      vote.device_id === nextVote.device_id &&
+      vote.project_id === nextVote.project_id &&
+      vote.voted_on === nextVote.voted_on,
+  )
+
+  return alreadyIncluded ? votes : [...votes, nextVote]
+}
+
 export function votesByDate(votes: VisitorVote[]) {
   return votes.reduce<Record<string, number>>((counts, vote) => {
     counts[vote.voted_on] = (counts[vote.voted_on] ?? 0) + 1
