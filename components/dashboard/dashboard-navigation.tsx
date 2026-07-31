@@ -1,6 +1,6 @@
 "use client"
 
-import Link, { useLinkStatus } from "next/link"
+import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useState } from "react"
 import {
@@ -8,7 +8,6 @@ import {
   Building2,
   CalendarDays,
   ClipboardList,
-  LoaderCircle,
   MonitorSmartphone,
   Users,
   type LucideIcon,
@@ -35,26 +34,6 @@ function isCurrentRoute(pathname: string, href: string) {
   return href === "/" ? pathname === href : pathname.startsWith(href)
 }
 
-function NavigationIcon({
-  icon: Icon,
-  label,
-}: Pick<DashboardRoute, "icon" | "label">) {
-  const { pending } = useLinkStatus()
-
-  return (
-    <>
-      {pending ? (
-        <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-      ) : (
-        <Icon className="size-4" aria-hidden="true" />
-      )}
-      <span className="sr-only" aria-live="polite">
-        {pending ? `${label}を読み込み中` : ""}
-      </span>
-    </>
-  )
-}
-
 function DashboardRouteLink({
   route,
   active,
@@ -63,6 +42,7 @@ function DashboardRouteLink({
   active: boolean
 }) {
   const [prefetchEnabled, setPrefetchEnabled] = useState(false)
+  const Icon = route.icon
 
   return (
     <Link
@@ -79,7 +59,7 @@ function DashboardRouteLink({
         }),
       )}
     >
-      <NavigationIcon icon={route.icon} label={route.label} />
+      <Icon className="size-4" aria-hidden="true" />
       {route.label}
     </Link>
   )
@@ -105,7 +85,6 @@ function MobileDashboardNavigation({
         }}
         className="h-8 w-full rounded-lg border border-input bg-background px-2 pr-8 text-sm"
         aria-label="画面を選択"
-        aria-busy={pendingHref !== null}
       >
         {dashboardRoutes.map((route) => (
           <option key={route.href} value={route.href}>
@@ -113,12 +92,6 @@ function MobileDashboardNavigation({
           </option>
         ))}
       </select>
-      {pendingHref ? (
-        <LoaderCircle
-          className="pointer-events-none absolute right-2 top-1/2 size-4 -translate-y-1/2 animate-spin bg-background text-muted-foreground"
-          aria-hidden="true"
-        />
-      ) : null}
     </div>
   )
 }
