@@ -222,7 +222,7 @@ export function createShiftTemplateColor(index: number): ShiftTemplateColor {
 const DEFAULT_SHIFT_TEMPLATE_ID = "tentative"
 
 const shiftTemplates: Record<ShiftTemplateId, ShiftTemplate> = {
-  [DEFAULT_SHIFT_TEMPLATE_ID]: { label: "仮置き", kind: "day", defaultMinutes: 60, note: "仮置き" },
+  [DEFAULT_SHIFT_TEMPLATE_ID]: { label: "未指定", kind: "day", defaultMinutes: 60, note: "未指定" },
   reception: { label: "受付", kind: "morning", defaultMinutes: 180, note: "受付・来場者対応" },
   guide: { label: "会場誘導", kind: "day", defaultMinutes: 240, note: "導線案内・列整理" },
   stage: { label: "ステージ進行", kind: "full", defaultMinutes: 180, note: "登壇者誘導・転換補助" },
