@@ -118,6 +118,8 @@ const ALL_DEPARTMENTS = "すべてのセクション"
 const START_MINUTES = 6 * 60
 const END_MINUTES = 22 * 60
 const SLOT_MINUTES = 15
+const TIMELINE_MAJOR_INTERVAL_SLOTS = 120 / SLOT_MINUTES
+const LAST_TIMELINE_SLOT = (END_MINUTES - START_MINUTES) / SLOT_MINUTES
 const SLOT_WIDTH = 16
 const TIMELINE_PADDING_SLOTS = 2
 const TIMELINE_PADDING_WIDTH = TIMELINE_PADDING_SLOTS * SLOT_WIDTH
@@ -216,6 +218,21 @@ export function getCreateShiftTimeRange(
     start: START_MINUTES + firstSlot * SLOT_MINUTES,
     end: START_MINUTES + lastSlotExclusive * SLOT_MINUTES,
   }
+}
+
+export function getNearestTimelineMajorSlots(slot: number) {
+  if (slot % TIMELINE_MAJOR_INTERVAL_SLOTS === 0) return []
+
+  const previous = Math.floor(slot / TIMELINE_MAJOR_INTERVAL_SLOTS) * TIMELINE_MAJOR_INTERVAL_SLOTS
+  const next = Math.ceil(slot / TIMELINE_MAJOR_INTERVAL_SLOTS) * TIMELINE_MAJOR_INTERVAL_SLOTS
+  const candidates = [previous, next].filter(
+    (candidate, index, values) =>
+      candidate >= 0
+      && candidate <= LAST_TIMELINE_SLOT
+      && values.indexOf(candidate) === index,
+  )
+  const nearestDistance = Math.min(...candidates.map((candidate) => Math.abs(candidate - slot)))
+  return candidates.filter((candidate) => Math.abs(candidate - slot) === nearestDistance)
 }
 
 export function ShiftCreateTimeLabel({
@@ -538,6 +555,10 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
         endSlot: Math.max(creatingShift.startSlot, creatingShift.currentSlot) + 1,
       }
     : null
+  const fadedHoveredMajorSlots =
+    creatingTimeRange === null && hoveredSlot !== null
+      ? getNearestTimelineMajorSlots(hoveredSlot.slot)
+      : []
   const shiftsRef = useRef(shifts)
   const historyRef = useRef<{ past: Shift[][]; future: Shift[][] }>({ past: [], future: [] })
   const moveInitialShiftsRef = useRef<Shift[] | null>(null)
@@ -1653,6 +1674,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                       && hoveredSlot !== null
                       && hoveredSlot.slot !== index
                       && Math.abs(hoveredSlot.slot - index) <= 2
+                    const isFadedHoveredMajor = fadedHoveredMajorSlots.includes(index)
                     const horizontalAlignment =
                       isShortCreatingRange && isCreatingStart
                         ? "-translate-x-full"
@@ -1668,7 +1690,9 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                               ? "text-muted-foreground opacity-0"
                               : isHovered
                                 ? "font-semibold text-foreground opacity-100"
-                                : isNearHovered
+                                : isFadedHoveredMajor
+                                  ? "text-muted-foreground opacity-50"
+                                  : isNearHovered
                                   ? "text-muted-foreground opacity-0"
                                   : isMajor
                                     ? "text-muted-foreground opacity-100"

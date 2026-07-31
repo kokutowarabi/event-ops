@@ -3,6 +3,7 @@ import {
   canPlaceShift,
   createShiftTemplateColor,
   getCreateShiftTimeRange,
+  getNearestTimelineMajorSlots,
   type Shift,
 } from "@/components/shift-manager"
 
@@ -62,5 +63,13 @@ describe("shift placement", () => {
       start: 6 * 60 + 15,
       end: 7 * 60,
     })
+  })
+
+  it("fades only the nearest major tick for a nearby hover", () => {
+    expect(getNearestTimelineMajorSlots(1)).toEqual([0])
+  })
+
+  it("fades both surrounding major ticks for a midpoint hover", () => {
+    expect(getNearestTimelineMajorSlots(4)).toEqual([0, 8])
   })
 })
