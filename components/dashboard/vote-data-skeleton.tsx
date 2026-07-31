@@ -18,8 +18,8 @@ export function VoteDataSkeleton() {
       role="status"
       aria-label="投票データを読み込み中"
     >
-      <div className="grid gap-3 sm:grid-cols-3">
-        {["有効投票数", "投票参加端末数", "掲載企画"].map((label) => (
+      <div className="grid gap-3 sm:grid-cols-2">
+        {["有効投票数", "掲載企画"].map((label) => (
           <div key={label} className="rounded-xl border bg-card p-4">
             <div className="text-sm text-muted-foreground">{label}</div>
             <VoteSkeleton className="mt-2 h-9 w-16" />

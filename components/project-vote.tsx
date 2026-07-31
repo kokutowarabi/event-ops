@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { BarChart3, CalendarDays, Download, Heart, Trophy } from "lucide-react"
+import { BarChart3, CalendarDays, Download, Trophy } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { VoteDataSkeleton } from "@/components/dashboard/vote-data-skeleton"
@@ -19,7 +19,6 @@ import {
   totalVotes,
   votesByDate,
   votesOnDate,
-  votingDeviceCount,
 } from "@/lib/votes"
 
 export type VoteConnectionState = "unconfigured" | "connecting" | "realtime" | "error"
@@ -57,7 +56,6 @@ export function ProjectVote({
     return {
       departmentTotals,
       allVotes: totalVotes(votes),
-      votingDevices: votingDeviceCount(votes),
       dailyTotals: votesByDate(votes),
     }
   }, [projects, votes])
@@ -131,17 +129,10 @@ export function ProjectVote({
         <VoteDataSkeleton />
       ) : (
       <div className="min-h-0 flex-1 overflow-auto">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl border bg-card p-4">
             <div className="text-sm text-muted-foreground">有効投票数</div>
             <div className="mt-2 text-3xl font-semibold">{stats.allVotes}</div>
-          </div>
-          <div className="rounded-xl border bg-card p-4">
-            <div className="text-sm text-muted-foreground">投票参加端末数</div>
-            <div className="mt-2 flex items-center gap-2 text-3xl font-semibold">
-              {stats.votingDevices}
-              <Heart className="size-6 text-rose-500" />
-            </div>
           </div>
           <div className="rounded-xl border bg-card p-4">
             <div className="text-sm text-muted-foreground">掲載企画</div>
