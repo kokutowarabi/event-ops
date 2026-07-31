@@ -33,3 +33,39 @@ export async function castVisitorVote(
   if (error) throw error
   return data !== false
 }
+
+export function subscribeToVisitorVotes(
+  client: SupabaseClient,
+  callbacks: {
+    onInsert: (vote: VisitorVote) => void
+    onSnapshot: (votes: VisitorVote[]) => void
+  },
+) {
+  let active = true
+  const channel = client
+    .channel("visitor-votes")
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "visitor_votes",
+      },
+      (payload) => {
+        if (active) callbacks.onInsert(payload.new as VisitorVote)
+      },
+    )
+    .subscribe((status) => {
+      if (status !== "SUBSCRIBED") return
+      void fetchVisitorVotes(client)
+        .then((votes) => {
+          if (active) callbacks.onSnapshot(votes)
+        })
+        .catch(() => undefined)
+    })
+
+  return () => {
+    active = false
+    void client.removeChannel(channel)
+  }
+}
