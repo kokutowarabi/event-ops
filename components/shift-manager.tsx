@@ -1650,10 +1650,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                 </div>
               </div>
 
-              {hasNoFilterResults ? (
-                <ShiftFilterEmptyState className="col-span-2 min-h-40 border-b" />
-              ) : null}
-
               {visibleInvitedMembers.map((member) => {
                 const movingPreviewShift = moving
                   ? selectedDateShifts.find((shift) => shift.id === moving.id) ?? null
@@ -1844,6 +1840,9 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                 )
               })}
             </div>
+            {hasNoFilterResults ? (
+              <ShiftFilterEmptyState className="sticky left-0 min-h-40 w-full border-b" />
+            ) : null}
           </div>
         </>
       )}
