@@ -98,6 +98,15 @@ type MovingShift = {
   canDrop: boolean
 }
 
+type PendingMovePress = {
+  timerId: number
+  shift: Shift
+  element: HTMLDivElement
+  pointerId: number
+  clientX: number
+  clientY: number
+}
+
 type CopyingShift = {
   sourceId: string
   previewMemberId: string
@@ -149,6 +158,7 @@ const START_MINUTES = 6 * 60
 const END_MINUTES = 22 * 60
 const SLOT_MINUTES = 15
 const SLOT_WIDTH = 16
+const MOVE_LONG_PRESS_MS = 180
 const TIMELINE_PADDING_SLOTS = 2
 const TIMELINE_PADDING_WIDTH = TIMELINE_PADDING_SLOTS * SLOT_WIDTH
 const TIMELINE_WIDTH = ((END_MINUTES - START_MINUTES) / SLOT_MINUTES) * SLOT_WIDTH
@@ -698,6 +708,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const shiftsRef = useRef(shifts)
   const historyRef = useRef<{ past: Shift[][]; future: Shift[][] }>({ past: [], future: [] })
   const moveInitialShiftsRef = useRef<Shift[] | null>(null)
+  const pendingMovePressRef = useRef<PendingMovePress | null>(null)
   const resizeInitialShiftsRef = useRef<Shift[] | null>(null)
   const createInitialShiftsRef = useRef<Shift[] | null>(null)
   const didMoveShiftRef = useRef(false)
@@ -725,6 +736,11 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       cancelled = true
     }
   }, [initialShiftData])
+
+  useEffect(() => () => {
+    const pending = pendingMovePressRef.current
+    if (pending) window.clearTimeout(pending.timerId)
+  }, [])
 
   useEffect(() => {
     if (creatingShift || moving || resizing || copying) return
@@ -1228,23 +1244,73 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     setTemplateDraft({ label: "", kind: "day", defaultMinutes: 60, note: "" })
   }
 
-  const startMove = (shift: Shift, event: PointerEvent<HTMLDivElement>) => {
-    if (!isAdmin) return
-    const rect = event.currentTarget.getBoundingClientRect()
-    event.currentTarget.setPointerCapture(event.pointerId)
+  const activateMove = (
+    shift: Shift,
+    element: HTMLDivElement,
+    pointerId: number,
+    clientX: number,
+    clientY: number,
+  ) => {
+    if (!isAdmin || !element.isConnected) return
+    try {
+      element.setPointerCapture(pointerId)
+    } catch {
+      return
+    }
+    const rect = element.getBoundingClientRect()
     moveInitialShiftsRef.current = shiftsRef.current
     didMoveShiftRef.current = false
     setMoving({
       id: shift.id,
-      originX: event.clientX,
-      pointerOffsetX: event.clientX - rect.left,
-      pointerX: event.clientX,
-      pointerY: event.clientY,
+      originX: clientX,
+      pointerOffsetX: clientX - rect.left,
+      pointerX: clientX,
+      pointerY: clientY,
       start: shift.start,
       end: shift.end,
       previewMemberId: shift.memberId,
       canDrop: true,
     })
+  }
+
+  const startMovePress = (shift: Shift, event: PointerEvent<HTMLDivElement>) => {
+    if (!isAdmin || event.button !== 0) return
+    const previousPending = pendingMovePressRef.current
+    if (previousPending) window.clearTimeout(previousPending.timerId)
+    const pending: PendingMovePress = {
+      timerId: 0,
+      shift,
+      element: event.currentTarget,
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
+    }
+    pending.timerId = window.setTimeout(() => {
+      if (pendingMovePressRef.current !== pending) return
+      pendingMovePressRef.current = null
+      activateMove(
+        pending.shift,
+        pending.element,
+        pending.pointerId,
+        pending.clientX,
+        pending.clientY,
+      )
+    }, MOVE_LONG_PRESS_MS)
+    pendingMovePressRef.current = pending
+  }
+
+  const updateMovePress = (event: PointerEvent<HTMLDivElement>) => {
+    const pending = pendingMovePressRef.current
+    if (!pending || pending.pointerId !== event.pointerId) return
+    pending.clientX = event.clientX
+    pending.clientY = event.clientY
+  }
+
+  const cancelMovePress = () => {
+    const pending = pendingMovePressRef.current
+    if (!pending) return
+    window.clearTimeout(pending.timerId)
+    pendingMovePressRef.current = null
   }
 
   const moveShift = (event: PointerEvent<HTMLDivElement>) => {
@@ -2156,17 +2222,20 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                                   }
                                 }}
                                 onPointerDown={(event) => {
-                                  if (!isInteractionAlias) startMove(shift, event)
+                                  if (!isInteractionAlias) startMovePress(shift, event)
                                 }}
                                 onPointerMove={(event) => {
+                                  updateMovePress(event)
                                   moveShift(event)
                                   moveResize(event)
                                 }}
                                 onPointerUp={() => {
+                                  cancelMovePress()
                                   stopMove()
                                   stopResize()
                                 }}
                                 onPointerCancel={() => {
+                                  cancelMovePress()
                                   cancelMove()
                                   cancelResize()
                                 }}
