@@ -37,8 +37,8 @@ export function ShiftHandles({
   return (
     <>
       <span
-        className={`pointer-events-auto absolute top-3 z-40 h-10 w-2 cursor-w-resize rounded-l-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${visibilityClass}`}
-        style={{ left, cursor: "url('/cursors/resize-left.svg') 12 12, w-resize" }}
+        className={`pointer-events-auto absolute top-3 z-40 h-10 w-2 cursor-ew-resize rounded-l-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${visibilityClass}`}
+        style={{ left }}
         onClick={(event) => event.stopPropagation()}
         onPointerDown={(event) => onStartResize(shift, "start", event)}
         onPointerMove={onMoveResize}
@@ -47,8 +47,8 @@ export function ShiftHandles({
         aria-hidden="true"
       />
       <span
-        className={`pointer-events-auto absolute top-3 z-40 h-10 w-2 cursor-e-resize rounded-r-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${visibilityClass}`}
-        style={{ left: left + visualWidth - 8, cursor: "url('/cursors/resize-right.svg') 12 12, e-resize" }}
+        className={`pointer-events-auto absolute top-3 z-40 h-10 w-2 cursor-ew-resize rounded-r-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${visibilityClass}`}
+        style={{ left: left + visualWidth - 8 }}
         onClick={(event) => event.stopPropagation()}
         onPointerDown={(event) => onStartResize(shift, "end", event)}
         onPointerMove={onMoveResize}
@@ -57,11 +57,10 @@ export function ShiftHandles({
         aria-hidden="true"
       />
       <span
-        className={`pointer-events-auto absolute top-2 z-40 h-2 cursor-n-resize rounded-t-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${visibilityClass}`}
+        className={`pointer-events-auto absolute top-2 z-40 h-2 cursor-ns-resize rounded-t-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${visibilityClass}`}
         style={{
           left: left + (visualWidth - verticalHandleLength) / 2,
           width: verticalHandleLength,
-          cursor: "url('/cursors/resize-up.svg') 12 12, n-resize",
         }}
         onClick={(event) => event.stopPropagation()}
         onPointerDown={(event) => onStartCopy(shift, event)}
@@ -71,11 +70,10 @@ export function ShiftHandles({
         aria-hidden="true"
       />
       <span
-        className={`pointer-events-auto absolute top-12 z-40 h-2 cursor-s-resize rounded-b-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${visibilityClass}`}
+        className={`pointer-events-auto absolute top-12 z-40 h-2 cursor-ns-resize rounded-b-md bg-foreground/10 transition hover:bg-foreground/20 active:bg-foreground/25 ${visibilityClass}`}
         style={{
           left: left + (visualWidth - verticalHandleLength) / 2,
           width: verticalHandleLength,
-          cursor: "url('/cursors/resize-down.svg') 12 12, s-resize",
         }}
         onClick={(event) => event.stopPropagation()}
         onPointerDown={(event) => onStartCopy(shift, event)}
