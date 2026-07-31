@@ -61,8 +61,8 @@ export type PendingMovePress = {
 
 export type CopyingShift = {
   sourceId: string
-  previewMemberId: string
-  canDrop: boolean
+  previewMemberIds: string[]
+  targetMemberIds: string[]
   sourceRect: {
     left: number
     top: number

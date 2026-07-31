@@ -1,15 +1,16 @@
-import type { Dispatch, PointerEvent, SetStateAction } from "react"
+import { useCallback, useEffect, useRef, type Dispatch, type PointerEvent, type SetStateAction } from "react"
 import type { Shift } from "@/lib/shift-data"
 import {
-  canCopyShiftToMember,
   canPlaceShift,
   copyShiftForMember,
   END_MINUTES,
+  getVerticalCopyPlan,
   SLOT_MINUTES,
   START_MINUTES,
 } from "./shift-domain"
 import {
   getMemberIdFromPointer,
+  getMemberRowsFromPointer,
   getMemberRowFromPointer,
   getNearestMemberRowFromPointer,
 } from "./shift-pointer"
@@ -183,7 +184,6 @@ export function useShiftMoveActions({
 
 type ShiftCopyActionsOptions = {
   editable: boolean
-  copying: CopyingShift | null
   shiftsRef: { current: Shift[] }
   setCopying: Dispatch<SetStateAction<CopyingShift | null>>
   recordShiftsChange: (updater: (current: Shift[]) => Shift[]) => void
@@ -191,13 +191,82 @@ type ShiftCopyActionsOptions = {
 
 export function useShiftCopyActions({
   editable,
-  copying,
   shiftsRef,
   setCopying,
   recordShiftsChange,
 }: ShiftCopyActionsOptions) {
+  const isFinishingCopyRef = useRef(false)
+  const copyingStateRef = useRef<CopyingShift | null>(null)
+  const removeCopyListenersRef = useRef<(() => void) | null>(null)
+  const cleanupCopyListeners = useCallback(() => {
+    removeCopyListenersRef.current?.()
+    removeCopyListenersRef.current = null
+  }, [])
+
+  const moveCopyShift = useCallback((event: { clientX: number; clientY: number }) => {
+    const activeCopying = copyingStateRef.current
+    if (!activeCopying) return
+    const sourceShift = shiftsRef.current.find((shift) => shift.id === activeCopying.sourceId)
+    if (!sourceShift) return
+    const candidateRow = getMemberRowFromPointer(event) ?? getNearestMemberRowFromPointer(event)
+    const candidateMemberId = candidateRow?.dataset.shiftMemberId ?? sourceShift.memberId
+    const memberRows = getMemberRowsFromPointer(event)
+    const copyPlan = getVerticalCopyPlan(
+      shiftsRef.current,
+      sourceShift,
+      memberRows.map(({ row }) => row.dataset.shiftMemberId ?? ""),
+      candidateMemberId,
+    )
+    const lastIncludedMemberId = copyPlan.includedMemberIds.at(-1) ?? sourceShift.memberId
+    const sourceRow = memberRows.find(({ row }) => row.dataset.shiftMemberId === sourceShift.memberId)
+    const lastIncludedRow = memberRows.find(({ row }) => row.dataset.shiftMemberId === lastIncludedMemberId)
+    const sourceTop = activeCopying.sourceRect.top
+    const sourceHeight = activeCopying.sourceRect.height
+    const sourceRowOffset = sourceRow ? sourceTop - sourceRow.rect.top : 0
+    const targetTop = lastIncludedRow ? lastIncludedRow.rect.top + sourceRowOffset : sourceTop
+    const nextCopying: CopyingShift = {
+      ...activeCopying,
+      previewMemberIds: copyPlan.includedMemberIds.filter(
+        (memberId) => memberId !== sourceShift.memberId,
+      ),
+      targetMemberIds: copyPlan.targetMemberIds,
+      stretchRect: {
+        ...activeCopying.stretchRect,
+        top: Math.min(sourceTop, targetTop),
+        height: Math.abs(targetTop - sourceTop) + sourceHeight,
+      },
+    }
+    copyingStateRef.current = nextCopying
+    setCopying(nextCopying)
+  }, [setCopying, shiftsRef])
+
+  const stopCopyShift = useCallback(() => {
+    const activeCopying = copyingStateRef.current
+    if (!activeCopying || isFinishingCopyRef.current) return
+    isFinishingCopyRef.current = true
+    cleanupCopyListeners()
+    const sourceShift = shiftsRef.current.find((shift) => shift.id === activeCopying.sourceId)
+    if (sourceShift && activeCopying.targetMemberIds.length > 0) {
+      const copiedShifts = activeCopying.targetMemberIds.map((memberId) =>
+        copyShiftForMember(sourceShift, memberId, `shift-${crypto.randomUUID()}`),
+      )
+      recordShiftsChange((current) => [...current, ...copiedShifts])
+    }
+    copyingStateRef.current = null
+    setCopying(null)
+  }, [cleanupCopyListeners, recordShiftsChange, setCopying, shiftsRef])
+
+  const cancelCopyShift = useCallback(() => {
+    if (isFinishingCopyRef.current) return
+    isFinishingCopyRef.current = true
+    cleanupCopyListeners()
+    copyingStateRef.current = null
+    setCopying(null)
+  }, [cleanupCopyListeners, setCopying])
+
   const startCopyShift = (shift: Shift, event: PointerEvent<HTMLSpanElement>) => {
     if (!editable) return
+    isFinishingCopyRef.current = false
     event.stopPropagation()
     event.currentTarget.setPointerCapture(event.pointerId)
     const sourceElement = event.currentTarget.parentElement?.querySelector<HTMLElement>("[data-shift-block]")
@@ -208,56 +277,30 @@ export function useShiftCopyActions({
       width: sourceRect.width,
       height: sourceRect.height,
     }
-    setCopying({
+    const nextCopying: CopyingShift = {
       sourceId: shift.id,
-      previewMemberId: shift.memberId,
-      canDrop: false,
+      previewMemberIds: [],
+      targetMemberIds: [],
       sourceRect: copyRect,
       stretchRect: copyRect,
-    })
-  }
-
-  const moveCopyShift = (event: PointerEvent<HTMLSpanElement>) => {
-    if (!copying) return
-    const sourceShift = shiftsRef.current.find((shift) => shift.id === copying.sourceId)
-    if (!sourceShift) return
-    const candidateRow = getMemberRowFromPointer(event) ?? getNearestMemberRowFromPointer(event)
-    const candidateMemberId = candidateRow?.dataset.shiftMemberId ?? copying.previewMemberId
-    const canDrop = canCopyShiftToMember(shiftsRef.current, sourceShift, candidateMemberId)
-    const sourceTop = copying.sourceRect.top
-    const sourceHeight = copying.sourceRect.height
-    const targetTop = candidateRow ? event.clientY - sourceHeight / 2 : sourceTop
-    setCopying((current) =>
-      current
-        ? {
-          ...current,
-          previewMemberId: candidateMemberId,
-          canDrop,
-          stretchRect: {
-            ...current.stretchRect,
-            top: Math.min(sourceTop, targetTop),
-            height: Math.abs(targetTop - sourceTop) + sourceHeight,
-          },
-        }
-        : current,
-    )
-  }
-
-  const stopCopyShift = () => {
-    if (!copying) return
-    const sourceShift = shiftsRef.current.find((shift) => shift.id === copying.sourceId)
-    if (sourceShift && copying.canDrop && copying.previewMemberId !== sourceShift.memberId) {
-      const copiedShift = copyShiftForMember(
-        sourceShift,
-        copying.previewMemberId,
-        `shift-${crypto.randomUUID()}`,
-      )
-      recordShiftsChange((current) => [...current, copiedShift])
     }
-    setCopying(null)
+    copyingStateRef.current = nextCopying
+    setCopying(nextCopying)
+
+    cleanupCopyListeners()
+    window.addEventListener("pointermove", moveCopyShift)
+    window.addEventListener("pointerup", stopCopyShift)
+    window.addEventListener("pointercancel", cancelCopyShift)
+    removeCopyListenersRef.current = () => {
+      window.removeEventListener("pointermove", moveCopyShift)
+      window.removeEventListener("pointerup", stopCopyShift)
+      window.removeEventListener("pointercancel", cancelCopyShift)
+    }
   }
 
-  const cancelCopyShift = () => setCopying(null)
+  useEffect(() => {
+    return cleanupCopyListeners
+  }, [cleanupCopyListeners])
 
   return { startCopyShift, moveCopyShift, stopCopyShift, cancelCopyShift }
 }

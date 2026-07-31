@@ -1,6 +1,9 @@
-import type { PointerEvent } from "react"
+type PointerCoordinates = {
+  clientX: number
+  clientY: number
+}
 
-export function getMemberRowFromPointer(event: PointerEvent<HTMLElement>) {
+export function getMemberRowFromPointer(event: PointerCoordinates) {
   const rows = document.querySelectorAll<HTMLElement>("[data-shift-member-id]")
   for (const row of rows) {
     const rect = row.getBoundingClientRect()
@@ -37,8 +40,17 @@ export function getNearestVerticalRectIndex(
   }, 0)
 }
 
-export function getNearestMemberRowFromPointer(event: PointerEvent<HTMLElement>) {
-  const rows = Array.from(document.querySelectorAll<HTMLElement>("[data-shift-member-id]"))
+export function getNearestMemberRowFromPointer(event: PointerCoordinates) {
+  const rows = getMemberRowsFromPointer(event)
+  const nearestIndex = getNearestVerticalRectIndex(
+    rows.map(({ rect }) => rect),
+    event.clientY,
+  )
+  return nearestIndex >= 0 ? rows[nearestIndex].row : null
+}
+
+export function getMemberRowsFromPointer(event: PointerCoordinates) {
+  return Array.from(document.querySelectorAll<HTMLElement>("[data-shift-member-id]"))
     .map((row) => ({ row, rect: row.getBoundingClientRect() }))
     .filter(
       ({ rect }) =>
@@ -47,13 +59,8 @@ export function getNearestMemberRowFromPointer(event: PointerEvent<HTMLElement>)
         && event.clientX >= rect.left
         && event.clientX <= rect.right,
     )
-  const nearestIndex = getNearestVerticalRectIndex(
-    rows.map(({ rect }) => rect),
-    event.clientY,
-  )
-  return nearestIndex >= 0 ? rows[nearestIndex].row : null
 }
 
-export function getMemberIdFromPointer(event: PointerEvent<HTMLElement>) {
+export function getMemberIdFromPointer(event: PointerCoordinates) {
   return getMemberRowFromPointer(event)?.dataset.shiftMemberId ?? null
 }

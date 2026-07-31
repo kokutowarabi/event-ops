@@ -65,18 +65,16 @@ export function ShiftDragOverlays({
       {copying && copyingShift
         ? createPortal(
           <div
-            className={`pointer-events-none fixed z-50 rounded-md border opacity-75 shadow-lg ${copying.canDrop ? "" : "ring-2 ring-destructive"}`}
+            className="pointer-events-none fixed z-50 rounded-md border-2 border-dashed bg-transparent opacity-60"
             style={{
               left: copying.stretchRect.left,
               top: copying.stretchRect.top,
               width: copying.stretchRect.width,
               height: copying.stretchRect.height,
-              ...getTemplateColor(copyingShift.templateId).blockStyle,
+              borderColor: getTemplateColor(copyingShift.templateId).blockStyle.borderColor,
             }}
             aria-hidden="true"
-          >
-            {!copying.canDrop ? <InvalidDropIndicator size="large" /> : null}
-          </div>,
+          />,
           document.body,
         )
         : null}
@@ -84,7 +82,7 @@ export function ShiftDragOverlays({
   )
 }
 
-function InvalidDropIndicator({ size }: { size: "small" | "large" }) {
+function InvalidDropIndicator({ size }: { size: "small" }) {
   return (
     <span
       data-slot="invalid-shift-drop-indicator"

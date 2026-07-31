@@ -94,7 +94,7 @@ export function ShiftDesktopMemberRow({
       ? [...memberShifts, { ...movingPreviewShift, memberId: member.id }]
       : memberShifts
   const visibleMemberShifts =
-    copyingShift && copying?.previewMemberId === member.id && copyingShift.memberId !== member.id
+    copyingShift && copying?.previewMemberIds.includes(member.id) && copyingShift.memberId !== member.id
       ? [...movingMemberShifts, { ...copyingShift, memberId: member.id }]
       : movingMemberShifts
   const createPreview = getCreatePreview(member.id)
@@ -235,7 +235,7 @@ export function ShiftDesktopMemberRow({
             const isHiddenMovingSource = isMovingSource && !isMovingSourceAlias
             const isCopyingAlias =
               copying?.sourceId === shift.id
-              && copying?.previewMemberId === member.id
+              && copying?.previewMemberIds.includes(member.id)
               && copyingShift?.memberId !== member.id
             const isCopyingSource = copying?.sourceId === shift.id && !isCopyingAlias
             const isInteractionAlias = isMovingAlias || isCopyingAlias
@@ -243,6 +243,7 @@ export function ShiftDesktopMemberRow({
               <div key={`${shift.id}-${isCopyingAlias ? "copy" : "shift"}`} className="group contents">
                 <div
                   data-shift-block
+                  data-copy-preview={isCopyingAlias ? "true" : undefined}
                   role="button"
                   tabIndex={0}
                   onClick={() => {
@@ -273,7 +274,7 @@ export function ShiftDesktopMemberRow({
                     onCancelResize()
                   }}
                   aria-label={`${member.name} ${formatTime(shift.start)}-${formatTime(shift.end)}の詳細`}
-                  className={`${isInteractionAlias ? "pointer-events-none" : "pointer-events-auto"} absolute top-2 box-border h-12 select-none rounded-md border text-left transition hover:z-30 hover:ring-2 hover:ring-inset hover:ring-ring/40 ${hasSplitEditingTimes || adjustsConflictingShifts ? "overflow-visible" : "overflow-hidden"} ${isHiddenMovingSource ? "opacity-0" : ""} ${isMovingAlias || isMovingSourceAlias || isCopyingAlias ? "opacity-40 ring-2 ring-inset ring-ring/30" : ""} ${isCopyingAlias && !copying?.canDrop ? "ring-destructive" : ""} ${isSingleSlotShift ? "px-0" : "px-3 shadow-sm"} ${editable && !isInteractionAlias ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
+                  className={`${isInteractionAlias ? "pointer-events-none" : "pointer-events-auto"} absolute top-2 box-border h-12 select-none rounded-md border text-left transition hover:z-30 hover:ring-2 hover:ring-inset hover:ring-ring/40 ${hasSplitEditingTimes || adjustsConflictingShifts ? "overflow-visible" : "overflow-hidden"} ${isHiddenMovingSource ? "opacity-0" : ""} ${isMovingAlias || isMovingSourceAlias || isCopyingAlias ? "opacity-40 ring-2 ring-inset ring-ring/30" : ""} ${isSingleSlotShift ? "px-0" : "px-3 shadow-sm"} ${editable && !isInteractionAlias ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
                   style={{
                     left,
                     width: visualWidth,

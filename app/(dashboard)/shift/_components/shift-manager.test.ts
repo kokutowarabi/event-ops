@@ -7,6 +7,7 @@ import {
   createShiftTemplateColor,
   getCreateShiftTimeRange,
   getShiftAdjustmentChanges,
+  getVerticalCopyPlan,
   orderMemberIdsWithPins,
   shouldSplitShiftTimeLabels,
   type Shift,
@@ -94,6 +95,78 @@ describe("shift placement", () => {
     ]
     expect(getNearestVerticalRectIndex(rows, 45)).toBe(0)
     expect(getNearestVerticalRectIndex(rows, 55)).toBe(1)
+  })
+
+  it("copies to every empty member until the selected destination", () => {
+    expect(
+      getVerticalCopyPlan(
+        shifts,
+        shifts[0],
+        ["member-a", "member-c", "member-d"],
+        "member-d",
+      ),
+    ).toEqual({
+      includedMemberIds: ["member-a", "member-c", "member-d"],
+      targetMemberIds: ["member-c", "member-d"],
+      blockedMemberId: null,
+    })
+  })
+
+  it("copies upward through every empty member", () => {
+    expect(
+      getVerticalCopyPlan(
+        shifts,
+        { ...shifts[0], memberId: "member-d" },
+        ["member-a", "member-b", "member-c", "member-d"],
+        "member-b",
+      ),
+    ).toMatchObject({
+      includedMemberIds: ["member-d", "member-c", "member-b"],
+      targetMemberIds: ["member-c", "member-b"],
+    })
+  })
+
+  it("skips identical shifts and stops before a different overlapping shift", () => {
+    const identicalShift = { ...shifts[0], id: "identical", memberId: "member-b" }
+    const differentShift = {
+      ...shifts[0],
+      id: "different",
+      memberId: "member-c",
+      templateId: "reception",
+    }
+    expect(
+      getVerticalCopyPlan(
+        [...shifts, identicalShift, differentShift],
+        shifts[0],
+        ["member-a", "member-b", "member-c", "member-d"],
+        "member-d",
+      ),
+    ).toEqual({
+      includedMemberIds: ["member-a", "member-b"],
+      targetMemberIds: [],
+      blockedMemberId: "member-c",
+    })
+  })
+
+  it("copies to empty members before the first different overlapping shift", () => {
+    const differentShift = {
+      ...shifts[0],
+      id: "different",
+      memberId: "member-c",
+      templateId: "reception",
+    }
+    expect(
+      getVerticalCopyPlan(
+        [...shifts, differentShift],
+        shifts[0],
+        ["member-a", "member-d", "member-c", "member-e"],
+        "member-e",
+      ),
+    ).toEqual({
+      includedMemberIds: ["member-a", "member-d"],
+      targetMemberIds: ["member-d"],
+      blockedMemberId: "member-c",
+    })
   })
 
   it("shrinks the conflicting shift before a selected range", () => {

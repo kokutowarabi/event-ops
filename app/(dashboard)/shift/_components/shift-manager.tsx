@@ -575,7 +575,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
 
   const { startCopyShift, moveCopyShift, stopCopyShift, cancelCopyShift } = useShiftCopyActions({
     editable: isAdmin,
-    copying,
     shiftsRef,
     setCopying,
     recordShiftsChange,
