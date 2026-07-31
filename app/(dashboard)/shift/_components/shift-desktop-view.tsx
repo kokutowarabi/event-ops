@@ -119,7 +119,10 @@ export function ShiftDesktopView({
     : null
 
   return (
-    <div className={`${visible ? "hidden md:block" : "hidden"} min-h-0 flex-1 select-none overflow-auto rounded-lg border bg-card`}>
+    <div
+      data-shift-scroll-container
+      className={`${visible ? "hidden md:block" : "hidden"} min-h-0 flex-1 select-none overflow-auto rounded-lg border bg-card`}
+    >
       <div className="grid min-w-300 grid-cols-[15rem_1fr]">
         <div className="sticky left-0 top-0 z-30 flex h-16 items-center border-b border-r bg-card px-3">
           <Button

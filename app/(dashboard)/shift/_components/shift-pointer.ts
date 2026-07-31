@@ -1,4 +1,4 @@
-type PointerCoordinates = {
+export type PointerCoordinates = {
   clientX: number
   clientY: number
 }

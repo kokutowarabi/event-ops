@@ -13,9 +13,11 @@ import {
   getMemberRowsFromPointer,
   getMemberRowFromPointer,
   getNearestMemberRowFromPointer,
+  type PointerCoordinates,
 } from "./shift-pointer"
 import { MOVE_LONG_PRESS_MS, SLOT_WIDTH } from "./shift-layout"
 import type { CopyingShift, MovingShift, PendingMovePress } from "./shift-types"
+import { useVerticalDragAutoScroll } from "./shift-vertical-auto-scroll"
 
 type ShiftMoveActionsOptions = {
   editable: boolean
@@ -197,13 +199,14 @@ export function useShiftCopyActions({
 }: ShiftCopyActionsOptions) {
   const isFinishingCopyRef = useRef(false)
   const copyingStateRef = useRef<CopyingShift | null>(null)
+  const sourceElementRef = useRef<HTMLElement | null>(null)
   const removeCopyListenersRef = useRef<(() => void) | null>(null)
   const cleanupCopyListeners = useCallback(() => {
     removeCopyListenersRef.current?.()
     removeCopyListenersRef.current = null
   }, [])
 
-  const moveCopyShift = useCallback((event: { clientX: number; clientY: number }) => {
+  const updateCopyPreview = useCallback((event: PointerCoordinates) => {
     const activeCopying = copyingStateRef.current
     if (!activeCopying) return
     const sourceShift = shiftsRef.current.find((shift) => shift.id === activeCopying.sourceId)
@@ -220,8 +223,9 @@ export function useShiftCopyActions({
     const lastIncludedMemberId = copyPlan.includedMemberIds.at(-1) ?? sourceShift.memberId
     const sourceRow = memberRows.find(({ row }) => row.dataset.shiftMemberId === sourceShift.memberId)
     const lastIncludedRow = memberRows.find(({ row }) => row.dataset.shiftMemberId === lastIncludedMemberId)
-    const sourceTop = activeCopying.sourceRect.top
-    const sourceHeight = activeCopying.sourceRect.height
+    const sourceRect = sourceElementRef.current?.getBoundingClientRect() ?? activeCopying.sourceRect
+    const sourceTop = sourceRect.top
+    const sourceHeight = sourceRect.height
     const sourceRowOffset = sourceRow ? sourceTop - sourceRow.rect.top : 0
     const targetTop = lastIncludedRow ? lastIncludedRow.rect.top + sourceRowOffset : sourceTop
     const nextCopying: CopyingShift = {
@@ -232,7 +236,9 @@ export function useShiftCopyActions({
       targetMemberIds: copyPlan.targetMemberIds,
       stretchRect: {
         ...activeCopying.stretchRect,
+        left: sourceRect.left,
         top: Math.min(sourceTop, targetTop),
+        width: sourceRect.width,
         height: Math.abs(targetTop - sourceTop) + sourceHeight,
       },
     }
@@ -240,11 +246,23 @@ export function useShiftCopyActions({
     setCopying(nextCopying)
   }, [setCopying, shiftsRef])
 
+  const {
+    start: startAutoScroll,
+    update: updateAutoScroll,
+    stop: stopAutoScroll,
+  } = useVerticalDragAutoScroll(updateCopyPreview)
+  const moveCopyShift = useCallback((event: PointerCoordinates) => {
+    const pointer = { clientX: event.clientX, clientY: event.clientY }
+    updateCopyPreview(pointer)
+    updateAutoScroll(pointer)
+  }, [updateAutoScroll, updateCopyPreview])
+
   const stopCopyShift = useCallback(() => {
     const activeCopying = copyingStateRef.current
     if (!activeCopying || isFinishingCopyRef.current) return
     isFinishingCopyRef.current = true
     cleanupCopyListeners()
+    stopAutoScroll()
     const sourceShift = shiftsRef.current.find((shift) => shift.id === activeCopying.sourceId)
     if (sourceShift && activeCopying.targetMemberIds.length > 0) {
       const copiedShifts = activeCopying.targetMemberIds.map((memberId) =>
@@ -253,24 +271,29 @@ export function useShiftCopyActions({
       recordShiftsChange((current) => [...current, ...copiedShifts])
     }
     copyingStateRef.current = null
+    sourceElementRef.current = null
     setCopying(null)
-  }, [cleanupCopyListeners, recordShiftsChange, setCopying, shiftsRef])
+  }, [cleanupCopyListeners, recordShiftsChange, setCopying, shiftsRef, stopAutoScroll])
 
   const cancelCopyShift = useCallback(() => {
     if (isFinishingCopyRef.current) return
     isFinishingCopyRef.current = true
     cleanupCopyListeners()
+    stopAutoScroll()
     copyingStateRef.current = null
+    sourceElementRef.current = null
     setCopying(null)
-  }, [cleanupCopyListeners, setCopying])
+  }, [cleanupCopyListeners, setCopying, stopAutoScroll])
 
   const startCopyShift = (shift: Shift, event: PointerEvent<HTMLSpanElement>) => {
     if (!editable) return
     isFinishingCopyRef.current = false
     event.stopPropagation()
     event.currentTarget.setPointerCapture(event.pointerId)
-    const sourceElement = event.currentTarget.parentElement?.querySelector<HTMLElement>("[data-shift-block]")
+    const sourceElement =
+      event.currentTarget.parentElement?.querySelector<HTMLElement>("[data-shift-block]") ?? null
     const sourceRect = (sourceElement ?? event.currentTarget).getBoundingClientRect()
+    sourceElementRef.current = sourceElement
     const copyRect = {
       left: sourceRect.left,
       top: sourceRect.top,
@@ -286,6 +309,14 @@ export function useShiftCopyActions({
     }
     copyingStateRef.current = nextCopying
     setCopying(nextCopying)
+
+    const scrollContainer = event.currentTarget.closest<HTMLElement>("[data-shift-scroll-container]")
+    if (scrollContainer) {
+      startAutoScroll(scrollContainer, {
+        clientX: event.clientX,
+        clientY: event.clientY,
+      })
+    }
 
     cleanupCopyListeners()
     window.addEventListener("pointermove", moveCopyShift)
