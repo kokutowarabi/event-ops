@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import { BarChart3, CalendarDays, Download, Heart, Trophy } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { VoteDataSkeleton } from "@/components/dashboard/vote-data-skeleton"
 import {
   Select,
   SelectContent,
@@ -21,13 +22,19 @@ type ProjectVoteProps = {
   projects: EventProject[]
   votes: VisitorVote[]
   connectionState: VoteConnectionState
+  loading?: boolean
 }
 
 const departments: EventDepartment[] = ["模擬店", "屋外ステージ", "教室"]
 const allVoteDates = "all"
 const allDepartments = "all"
 
-export function ProjectVote({ projects, votes, connectionState }: ProjectVoteProps) {
+export function ProjectVote({
+  projects,
+  votes,
+  connectionState,
+  loading = false,
+}: ProjectVoteProps) {
   const [selectedVoteDate, setSelectedVoteDate] = useState(allVoteDates)
   const [selectedDepartment, setSelectedDepartment] = useState<
     EventDepartment | typeof allDepartments
@@ -102,7 +109,7 @@ export function ProjectVote({ projects, votes, connectionState }: ProjectVotePro
           variant="outline"
           size="sm"
           onClick={exportRanking}
-          disabled={rankingStats.ranking.length === 0}
+          disabled={loading || rankingStats.ranking.length === 0}
           title="選択中の日付・部門ランキングをCSV出力"
         >
           <Download className="size-4" />
@@ -113,6 +120,9 @@ export function ProjectVote({ projects, votes, connectionState }: ProjectVotePro
         </Badge>
       </header>
 
+      {loading ? (
+        <VoteDataSkeleton />
+      ) : (
       <div className="min-h-0 flex-1 overflow-auto">
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl border bg-card p-4">
@@ -245,6 +255,7 @@ export function ProjectVote({ projects, votes, connectionState }: ProjectVotePro
           </div>
         </section>
       </div>
+      )}
     </div>
   )
 }

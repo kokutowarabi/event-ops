@@ -19,6 +19,7 @@ export function VoteResultsView() {
   const { projects } = useEventOps()
   const voteClient = useMemo(() => getSupabaseClient(), [])
   const [votes, setVotes] = useState<VisitorVote[]>([])
+  const [votesLoaded, setVotesLoaded] = useState(!isSupabaseConfigured)
   const [connectionState, setConnectionState] =
     useState<VoteConnectionState>(
       isSupabaseConfigured ? "connecting" : "unconfigured",
@@ -34,6 +35,8 @@ export function VoteResultsView() {
         if (active) setVotes(nextVotes)
       } catch {
         if (active) setConnectionState("error")
+      } finally {
+        if (active) setVotesLoaded(true)
       }
     }
 
@@ -69,6 +72,7 @@ export function VoteResultsView() {
       projects={projects}
       votes={votes}
       connectionState={connectionState}
+      loading={!votesLoaded}
     />
   )
 }
