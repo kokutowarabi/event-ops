@@ -6,6 +6,7 @@ import {
   copyShiftForMember,
   createShiftTemplateColor,
   getCreateShiftTimeRange,
+  getShiftAdjustmentChanges,
   getShiftDetailPosition,
   shouldSplitShiftTimeLabels,
   type Shift,
@@ -93,17 +94,57 @@ describe("shift placement", () => {
     })
   })
 
-  it("rejects conflict adjustment when no fifteen-minute target range remains", () => {
-    expect(
-      adjustConflictingShiftRanges(
-        shifts,
-        "member-b",
-        "2026-10-31",
-        9 * 60,
-        12 * 60,
-        "source",
-      ),
-    ).toBeNull()
+  it("removes a conflicting shift when no duration remains", () => {
+    const result = adjustConflictingShiftRanges(
+      shifts,
+      "member-b",
+      "2026-10-31",
+      9 * 60,
+      12 * 60,
+      "source",
+    )
+
+    expect(result?.removedShiftIds).toEqual(["target-existing"])
+    expect(result?.shifts.some((shift) => shift.id === "target-existing")).toBe(false)
+  })
+
+  it("shrinks and removes multiple shifts across one selected range", () => {
+    const before = {
+      ...shifts[1],
+      id: "target-before",
+      start: 9 * 60,
+      end: 10 * 60,
+    }
+    const after = {
+      ...shifts[1],
+      id: "target-after",
+      start: 11 * 60,
+      end: 12 * 60,
+    }
+    const result = adjustConflictingShiftRanges(
+      [before, shifts[1], after],
+      "member-b",
+      "2026-10-31",
+      9 * 60 + 30,
+      11 * 60 + 30,
+    )
+
+    expect(result?.adjustedShiftIds).toEqual(["target-before", "target-existing", "target-after"])
+    expect(result?.removedShiftIds).toEqual(["target-existing"])
+    expect(result?.shifts).toEqual([
+      { ...before, end: 9 * 60 + 30 },
+      { ...after, start: 11 * 60 + 30 },
+    ])
+  })
+
+  it("describes shortened and removed shifts before confirmation", () => {
+    const shortened = { ...shifts[1], end: 10 * 60 + 30 }
+    expect(getShiftAdjustmentChanges(shifts, [shifts[0], shortened])).toEqual([
+      { before: shifts[1], after: shortened },
+    ])
+    expect(getShiftAdjustmentChanges(shifts, [shifts[0]])).toEqual([
+      { before: shifts[1], after: null },
+    ])
   })
 
   it("assigns a distinct color to every built-in business", () => {
