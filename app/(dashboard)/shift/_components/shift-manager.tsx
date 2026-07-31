@@ -8,7 +8,7 @@ import {
   type PointerEvent,
 } from "react"
 import { createPortal } from "react-dom"
-import { CalendarDays, Check, Download, Eye, Layers3, ListFilter, Pin, Plus, Search, Trash2, Users, X } from "lucide-react"
+import { CalendarDays, Check, Download, Eye, Layers3, ListFilter, Pin, Plus, Trash2, Users, X } from "lucide-react"
 import type { Member } from "@/lib/members"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -47,6 +47,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { ShiftCreateTimeLabel } from "./shift-create-time-label"
+import { ShiftAdjustmentSummary } from "./shift-adjustment-summary"
+import {
+  ShiftFilterEmptyState,
+  ShiftFilterPicker,
+  type FilterPanelPosition,
+} from "./shift-filter-ui"
 import {
   addDays,
   adjustConflictingShiftRanges,
@@ -167,22 +173,7 @@ type PendingShiftAdjustment = {
   changes: ShiftAdjustmentChange[]
 }
 
-type SearchPickerProps = {
-  label: string
-  value: string
-  options: string[]
-  allValue?: string
-  onChange: (value: string) => void
-}
-
 type FilterAnchor = "mobile" | "table"
-
-type FilterPanelPosition = {
-  left: number
-  top: number
-  width: number
-  maxHeight: number
-}
 
 const ALL_DEPARTMENTS = "すべてのセクション"
 const SLOT_WIDTH = 16
@@ -213,156 +204,6 @@ function getHoveredSlotRadiusClass(slot: number) {
 function isTextEditingTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false
   return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
-}
-
-function uniqueSearchOptions(options: string[], query: string) {
-  const normalizedQuery = query.trim().toLowerCase()
-  return Array.from(new Set(options.filter(Boolean)))
-    .filter((option) => !normalizedQuery || option.toLowerCase().includes(normalizedQuery))
-    .sort((a, b) => a.localeCompare(b, "ja"))
-}
-
-function SearchPicker({ label, value, options, allValue, onChange }: SearchPickerProps) {
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState("")
-  const [popupPosition, setPopupPosition] = useState<FilterPanelPosition | null>(null)
-  const searchableOptions = allValue ? [allValue, ...options] : options
-  const visibleOptions = uniqueSearchOptions(searchableOptions, query)
-  const displayValue = allValue && value === allValue ? label : value || label
-
-  return (
-    <div className="relative">
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full justify-between"
-        aria-expanded={open}
-        onClick={(event) => {
-          setQuery("")
-          if (open) {
-            setOpen(false)
-            return
-          }
-          const rect = event.currentTarget.getBoundingClientRect()
-          setPopupPosition({
-            left: rect.left,
-            top: rect.top,
-            width: rect.width,
-            maxHeight: Math.max(96, window.innerHeight - rect.top - 16),
-          })
-          setOpen(true)
-        }}
-      >
-        <span className="truncate">{displayValue}</span>
-        <Search className="size-4 text-muted-foreground" />
-      </Button>
-      {open && popupPosition
-        ? createPortal(
-          <div
-            data-shift-filter-picker-popup
-            className="fixed z-[70] w-max rounded-md border bg-popover p-2 text-popover-foreground shadow-lg"
-            style={{
-              left: popupPosition.left,
-              top: popupPosition.top,
-              minWidth: popupPosition.width,
-              maxWidth: `calc(100vw - ${popupPosition.left + 8}px)`,
-            }}
-          >
-            <Input
-              autoFocus
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onBlur={() => window.setTimeout(() => setOpen(false), 120)}
-              placeholder={label}
-              className="h-8 bg-background"
-            />
-            <div
-              className="mt-2 overflow-y-auto overscroll-contain"
-              style={{ maxHeight: Math.max(48, popupPosition.maxHeight - 48) }}
-            >
-              {!allValue && value ? (
-                <button
-                  type="button"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => {
-                    onChange("")
-                    setOpen(false)
-                  }}
-                  className="block w-full rounded px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-                >
-                  検索を解除
-                </button>
-              ) : null}
-              {visibleOptions.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => {
-                    onChange(option)
-                    setOpen(false)
-                  }}
-                  className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
-                >
-                  {option}
-                </button>
-              ))}
-              {visibleOptions.length === 0 ? (
-                <div className="px-2 py-6 text-center text-sm text-muted-foreground">該当なし</div>
-              ) : null}
-            </div>
-          </div>,
-          document.body,
-        )
-        : null}
-    </div>
-  )
-}
-
-function ShiftFilterEmptyState({ className = "" }: { className?: string }) {
-  return (
-    <div
-      role="status"
-      className={`flex items-center justify-center p-8 text-center ${className}`}
-    >
-      <div>
-        <p className="font-medium">絞り込み結果がありません</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          条件を変更して、もう一度お試しください。
-        </p>
-      </div>
-    </div>
-  )
-}
-
-function ShiftAdjustmentSummary({
-  changes,
-  templates,
-}: {
-  changes: ShiftAdjustmentChange[]
-  templates: Record<ShiftTemplateId, ShiftTemplate>
-}) {
-  if (changes.length === 0) return null
-
-  return (
-    <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
-      <p className="font-medium text-amber-800">確定すると、他のシフトも変更されます。</p>
-      <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto text-xs">
-        {changes.map(({ before, after }) => (
-          <li key={before.id} className="flex flex-wrap items-center gap-1 rounded bg-background/70 px-2 py-1.5">
-            <span className="font-medium">{templates[before.templateId]?.label ?? before.templateId}</span>
-            <span>{formatTime(before.start)}〜{formatTime(before.end)}</span>
-            <span aria-hidden="true">→</span>
-            {after ? (
-              <span className="font-medium">{formatTime(after.start)}〜{formatTime(after.end)}</span>
-            ) : (
-              <span className="font-semibold text-destructive">削除</span>
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
 }
 
 type ShiftManagerProps = {
@@ -2243,19 +2084,19 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <div className="grid gap-1.5">
                 <Label>担当業務</Label>
-                <SearchPicker label="担当業務" value={shiftFilter} options={shiftFilterOptions} onChange={setShiftFilter} />
+                <ShiftFilterPicker label="担当業務" value={shiftFilter} options={shiftFilterOptions} onChange={setShiftFilter} />
               </div>
               <div className="grid gap-1.5">
                 <Label>メンバー名</Label>
-                <SearchPicker label="メンバー名" value={memberSearch} options={members.map((member) => member.name)} onChange={setMemberSearch} />
+                <ShiftFilterPicker label="メンバー名" value={memberSearch} options={members.map((member) => member.name)} onChange={setMemberSearch} />
               </div>
               <div className="grid gap-1.5">
                 <Label>所属</Label>
-                <SearchPicker label="所属" value={departmentFilter} allValue={ALL_DEPARTMENTS} options={departments} onChange={setDepartmentFilter} />
+                <ShiftFilterPicker label="所属" value={departmentFilter} allValue={ALL_DEPARTMENTS} options={departments} onChange={setDepartmentFilter} />
               </div>
               <div className="grid gap-1.5">
                 <Label>役職</Label>
-                <SearchPicker label="役職" value={roleFilter} allValue="すべての役職" options={roles} onChange={setRoleFilter} />
+                <ShiftFilterPicker label="役職" value={roleFilter} allValue="すべての役職" options={roles} onChange={setRoleFilter} />
               </div>
             </div>
             <div className="mt-5 flex justify-end gap-2">
