@@ -7,6 +7,7 @@ import {
   fitShiftIntoAvailableRange,
   getCreateShiftTimeRange,
   getNearestTimelineMajorSlots,
+  getShiftDetailPosition,
   shouldSplitShiftTimeLabels,
   type Shift,
 } from "@/components/shift-manager"
@@ -173,5 +174,25 @@ describe("shift placement", () => {
   it("splits time labels only below seventy-five minutes", () => {
     expect(shouldSplitShiftTimeLabels(6 * 60, 7 * 60)).toBe(true)
     expect(shouldSplitShiftTimeLabels(6 * 60, 7 * 60 + 15)).toBe(false)
+  })
+})
+
+describe("shift detail position", () => {
+  it("opens to the right when there is enough room", () => {
+    expect(
+      getShiftDetailPosition({ left: 100, right: 200, top: 50 }, 1000, 800),
+    ).toEqual({ left: 208, top: 50, width: 448, maxHeight: 768 })
+  })
+
+  it("opens to the left and moves upward near the viewport edges", () => {
+    expect(
+      getShiftDetailPosition({ left: 900, right: 950, top: 760 }, 1000, 800),
+    ).toEqual({ left: 444, top: 224, width: 448, maxHeight: 768 })
+  })
+
+  it("fits within a narrow viewport", () => {
+    expect(
+      getShiftDetailPosition({ left: 100, right: 200, top: 40 }, 320, 600),
+    ).toEqual({ left: 16, top: 24, width: 288, maxHeight: 568 })
   })
 })

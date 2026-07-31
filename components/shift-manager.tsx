@@ -122,6 +122,10 @@ type FilterPanelPosition = {
   maxHeight: number
 }
 
+type ShiftDetailPosition = FilterPanelPosition
+
+type ShiftDetailAnchorRect = Pick<DOMRect, "left" | "right" | "top">
+
 const ALL_DEPARTMENTS = "すべてのセクション"
 const START_MINUTES = 6 * 60
 const END_MINUTES = 22 * 60
@@ -143,6 +147,31 @@ const MOBILE_TIMELINE_GRID_BACKGROUND = `repeating-linear-gradient(to bottom, tr
 const SHIFT_CREATION_ENABLED = false
 // 個人タイムライン上のD&D作成だけは、15分単位で利用できる。
 const SHIFT_DND_CREATION_ENABLED = true
+
+export function getShiftDetailPosition(
+  anchor: ShiftDetailAnchorRect,
+  viewportWidth: number,
+  viewportHeight: number,
+): ShiftDetailPosition {
+  const margin = 16
+  const gap = 8
+  const width = Math.max(0, Math.min(448, viewportWidth - margin * 2))
+  const rightPosition = anchor.right + gap
+  const leftPosition = anchor.left - width - gap
+  const left = rightPosition + width <= viewportWidth - margin
+    ? rightPosition
+    : leftPosition >= margin
+      ? leftPosition
+      : Math.min(Math.max(rightPosition, margin), viewportWidth - margin - width)
+  const maxHeight = Math.max(0, viewportHeight - margin * 2)
+  const preferredHeight = Math.min(560, maxHeight)
+  const top = Math.min(
+    Math.max(anchor.top, margin),
+    Math.max(margin, viewportHeight - margin - preferredHeight),
+  )
+
+  return { left, top, width, maxHeight }
+}
 
 const shiftKinds: Record<ShiftKind, { label: string }> = {
   morning: { label: "オレンジ" },
@@ -681,6 +710,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const [shifts, setShifts] = useState<Shift[]>(initialShiftData.shifts)
   const [customShiftTemplates, setCustomShiftTemplates] = useState<Record<ShiftTemplateId, ShiftTemplate>>(initialShiftData.customShiftTemplates)
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null)
+  const [shiftDetailPosition, setShiftDetailPosition] = useState<ShiftDetailPosition | null>(null)
   const [draftShift, setDraftShift] = useState<DraftShift | null>(null)
   const [draftBaseShifts, setDraftBaseShifts] = useState<Shift[] | null>(null)
   const [templateDraft, setTemplateDraft] = useState<DraftShiftTemplate>({
@@ -711,6 +741,8 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const emittedShiftDataRef = useRef(JSON.stringify(initialShiftData))
   const filterTriggerRef = useRef<HTMLButtonElement | null>(null)
   const filterPanelRef = useRef<HTMLDivElement | null>(null)
+  const shiftDetailTriggerRef = useRef<HTMLElement | null>(null)
+  const shiftDetailPanelRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     const nextSignature = JSON.stringify(initialShiftData)
@@ -1512,19 +1544,29 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     setCopying(null)
   }
 
-  const openShiftDetail = (id: string) => {
+  const closeShiftDetail = () => {
+    setSelectedShiftId(null)
+    setShiftDetailPosition(null)
+    shiftDetailTriggerRef.current = null
+  }
+
+  const openShiftDetail = (id: string, trigger: HTMLElement) => {
     if (didMoveShiftRef.current || didResizeShiftRef.current) {
       didMoveShiftRef.current = false
       didResizeShiftRef.current = false
       return
     }
+    shiftDetailTriggerRef.current = trigger
+    setShiftDetailPosition(
+      getShiftDetailPosition(trigger.getBoundingClientRect(), window.innerWidth, window.innerHeight),
+    )
     setSelectedShiftId(id)
   }
 
   const deleteSelectedShift = () => {
     if (!selectedShift) return
     recordShiftsChange((prev) => prev.filter((shift) => shift.id !== selectedShift.id))
-    setSelectedShiftId(null)
+    closeShiftDetail()
   }
 
   const toggleFilters = (anchor: FilterAnchor, event: ReactMouseEvent<HTMLButtonElement>) => {
@@ -1587,6 +1629,45 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       document.removeEventListener("keydown", handleEscape)
     }
   }, [filtersOpen])
+
+  useEffect(() => {
+    if (!selectedShiftId) return
+
+    const updatePosition = () => {
+      const trigger = shiftDetailTriggerRef.current
+      if (!trigger?.isConnected) {
+        closeShiftDetail()
+        return
+      }
+      setShiftDetailPosition(
+        getShiftDetailPosition(trigger.getBoundingClientRect(), window.innerWidth, window.innerHeight),
+      )
+    }
+    const handlePointerDown = (event: globalThis.PointerEvent) => {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (target instanceof Element && target.closest('[data-slot="select-content"]')) return
+      if (
+        shiftDetailPanelRef.current?.contains(target)
+        || shiftDetailTriggerRef.current?.contains(target)
+      ) return
+      closeShiftDetail()
+    }
+    const handleEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") closeShiftDetail()
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown)
+    document.addEventListener("keydown", handleEscape)
+    window.addEventListener("resize", updatePosition)
+    window.addEventListener("scroll", updatePosition, true)
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown)
+      document.removeEventListener("keydown", handleEscape)
+      window.removeEventListener("resize", updatePosition)
+      window.removeEventListener("scroll", updatePosition, true)
+    }
+  }, [selectedShiftId])
 
   return (
     <div className="mx-auto flex h-[calc(100svh-5.5rem)] max-w-7xl flex-col px-4 py-5 md:py-6">
@@ -1764,7 +1845,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                           type="button"
                           className="rounded-lg border px-2.5 py-2 text-left text-xs transition hover:ring-2 hover:ring-ring/30"
                           style={getShiftTemplateColor(shift.templateId).blockStyle}
-                          onClick={() => openShiftDetail(shift.id)}
+                          onClick={(event) => openShiftDetail(shift.id, event.currentTarget)}
                         >
                           <span className="font-semibold">{memberName(shift.memberId)}</span>
                           <span className="ml-2 opacity-75">
@@ -1951,7 +2032,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                         <button
                           key={`mobile-shift-${shift.id}`}
                           type="button"
-                          onClick={() => openShiftDetail(shift.id)}
+                          onClick={(event) => openShiftDetail(shift.id, event.currentTarget)}
                           className="absolute left-16 right-0 rounded-md border px-3 py-2 text-left shadow-sm"
                           style={{ top, height, ...getShiftTemplateColor(shift.templateId).blockStyle }}
                         >
@@ -2192,13 +2273,13 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                               <div
                                 role="button"
                                 tabIndex={0}
-                                onClick={() => {
-                                  if (!isInteractionAlias) openShiftDetail(shift.id)
+                                onClick={(event) => {
+                                  if (!isInteractionAlias) openShiftDetail(shift.id, event.currentTarget)
                                 }}
                                 onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
                                   if (event.key === "Enter" || event.key === " ") {
                                     event.preventDefault()
-                                    openShiftDetail(shift.id)
+                                    openShiftDetail(shift.id, event.currentTarget)
                                   }
                                 }}
                                 onPointerDown={(event) => {
@@ -2640,16 +2721,41 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
         </DialogContent>
       </Dialog>
 
-      <Dialog open={selectedShift !== null} onOpenChange={(open) => !open && setSelectedShiftId(null)}>
-        <DialogContent className="sm:max-w-lg">
-          {selectedShift && selectedMember && selectedTemplate ? (
-            <>
-              <DialogHeader>
-                <DialogTitle>シフト詳細</DialogTitle>
-                <DialogDescription>
-                  {selectedMember.name} / {formatDate(selectedShift.date)}
-                </DialogDescription>
-              </DialogHeader>
+      {selectedShift && selectedMember && selectedTemplate && shiftDetailPosition
+        ? createPortal(
+          <section
+            ref={shiftDetailPanelRef}
+            role="dialog"
+            aria-modal="false"
+            aria-labelledby="shift-detail-title"
+            tabIndex={-1}
+            className="fixed z-40 overflow-y-auto rounded-lg border bg-popover p-5 text-popover-foreground shadow-xl"
+            style={{
+              left: shiftDetailPosition.left,
+              top: shiftDetailPosition.top,
+              width: shiftDetailPosition.width,
+              maxHeight: shiftDetailPosition.maxHeight,
+            }}
+          >
+              <header className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 id="shift-detail-title" className="font-semibold leading-none">
+                    シフト詳細
+                  </h2>
+                  <p className="mt-1.5 text-sm text-muted-foreground">
+                    {selectedMember.name} / {formatDate(selectedShift.date)}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={closeShiftDetail}
+                  aria-label="シフト詳細を閉じる"
+                >
+                  <X className="size-4" />
+                </Button>
+              </header>
               {isAdmin ? (
                 <div className="grid gap-4 py-2">
                   <div className="grid gap-1.5">
@@ -2774,7 +2880,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                   </div>
                 </div>
               )}
-              <DialogFooter>
+              <footer className="mt-5 flex items-center justify-between gap-2">
                 {isAdmin ? (
                   <Button type="button" variant="destructive" onClick={deleteSelectedShift}>
                     <Trash2 className="size-4" />
@@ -2786,14 +2892,14 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                     閲覧のみ
                   </Badge>
                 )}
-                <Button type="button" variant="outline" onClick={() => setSelectedShiftId(null)}>
+                <Button type="button" variant="outline" onClick={closeShiftDetail}>
                   閉じる
                 </Button>
-              </DialogFooter>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+              </footer>
+          </section>,
+          document.body,
+        )
+        : null}
     </div>
   )
 }
