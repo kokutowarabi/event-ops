@@ -532,6 +532,12 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const [resizing, setResizing] = useState<ResizingShift | null>(null)
   const [hoveredSlot, setHoveredSlot] = useState<{ memberId: string; slot: number } | null>(null)
   const [creatingShift, setCreatingShift] = useState<CreatingShift | null>(null)
+  const creatingTimeRange = creatingShift
+    ? {
+        startSlot: Math.min(creatingShift.startSlot, creatingShift.currentSlot),
+        endSlot: Math.max(creatingShift.startSlot, creatingShift.currentSlot) + 1,
+      }
+    : null
   const shiftsRef = useRef(shifts)
   const historyRef = useRef<{ past: Shift[][]; future: Shift[][] }>({ past: [], future: [] })
   const moveInitialShiftsRef = useRef<Shift[] | null>(null)
@@ -910,6 +916,8 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     return {
       top: MOBILE_TIMELINE_PADDING_HEIGHT + startSlot * MOBILE_SLOT_HEIGHT,
       height: Math.max((endSlot - startSlot) * MOBILE_SLOT_HEIGHT, MOBILE_SLOT_HEIGHT),
+      startSlot,
+      endSlot,
       start,
       end,
     }
@@ -1460,17 +1468,46 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                     />
                     {timeOptions
                       .filter((slot) => (slot.minutes - START_MINUTES) % 120 === 0)
-                      .map((slot) => (
-                        <div
-                          key={`mobile-time-${member.id}-${slot.value}`}
-                          className="absolute left-0 right-0 border-t border-dashed border-border/70"
-                          style={{ top: MOBILE_TIMELINE_PADDING_HEIGHT + ((slot.minutes - START_MINUTES) / SLOT_MINUTES) * MOBILE_SLOT_HEIGHT }}
-                        >
-                          <span className="-mt-2.5 inline-block w-12 bg-card pr-2 text-xs text-muted-foreground">
-                            {slot.label}
+                      .map((slot) => {
+                        const slotIndex = (slot.minutes - START_MINUTES) / SLOT_MINUTES
+                        const isNearCreatingBoundary =
+                          createPreview !== null
+                          && Math.min(
+                            Math.abs(slotIndex - createPreview.startSlot),
+                            Math.abs(slotIndex - createPreview.endSlot),
+                          ) <= 1
+                        return (
+                          <div
+                            key={`mobile-time-${member.id}-${slot.value}`}
+                            className="absolute left-0 right-0 border-t border-dashed border-border/70"
+                            style={{ top: MOBILE_TIMELINE_PADDING_HEIGHT + slotIndex * MOBILE_SLOT_HEIGHT }}
+                          >
+                            <span
+                              className={`-mt-2.5 inline-block w-12 bg-card pr-2 text-xs text-muted-foreground transition-opacity ${
+                                isNearCreatingBoundary ? "opacity-0" : "opacity-100"
+                              }`}
+                            >
+                              {slot.label}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    {createPreview
+                      ? [
+                          { slot: createPreview.startSlot, label: formatTime(createPreview.start) },
+                          { slot: createPreview.endSlot, label: formatTime(createPreview.end) },
+                        ].map((boundary) => (
+                          <span
+                            key={`mobile-create-boundary-${member.id}-${boundary.slot}`}
+                            className="pointer-events-none absolute left-0 z-10 -translate-y-1/2 bg-card pr-2 text-xs font-semibold leading-3 text-foreground"
+                            style={{
+                              top: MOBILE_TIMELINE_PADDING_HEIGHT + boundary.slot * MOBILE_SLOT_HEIGHT,
+                            }}
+                          >
+                            {boundary.label}
                           </span>
-                        </div>
-                      ))}
+                        ))
+                      : null}
                     <button
                       type="button"
                       disabled={!SHIFT_DND_CREATION_ENABLED || !isAdmin}
@@ -1597,19 +1634,45 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
                 <div className="relative h-full" style={{ width: TIMELINE_TRACK_WIDTH }}>
                   {timeOptions.map((slot, index) => {
                     const isMajor = (slot.minutes - START_MINUTES) % 120 === 0
-                    const isHovered = hoveredSlot?.slot === index
+                    const isCreatingStart = creatingTimeRange?.startSlot === index
+                    const isCreatingEnd = creatingTimeRange?.endSlot === index
+                    const isCreatingBoundary = isCreatingStart || isCreatingEnd
+                    const isShortCreatingRange =
+                      creatingTimeRange !== null
+                      && creatingTimeRange.endSlot - creatingTimeRange.startSlot === 1
+                    const isNearCreatingBoundary =
+                      creatingTimeRange !== null
+                      && !isCreatingBoundary
+                      && Math.min(
+                        Math.abs(index - creatingTimeRange.startSlot),
+                        Math.abs(index - creatingTimeRange.endSlot),
+                      ) <= 2
+                    const isHovered = creatingTimeRange === null && hoveredSlot?.slot === index
                     const isNearHovered =
-                      hoveredSlot !== null && hoveredSlot.slot !== index && Math.abs(hoveredSlot.slot - index) <= 2
+                      creatingTimeRange === null
+                      && hoveredSlot !== null
+                      && hoveredSlot.slot !== index
+                      && Math.abs(hoveredSlot.slot - index) <= 2
+                    const horizontalAlignment =
+                      isShortCreatingRange && isCreatingStart
+                        ? "-translate-x-full"
+                        : isShortCreatingRange && isCreatingEnd
+                          ? "translate-x-0"
+                          : "-translate-x-1/2"
                     return (
                       <span
                         key={`time-slot-${slot.value}`}
-                        className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-xs transition ${isHovered
+                        className={`absolute top-1/2 -translate-y-1/2 whitespace-nowrap text-xs transition ${horizontalAlignment} ${isCreatingBoundary
                             ? "font-semibold text-foreground opacity-100"
-                            : isNearHovered
+                            : isNearCreatingBoundary
                               ? "text-muted-foreground opacity-0"
-                              : isMajor
-                                ? "text-muted-foreground opacity-100"
-                                : "text-muted-foreground opacity-0"
+                              : isHovered
+                                ? "font-semibold text-foreground opacity-100"
+                                : isNearHovered
+                                  ? "text-muted-foreground opacity-0"
+                                  : isMajor
+                                    ? "text-muted-foreground opacity-100"
+                                    : "text-muted-foreground opacity-0"
                           }`}
                         style={{ left: TIMELINE_PADDING_WIDTH + index * SLOT_WIDTH }}
                       >
