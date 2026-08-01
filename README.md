@@ -1,6 +1,8 @@
 # 星浜祭 EventOps
 
-架空の大学祭向け運営デモです。
+架空の大学祭を題材にした、運営管理のポートフォリオアプリです。
+
+## 主な機能
 
 - 参加団体20組・企画40件
 - 名簿と個人別／担当業務別シフト
@@ -35,4 +37,9 @@ npm run lint
 npm run build
 ```
 
-構成: Next.js 16.2 / React 19.2 / TypeScript 5 / Supabase（投票のみ）
+## 設計資料
+
+- [システム構成](docs/system-architecture.md)
+- [投票データのER図](docs/er.md)
+
+Next.js 16.2 / React 19.2 / TypeScript 5 / Supabase（投票のみ）
