@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react"
 import { ShiftCreateTimeLabel } from "./shift-create-time-label"
-import { formatTime, shouldSplitShiftTimeLabels } from "./shift-domain"
+import { shouldSplitShiftTimeLabels } from "./shift-domain"
 import { SLOT_WIDTH } from "./shift-layout"
+import { ShiftSplitTimeLabels } from "./shift-split-time-labels"
 
 export type DesktopCreatePreview = {
   left: number
@@ -36,14 +37,7 @@ export function ShiftDesktopCreatePreview({
       }}
     >
       {shouldSplitShiftTimeLabels(preview.start, preview.end) ? (
-        <>
-          <span className="absolute -top-3 right-full mr-2 whitespace-nowrap text-sm font-medium">
-            {formatTime(preview.start)}
-          </span>
-          <span className="absolute -top-3 left-full ml-2 whitespace-nowrap text-sm font-medium">
-            {formatTime(preview.end)}
-          </span>
-        </>
+        <ShiftSplitTimeLabels start={preview.start} end={preview.end} />
       ) : (
         <div className="absolute left-1 top-1 z-10">
           <ShiftCreateTimeLabel

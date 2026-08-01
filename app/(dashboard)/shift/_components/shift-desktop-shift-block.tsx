@@ -2,6 +2,7 @@ import type { KeyboardEvent } from "react"
 import type { Shift } from "@/lib/shift-data"
 import { ShiftHandles } from "./shift-handles"
 import { useShiftHandleHover } from "./shift-handle-hover"
+import { ShiftSplitTimeLabels } from "./shift-split-time-labels"
 import { formatTime, shouldSplitShiftTimeLabels, SLOT_MINUTES, START_MINUTES } from "./shift-domain"
 import { SLOT_WIDTH, TIMELINE_PADDING_WIDTH } from "./shift-layout"
 import type { ShiftDesktopViewProps } from "./shift-desktop-view"
@@ -136,14 +137,11 @@ export function ShiftDesktopShiftBlock({
         }}
       >
         {hasSplitEditingTimes ? (
-          <>
-            <span className="absolute -top-3 right-full mr-2 whitespace-nowrap text-sm font-medium">
-              {formatTime(shift.start)}
-            </span>
-            <span className="absolute -top-3 left-full ml-2 whitespace-nowrap text-sm font-medium">
-              {formatTime(shift.end)}
-            </span>
-          </>
+          <ShiftSplitTimeLabels
+            start={shift.start}
+            end={shift.end}
+            alignBottomToTopEdge={isResizingShift}
+          />
         ) : isSingleSlotShift ? null : (
           <>
             <span className="block select-none truncate text-sm font-medium">

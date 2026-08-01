@@ -8,6 +8,7 @@ import {
   type ShiftTemplateColor,
 } from "./shift-domain"
 import { SLOT_WIDTH } from "./shift-layout"
+import { ShiftSplitTimeLabels } from "./shift-split-time-labels"
 import type { CopyingShift, MovingShift } from "./shift-types"
 
 type ShiftDragOverlaysProps = {
@@ -41,14 +42,7 @@ export function ShiftDragOverlays({
         >
           {!moving.canDrop ? <InvalidDropIndicator size="small" /> : null}
           {shouldSplitShiftTimeLabels(movingShift.start, movingShift.end) ? (
-            <>
-              <span className="absolute -top-3 right-full mr-2 whitespace-nowrap text-sm font-medium">
-                {formatTime(movingShift.start)}
-              </span>
-              <span className="absolute -top-3 left-full ml-2 whitespace-nowrap text-sm font-medium">
-                {formatTime(movingShift.end)}
-              </span>
-            </>
+            <ShiftSplitTimeLabels start={movingShift.start} end={movingShift.end} />
           ) : movingShift.end - movingShift.start === SLOT_MINUTES ? null : (
             <>
               <span className="block select-none truncate text-sm font-medium">
