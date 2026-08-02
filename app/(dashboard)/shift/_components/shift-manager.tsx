@@ -27,7 +27,8 @@ import { ShiftDragOverlays } from "./shift-drag-overlays"
 import { ShiftFilterPanel } from "./shift-filter-panel"
 import { ShiftHeader } from "./shift-header"
 import { ShiftMobileView } from "./shift-mobile-view"
-import { useShiftCopyActions, useShiftMoveActions } from "./shift-move-actions"
+import { useShiftCopyActions } from "./shift-copy-actions"
+import { useShiftMoveActions } from "./shift-move-actions"
 import { useShiftResizeActions } from "./shift-resize-actions"
 import {
   ShiftAdjustmentDialog,
