@@ -5,7 +5,6 @@ import {
 } from "react"
 import { createPortal } from "react-dom"
 import type { Member } from "@/lib/members"
-import { downloadCsv } from "@/lib/csv"
 import { operationPeriod } from "@/lib/event-schedule"
 import type {
   Shift,
@@ -21,6 +20,7 @@ import { useShiftCreationActions } from "./shift-creation-actions"
 import { ShiftDesktopView } from "./shift-desktop-view"
 import { ShiftDragOverlays } from "./shift-drag-overlays"
 import { ShiftFilterPanel } from "./shift-filter-panel"
+import { exportShiftCsv } from "./shift-export"
 import { ShiftHeader } from "./shift-header"
 import { ShiftMobileView } from "./shift-mobile-view"
 import { useShiftCopyActions } from "./shift-copy-actions"
@@ -31,7 +31,6 @@ import {
   ShiftCreationDialog,
   ShiftDetailsDialog,
 } from "./shift-dialogs"
-import { formatTime } from "./shift-domain"
 import { SHIFT_CREATION_ENABLED } from "./shift-layout"
 import type {
   CopyingShift,
@@ -48,14 +47,11 @@ import {
 } from "./use-shift-derived-data"
 import { useShiftFilters } from "./use-shift-filters"
 import { useShiftHistory } from "./use-shift-history"
+import { useShiftHistoryShortcuts } from "./use-shift-history-shortcuts"
 import { useShiftDrafts } from "./use-shift-drafts"
+import { useShiftDataSync } from "./use-shift-data-sync"
 
 export type { Shift, ShiftData, ShiftSchedule, ShiftTemplate } from "@/lib/shift-data"
-
-function isTextEditingTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) return false
-  return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
-}
 
 type ShiftManagerProps = {
   members: Member[]
@@ -110,40 +106,23 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const createInitialShiftsRef = useRef<Shift[] | null>(null)
   const didMoveShiftRef = useRef(false)
   const didResizeShiftRef = useRef(false)
-  const syncedShiftDataRef = useRef(JSON.stringify(initialShiftData))
-  const emittedShiftDataRef = useRef(JSON.stringify(initialShiftData))
-
-  useEffect(() => {
-    const nextSignature = JSON.stringify(initialShiftData)
-    if (nextSignature === syncedShiftDataRef.current) return
-    syncedShiftDataRef.current = nextSignature
-    emittedShiftDataRef.current = nextSignature
-    let cancelled = false
-    queueMicrotask(() => {
-      if (cancelled) return
-      setShiftSchedule(initialShiftData.schedule)
-      setShiftsWithoutHistory(initialShiftData.shifts)
-      setCustomShiftTemplates(initialShiftData.customShiftTemplates)
-      setPendingShiftAdjustment(null)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [initialShiftData, setShiftsWithoutHistory])
-
   useEffect(() => () => {
     const pending = pendingMovePressRef.current
     if (pending) window.clearTimeout(pending.timerId)
   }, [])
 
-  useEffect(() => {
-    if (creatingShift || moving || resizing || copying) return
-    const nextData = { schedule: shiftSchedule, shifts, customShiftTemplates }
-    const nextSignature = JSON.stringify(nextData)
-    if (nextSignature === emittedShiftDataRef.current) return
-    emittedShiftDataRef.current = nextSignature
-    onShiftDataChange(nextData)
-  }, [copying, creatingShift, customShiftTemplates, moving, onShiftDataChange, resizing, shiftSchedule, shifts])
+  useShiftDataSync({
+    initialData: initialShiftData,
+    schedule: shiftSchedule,
+    shifts,
+    customTemplates: customShiftTemplates,
+    interactionActive: Boolean(creatingShift || moving || resizing || copying),
+    onDataChange: onShiftDataChange,
+    setSchedule: setShiftSchedule,
+    setCustomTemplates: setCustomShiftTemplates,
+    setPendingAdjustment: setPendingShiftAdjustment,
+    setShiftsWithoutHistory,
+  })
 
   const isAdmin = true
   const {
@@ -205,28 +184,8 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   })
   const movingShift = moving ? shifts.find((shift) => shift.id === moving.id) ?? null : null
   const copyingShift = copying ? shifts.find((shift) => shift.id === copying.sourceId) ?? null : null
-  const exportShifts = () => {
-    const membersById = new Map(members.map((member) => [member.id, member]))
-    downloadCsv(
-      `シフト_${selectedDate}`,
-      ["日付", "氏名", "メールアドレス", "所属", "役職", "業務", "開始時刻", "終了時刻", "時間（分）", "メモ"],
-      exportableShifts.map((shift) => {
-        const member = membersById.get(shift.memberId)
-        return [
-          shift.date,
-          member?.name,
-          member?.email,
-          member?.department,
-          member?.role,
-          allShiftTemplates[shift.templateId]?.label ?? shift.templateId,
-          formatTime(shift.start),
-          formatTime(shift.end),
-          shift.end - shift.start,
-          shift.note,
-        ]
-      }),
-    )
-  }
+  const exportShifts = () =>
+    exportShiftCsv(selectedDate, exportableShifts, members, allShiftTemplates)
 
   const resetShiftInteraction = () => {
     setSelectedShiftId(null)
@@ -349,21 +308,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     )
   }
 
-  useEffect(() => {
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (!event.metaKey || event.altKey || event.ctrlKey || event.key.toLowerCase() !== "z") return
-      if (isTextEditingTarget(event.target)) return
-      event.preventDefault()
-      if (event.shiftKey) {
-        redoShifts()
-      } else {
-        undoShifts()
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  })
+  useShiftHistoryShortcuts(undoShifts, redoShifts)
 
   return (
     <div className="mx-auto flex h-[calc(100svh-5.5rem)] max-w-7xl flex-col px-4 py-5 md:py-6">
