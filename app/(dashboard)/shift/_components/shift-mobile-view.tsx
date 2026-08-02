@@ -270,13 +270,13 @@ export function ShiftMobileView({
                     key={`mobile-shift-${shift.id}`}
                     type="button"
                     onClick={() => onOpenShift(shift.id)}
-                    className="absolute left-16 right-0 rounded-md border px-3 py-2 text-left shadow-sm"
+                    className="absolute left-16 right-0 flex items-center gap-2 rounded-md border px-3 py-2 text-left shadow-sm"
                     style={{ top, height, ...getTemplateColor(shift.templateId).blockStyle }}
                   >
-                    <span className="block text-sm font-medium">
+                    <span className="text-sm font-medium">
                       {formatTime(shift.start)}-{formatTime(shift.end)}
                     </span>
-                    <span className="mt-0.5 block truncate text-xs opacity-80">
+                    <span className="truncate text-xs opacity-80">
                       {shift.note || template.label}
                     </span>
                   </button>
