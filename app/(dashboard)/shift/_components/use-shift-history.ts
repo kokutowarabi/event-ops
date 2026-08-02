@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import type { Shift } from "@/lib/shift-data"
 import { shiftsEqual } from "./shift-domain"
 
@@ -14,32 +14,32 @@ export function useShiftHistory(initialShifts: Shift[]) {
   const shiftsRef = useRef(shifts)
   const historyRef = useRef<ShiftHistory>({ past: [], future: [] })
 
-  const setShiftsWithoutHistory = (nextShifts: Shift[]) => {
+  const setShiftsWithoutHistory = useCallback((nextShifts: Shift[]) => {
     shiftsRef.current = nextShifts
     setShifts(nextShifts)
-  }
+  }, [])
 
-  const recordHistorySnapshot = (snapshot: Shift[]) => {
+  const recordHistorySnapshot = useCallback((snapshot: Shift[]) => {
     historyRef.current = {
       past: [...historyRef.current.past, snapshot].slice(-HISTORY_LIMIT),
       future: [],
     }
-  }
+  }, [])
 
-  const recordShiftsChange = (updater: (current: Shift[]) => Shift[]) => {
+  const recordShiftsChange = useCallback((updater: (current: Shift[]) => Shift[]) => {
     const current = shiftsRef.current
     const next = updater(current)
     if (shiftsEqual(current, next)) return
     recordHistorySnapshot(current)
     setShiftsWithoutHistory(next)
-  }
+  }, [recordHistorySnapshot, setShiftsWithoutHistory])
 
-  const commitShiftPreview = (initialSnapshot: Shift[] | null) => {
+  const commitShiftPreview = useCallback((initialSnapshot: Shift[] | null) => {
     if (!initialSnapshot || shiftsEqual(initialSnapshot, shiftsRef.current)) return
     recordHistorySnapshot(initialSnapshot)
-  }
+  }, [recordHistorySnapshot])
 
-  const undoShifts = () => {
+  const undoShifts = useCallback(() => {
     const previous = historyRef.current.past.at(-1)
     if (!previous) return false
     historyRef.current = {
@@ -48,9 +48,9 @@ export function useShiftHistory(initialShifts: Shift[]) {
     }
     setShiftsWithoutHistory(previous)
     return true
-  }
+  }, [setShiftsWithoutHistory])
 
-  const redoShifts = () => {
+  const redoShifts = useCallback(() => {
     const next = historyRef.current.future[0]
     if (!next) return false
     historyRef.current = {
@@ -59,7 +59,7 @@ export function useShiftHistory(initialShifts: Shift[]) {
     }
     setShiftsWithoutHistory(next)
     return true
-  }
+  }, [setShiftsWithoutHistory])
 
   return {
     shifts,

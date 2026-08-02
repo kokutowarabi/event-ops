@@ -2,7 +2,6 @@ import {
   useEffect,
   useRef,
   useState,
-  type MouseEvent as ReactMouseEvent,
 } from "react"
 import { createPortal } from "react-dom"
 import type { Member } from "@/lib/members"
@@ -32,11 +31,9 @@ import {
   ShiftCreationDialog,
   ShiftDetailsDialog,
 } from "./shift-dialogs"
-import type { FilterPanelPosition } from "./shift-filter-ui"
 import {
   adjustConflictingShiftRanges,
   clampShiftEnd,
-  DEFAULT_SHIFT_TEMPLATE_ID,
   END_MINUTES,
   formatTime,
   getShiftAdjustmentChanges,
@@ -47,7 +44,6 @@ import type {
   CreatingShift,
   DraftShift,
   DraftShiftTemplate,
-  FilterAnchor,
   MovingShift,
   PendingMovePress,
   PendingShiftAdjustment,
@@ -56,9 +52,9 @@ import type {
 } from "./shift-types"
 import {
   ALL_DEPARTMENTS,
-  ALL_ROLES,
   useShiftDerivedData,
 } from "./use-shift-derived-data"
+import { useShiftFilters } from "./use-shift-filters"
 import { useShiftHistory } from "./use-shift-history"
 
 export type { Shift, ShiftData, ShiftSchedule, ShiftTemplate } from "@/lib/shift-data"
@@ -79,13 +75,23 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const [shiftViewMode, setShiftViewMode] = useState<ShiftViewMode>("member")
   const [shiftSchedule, setShiftSchedule] = useState<ShiftSchedule | null>(initialShiftData.schedule)
   const [selectedDate, setSelectedDate] = useState(initialShiftData.schedule?.startDate ?? defaultStartDate)
-  const [filtersOpen, setFiltersOpen] = useState(false)
-  const [filterAnchor, setFilterAnchor] = useState<FilterAnchor | null>(null)
-  const [filterPanelPosition, setFilterPanelPosition] = useState<FilterPanelPosition | null>(null)
-  const [shiftFilter, setShiftFilter] = useState("")
-  const [memberSearch, setMemberSearch] = useState("")
-  const [departmentFilter, setDepartmentFilter] = useState(ALL_DEPARTMENTS)
-  const [roleFilter, setRoleFilter] = useState(ALL_ROLES)
+  const {
+    filtersOpen,
+    filterAnchor,
+    filterPanelPosition,
+    shiftFilter,
+    memberSearch,
+    departmentFilter,
+    roleFilter,
+    filterPanelRef,
+    setShiftFilter,
+    setMemberSearch,
+    setDepartmentFilter,
+    setRoleFilter,
+    toggleFilters,
+    clearFilters,
+    closeFilters,
+  } = useShiftFilters()
   const [pinnedMemberIds, setPinnedMemberIds] = useState<string[]>([])
   const {
     shifts,
@@ -121,8 +127,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const didResizeShiftRef = useRef(false)
   const syncedShiftDataRef = useRef(JSON.stringify(initialShiftData))
   const emittedShiftDataRef = useRef(JSON.stringify(initialShiftData))
-  const filterTriggerRef = useRef<HTMLButtonElement | null>(null)
-  const filterPanelRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const nextSignature = JSON.stringify(initialShiftData)
@@ -140,7 +144,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     return () => {
       cancelled = true
     }
-  }, [initialShiftData])
+  }, [initialShiftData, setShiftsWithoutHistory])
 
   useEffect(() => () => {
     const pending = pendingMovePressRef.current
@@ -434,26 +438,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     )
   }
 
-  const toggleFilters = (anchor: FilterAnchor, event: ReactMouseEvent<HTMLButtonElement>) => {
-    if (filtersOpen && filterAnchor === anchor) {
-      setFiltersOpen(false)
-      setFilterAnchor(null)
-      return
-    }
-
-    const rect = event.currentTarget.getBoundingClientRect()
-    const left = Math.max(8, rect.left)
-    filterTriggerRef.current = event.currentTarget
-    setFilterAnchor(anchor)
-    setFilterPanelPosition({
-      left,
-      top: rect.top,
-      width: Math.max(280, Math.min(560, window.innerWidth - left - 16)),
-      maxHeight: Math.max(240, window.innerHeight - rect.top - 16),
-    })
-    setFiltersOpen(true)
-  }
-
   useEffect(() => {
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
       if (!event.metaKey || event.altKey || event.ctrlKey || event.key.toLowerCase() !== "z") return
@@ -469,31 +453,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
   })
-
-  useEffect(() => {
-    if (!filtersOpen) return
-
-    const handlePointerDown = (event: globalThis.PointerEvent) => {
-      const target = event.target
-      if (!(target instanceof Node)) return
-      if (target instanceof Element && target.closest("[data-shift-filter-picker-popup]")) return
-      if (filterPanelRef.current?.contains(target) || filterTriggerRef.current?.contains(target)) return
-      setFiltersOpen(false)
-      setFilterAnchor(null)
-    }
-    const handleEscape = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== "Escape") return
-      setFiltersOpen(false)
-      setFilterAnchor(null)
-    }
-
-    document.addEventListener("pointerdown", handlePointerDown)
-    document.addEventListener("keydown", handleEscape)
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown)
-      document.removeEventListener("keydown", handleEscape)
-    }
-  }, [filtersOpen])
 
   return (
     <div className="mx-auto flex h-[calc(100svh-5.5rem)] max-w-7xl flex-col px-4 py-5 md:py-6">
@@ -636,16 +595,8 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
             onMemberFilterChange={setMemberSearch}
             onDepartmentFilterChange={setDepartmentFilter}
             onRoleFilterChange={setRoleFilter}
-            onClear={() => {
-              setShiftFilter("")
-              setMemberSearch("")
-              setDepartmentFilter(ALL_DEPARTMENTS)
-              setRoleFilter(ALL_ROLES)
-            }}
-            onClose={() => {
-              setFiltersOpen(false)
-              setFilterAnchor(null)
-            }}
+            onClear={clearFilters}
+            onClose={closeFilters}
           />,
           document.body,
         )
