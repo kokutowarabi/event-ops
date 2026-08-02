@@ -21,18 +21,10 @@ import {
 import { EditableMultiSelectCell, EditableSelectCell, EditableTextCell } from "@/components/common/editable-cell"
 import { MemberRoleBadges } from "@/components/common/member-role-badges"
 import { SearchHeader, SelectHeader } from "@/components/common/table-column-header"
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
 import { memberDepartmentBadgeClass } from "@/lib/member-department"
 import { joinMemberRoles, memberRoleBadgeClass, parseMemberRoles } from "@/lib/member-role"
 import { matchesSelectedValues } from "@/lib/table-filters"
-import { cn } from "@/lib/utils"
+import { MemberDetailDialog } from "./member-detail-dialog"
 
 type RosterManagerProps = {
   members: Member[]
@@ -133,15 +125,6 @@ export function RosterManager({ members, departments = memberDepartments, roles 
     })
     setDetailDraft(null)
   }
-
-  const initials = (name: string) =>
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase()
 
   return (
     <div className="mx-auto flex h-[calc(100svh-5.5rem)] max-w-6xl flex-col px-4 py-5 md:py-6">
@@ -288,101 +271,14 @@ export function RosterManager({ members, departments = memberDepartments, roles 
         {visibleMembers.length} 件表示中
       </p>
 
-      <Dialog open={detailDraft !== null} onOpenChange={(open) => !open && setDetailDraft(null)}>
-        <DialogContent className="sm:max-w-lg">
-          {detailDraft ? (
-            <>
-              <DialogHeader>
-                <DialogTitle>メンバー詳細</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-5 py-2">
-                <div className="flex items-center gap-4">
-                  <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-sky-200 via-emerald-100 to-amber-100 text-2xl font-bold text-slate-700 ring-1 ring-border">
-                    {initials(detailDraft.name)}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="truncate text-lg font-semibold">{detailDraft.name || "名前未設定"}</div>
-                    <div className="mt-1 truncate text-sm text-muted-foreground">{detailDraft.email}</div>
-                  </div>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="detail-name">氏名</Label>
-                    <Input
-                      id="detail-name"
-                      value={detailDraft.name}
-                      onChange={(event) => setDetailDraft((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
-                    />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="detail-email">メール</Label>
-                    <Input
-                      id="detail-email"
-                      type="email"
-                      value={detailDraft.email}
-                      onChange={(event) => setDetailDraft((prev) => (prev ? { ...prev, email: event.target.value } : prev))}
-                    />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="detail-department">所属</Label>
-                    <select
-                      id="detail-department"
-                      value={detailDraft.department}
-                      onChange={(event) => setDetailDraft((prev) => (prev ? { ...prev, department: event.target.value } : prev))}
-                      className="h-8 rounded-lg border border-input bg-background px-2 text-sm"
-                    >
-                      {departments.map((department) => (
-                        <option key={department} value={department}>{department}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label>役職（複数選択可）</Label>
-                    <div className="flex min-h-8 flex-wrap gap-1.5 rounded-lg border border-input bg-background p-2">
-                      {roleOptions.map((role) => {
-                        const selected = parseMemberRoles(detailDraft.role).includes(role)
-                        return (
-                          <button
-                            key={role}
-                            type="button"
-                            aria-pressed={selected}
-                            onClick={() =>
-                              setDetailDraft((prev) => {
-                                if (!prev) return prev
-                                const currentRoles = parseMemberRoles(prev.role)
-                                const nextRoles = selected
-                                  ? currentRoles.filter((currentRole) => currentRole !== role)
-                                  : [...currentRoles, role]
-                                return { ...prev, role: joinMemberRoles(nextRoles) }
-                              })
-                            }
-                            className={cn(
-                              "h-7 cursor-pointer rounded-lg border px-2 text-xs transition-colors",
-                              selected
-                                ? memberRoleBadgeClass(role)
-                                : "border-border text-muted-foreground hover:bg-muted hover:text-foreground",
-                            )}
-                          >
-                            {role}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setDetailDraft(null)}>
-                  キャンセル
-                </Button>
-                <Button type="button" onClick={saveDetailDraft}>
-                  保存
-                </Button>
-              </DialogFooter>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+      <MemberDetailDialog
+        draft={detailDraft}
+        departments={departments}
+        roles={roleOptions}
+        setDraft={setDetailDraft}
+        onSave={saveDetailDraft}
+        onClose={() => setDetailDraft(null)}
+      />
     </div>
   )
 }
