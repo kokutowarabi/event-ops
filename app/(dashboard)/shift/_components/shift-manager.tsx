@@ -40,7 +40,6 @@ import {
   END_MINUTES,
   formatTime,
   getShiftAdjustmentChanges,
-  shiftsEqual,
 } from "./shift-domain"
 import { SHIFT_CREATION_ENABLED } from "./shift-layout"
 import type {
@@ -60,6 +59,7 @@ import {
   ALL_ROLES,
   useShiftDerivedData,
 } from "./use-shift-derived-data"
+import { useShiftHistory } from "./use-shift-history"
 
 export type { Shift, ShiftData, ShiftSchedule, ShiftTemplate } from "@/lib/shift-data"
 
@@ -87,7 +87,16 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const [departmentFilter, setDepartmentFilter] = useState(ALL_DEPARTMENTS)
   const [roleFilter, setRoleFilter] = useState(ALL_ROLES)
   const [pinnedMemberIds, setPinnedMemberIds] = useState<string[]>([])
-  const [shifts, setShifts] = useState<Shift[]>(initialShiftData.shifts)
+  const {
+    shifts,
+    shiftsRef,
+    setShiftsWithoutHistory,
+    recordHistorySnapshot,
+    recordShiftsChange,
+    commitShiftPreview,
+    undoShifts: restorePreviousShifts,
+    redoShifts: restoreNextShifts,
+  } = useShiftHistory(initialShiftData.shifts)
   const [customShiftTemplates, setCustomShiftTemplates] = useState<Record<ShiftTemplateId, ShiftTemplate>>(initialShiftData.customShiftTemplates)
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null)
   const [draftShift, setDraftShift] = useState<DraftShift | null>(null)
@@ -104,8 +113,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const [pendingShiftAdjustment, setPendingShiftAdjustment] = useState<PendingShiftAdjustment | null>(null)
   const [hoveredSlot, setHoveredSlot] = useState<{ memberId: string; slot: number } | null>(null)
   const [creatingShift, setCreatingShift] = useState<CreatingShift | null>(null)
-  const shiftsRef = useRef(shifts)
-  const historyRef = useRef<{ past: Shift[][]; future: Shift[][] }>({ past: [], future: [] })
   const moveInitialShiftsRef = useRef<Shift[] | null>(null)
   const pendingMovePressRef = useRef<PendingMovePress | null>(null)
   const resizeInitialShiftsRef = useRef<Shift[] | null>(null)
@@ -126,8 +133,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     queueMicrotask(() => {
       if (cancelled) return
       setShiftSchedule(initialShiftData.schedule)
-      setShifts(initialShiftData.shifts)
-      shiftsRef.current = initialShiftData.shifts
+      setShiftsWithoutHistory(initialShiftData.shifts)
       setCustomShiftTemplates(initialShiftData.customShiftTemplates)
       setPendingShiftAdjustment(null)
     })
@@ -223,60 +229,21 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     )
   }
 
-  const setShiftsWithoutHistory = (nextShifts: Shift[]) => {
-    shiftsRef.current = nextShifts
-    setShifts(nextShifts)
-  }
-
-  const recordShiftsChange = (updater: (current: Shift[]) => Shift[]) => {
-    const current = shiftsRef.current
-    const next = updater(current)
-    if (shiftsEqual(current, next)) return
-    historyRef.current = {
-      past: [...historyRef.current.past, current].slice(-100),
-      future: [],
-    }
-    setShiftsWithoutHistory(next)
-  }
-
-  const commitShiftPreview = (initialShiftsSnapshot: Shift[] | null) => {
-    if (!initialShiftsSnapshot || shiftsEqual(initialShiftsSnapshot, shiftsRef.current)) return
-    historyRef.current = {
-      past: [...historyRef.current.past, initialShiftsSnapshot].slice(-100),
-      future: [],
-    }
+  const resetShiftInteraction = () => {
+    setSelectedShiftId(null)
+    setDraftShift(null)
+    setDraftBaseShifts(null)
+    setMoving(null)
+    setResizing(null)
+    setPendingShiftAdjustment(null)
   }
 
   const undoShifts = () => {
-    const previous = historyRef.current.past.at(-1)
-    if (!previous) return
-    historyRef.current = {
-      past: historyRef.current.past.slice(0, -1),
-      future: [shiftsRef.current, ...historyRef.current.future],
-    }
-    setSelectedShiftId(null)
-    setDraftShift(null)
-    setDraftBaseShifts(null)
-    setMoving(null)
-    setResizing(null)
-    setPendingShiftAdjustment(null)
-    setShiftsWithoutHistory(previous)
+    if (restorePreviousShifts()) resetShiftInteraction()
   }
 
   const redoShifts = () => {
-    const next = historyRef.current.future[0]
-    if (!next) return
-    historyRef.current = {
-      past: [...historyRef.current.past, shiftsRef.current].slice(-100),
-      future: historyRef.current.future.slice(1),
-    }
-    setSelectedShiftId(null)
-    setDraftShift(null)
-    setDraftBaseShifts(null)
-    setMoving(null)
-    setResizing(null)
-    setPendingShiftAdjustment(null)
-    setShiftsWithoutHistory(next)
+    if (restoreNextShifts()) resetShiftInteraction()
   }
 
   const updateShift = (id: string, update: Partial<Shift>) => {
@@ -353,10 +320,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
       draftShift.end,
     )
     if (!conflictResolution) return
-    historyRef.current = {
-      past: [...historyRef.current.past, baseShifts].slice(-100),
-      future: [],
-    }
+    recordHistorySnapshot(baseShifts)
     setShiftsWithoutHistory([...conflictResolution.shifts, shift])
     setDraftShift(null)
     setDraftBaseShifts(null)
@@ -434,10 +398,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
 
   const confirmShiftAdjustment = () => {
     if (!pendingShiftAdjustment) return
-    historyRef.current = {
-      past: [...historyRef.current.past, pendingShiftAdjustment.baseShifts].slice(-100),
-      future: [],
-    }
+    recordHistorySnapshot(pendingShiftAdjustment.baseShifts)
     setShiftsWithoutHistory(pendingShiftAdjustment.nextShifts)
     setPendingShiftAdjustment(null)
   }
