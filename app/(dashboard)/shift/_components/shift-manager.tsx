@@ -31,19 +31,11 @@ import {
   ShiftCreationDialog,
   ShiftDetailsDialog,
 } from "./shift-dialogs"
-import {
-  adjustConflictingShiftRanges,
-  clampShiftEnd,
-  END_MINUTES,
-  formatTime,
-  getShiftAdjustmentChanges,
-} from "./shift-domain"
+import { formatTime } from "./shift-domain"
 import { SHIFT_CREATION_ENABLED } from "./shift-layout"
 import type {
   CopyingShift,
   CreatingShift,
-  DraftShift,
-  DraftShiftTemplate,
   MovingShift,
   PendingMovePress,
   PendingShiftAdjustment,
@@ -56,6 +48,7 @@ import {
 } from "./use-shift-derived-data"
 import { useShiftFilters } from "./use-shift-filters"
 import { useShiftHistory } from "./use-shift-history"
+import { useShiftDrafts } from "./use-shift-drafts"
 
 export type { Shift, ShiftData, ShiftSchedule, ShiftTemplate } from "@/lib/shift-data"
 
@@ -105,14 +98,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   } = useShiftHistory(initialShiftData.shifts)
   const [customShiftTemplates, setCustomShiftTemplates] = useState<Record<ShiftTemplateId, ShiftTemplate>>(initialShiftData.customShiftTemplates)
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null)
-  const [draftShift, setDraftShift] = useState<DraftShift | null>(null)
-  const [draftBaseShifts, setDraftBaseShifts] = useState<Shift[] | null>(null)
-  const [templateDraft, setTemplateDraft] = useState<DraftShiftTemplate>({
-    label: "",
-    kind: "day",
-    defaultMinutes: 60,
-    note: "",
-  })
   const [moving, setMoving] = useState<MovingShift | null>(null)
   const [resizing, setResizing] = useState<ResizingShift | null>(null)
   const [copying, setCopying] = useState<CopyingShift | null>(null)
@@ -195,19 +180,29 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     pinnedMemberIds,
   })
 
-  const currentDraftBaseShifts = draftBaseShifts ?? shifts
-  const draftConflictResolution = draftShift
-    ? adjustConflictingShiftRanges(
-      currentDraftBaseShifts,
-      draftShift.memberId,
-      draftShift.date,
-      draftShift.start,
-      draftShift.end,
-    )
-    : null
-  const draftAdjustmentChanges = draftConflictResolution
-    ? getShiftAdjustmentChanges(currentDraftBaseShifts, draftConflictResolution.shifts)
-    : []
+  const {
+    draftShift,
+    draftBaseShifts,
+    templateDraft,
+    adjustmentChanges: draftAdjustmentChanges,
+    canCreateDraft,
+    setDraftShift,
+    setDraftBaseShifts,
+    setTemplateDraft,
+    openAssignmentDraft,
+    createDraftShift,
+    closeDraftShift,
+    createShiftTemplate,
+  } = useShiftDrafts({
+    selectedDate,
+    scheduledMembers,
+    selectedDateShifts,
+    shifts,
+    templates: allShiftTemplates,
+    setCustomTemplates: setCustomShiftTemplates,
+    setShiftsWithoutHistory,
+    recordHistorySnapshot,
+  })
   const movingShift = moving ? shifts.find((shift) => shift.id === moving.id) ?? null : null
   const copyingShift = copying ? shifts.find((shift) => shift.id === copying.sourceId) ?? null : null
   const exportShifts = () => {
@@ -277,90 +272,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
     setDraftShift,
     setShiftsWithoutHistory,
   })
-
-  const openAssignmentDraft = (templateId: ShiftTemplateId, start = 10 * 60) => {
-    const template = allShiftTemplates[templateId]
-    const end = clampShiftEnd(Math.min(start + template.defaultMinutes, END_MINUTES), start)
-    const availableMember =
-      scheduledMembers.find((member) =>
-        !selectedDateShifts.some(
-          (shift) =>
-            shift.memberId === member.id &&
-            shift.start < end &&
-            shift.end > start,
-        ),
-      ) ?? scheduledMembers[0]
-    if (!availableMember) return
-    setDraftBaseShifts(null)
-    setDraftShift({
-      memberId: availableMember.id,
-      date: selectedDate,
-      start,
-      end,
-      templateId,
-      note: template.note,
-    })
-  }
-
-  const createDraftShift = () => {
-    if (!draftShift) return
-    const template = allShiftTemplates[draftShift.templateId]
-    const shift: Shift = {
-      id: crypto.randomUUID(),
-      memberId: draftShift.memberId,
-      date: draftShift.date,
-      start: draftShift.start,
-      end: draftShift.end,
-      templateId: draftShift.templateId,
-      kind: template.kind,
-      note: draftShift.note.trim() || template.note,
-    }
-    const baseShifts = draftBaseShifts ?? shiftsRef.current
-    const conflictResolution = adjustConflictingShiftRanges(
-      baseShifts,
-      draftShift.memberId,
-      draftShift.date,
-      draftShift.start,
-      draftShift.end,
-    )
-    if (!conflictResolution) return
-    recordHistorySnapshot(baseShifts)
-    setShiftsWithoutHistory([...conflictResolution.shifts, shift])
-    setDraftShift(null)
-    setDraftBaseShifts(null)
-  }
-
-  const closeDraftShift = () => {
-    setDraftShift(null)
-    setDraftBaseShifts(null)
-  }
-
-  const createShiftTemplate = () => {
-    const label = templateDraft.label.trim()
-    if (!label) return
-    const id = `custom-${crypto.randomUUID()}`
-    const template = {
-      label,
-      kind: templateDraft.kind,
-      defaultMinutes: templateDraft.defaultMinutes,
-      note: templateDraft.note.trim() || label,
-    }
-    setCustomShiftTemplates((prev) => ({
-      ...prev,
-      [id]: template,
-    }))
-    setDraftShift((prev) =>
-      prev
-        ? {
-          ...prev,
-          templateId: id,
-          end: clampShiftEnd(prev.start + template.defaultMinutes, prev.start),
-          note: template.note,
-        }
-        : prev,
-    )
-    setTemplateDraft({ label: "", kind: "day", defaultMinutes: 60, note: "" })
-  }
 
   const {
     startMovePress,
@@ -608,7 +519,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
         members={scheduledMembers}
         templates={allShiftTemplates}
         adjustmentChanges={draftAdjustmentChanges}
-        canCreate={draftConflictResolution !== null}
+        canCreate={canCreateDraft}
         setDraft={setDraftShift}
         setTemplateDraft={setTemplateDraft}
         onCreateTemplate={createShiftTemplate}
