@@ -70,7 +70,7 @@ export function ShiftFilterPicker({
         ? createPortal(
           <div
             data-shift-filter-picker-popup
-            className="fixed z-[70] w-max rounded-md border bg-popover p-2 text-popover-foreground shadow-lg"
+            className="fixed z-70 w-max rounded-md border bg-popover p-2 text-popover-foreground shadow-lg"
             style={{
               left: popupPosition.left,
               top: popupPosition.top,
