@@ -1,4 +1,3 @@
-import { useMemo, useState } from "react"
 import { ClipboardList, Download, Plus, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -20,37 +19,13 @@ import {
 } from "@/components/ui/table"
 import { EditableSelectCell, EditableTextCell } from "@/components/common/editable-cell"
 import { SearchHeader, SelectHeader } from "@/components/common/table-column-header"
-import { downloadCsv } from "@/lib/csv"
 import { type EventDepartment, type EventProject, type ProjectStatus } from "@/lib/event-data"
-import { matchesSelectedValues } from "@/lib/table-filters"
-
-const EVENT_DEPARTMENTS: EventDepartment[] = ["模擬店", "屋外ステージ", "教室"]
-const statusVariants: Record<ProjectStatus, "default" | "secondary" | "destructive" | "outline"> = {
-  確定: "default",
-  準備中: "secondary",
-  当日対応: "outline",
-  要確認: "destructive",
-}
-
-const emptyProject: Omit<EventProject, "id"> = {
-  title: "",
-  organizationName: "",
-  department: "教室",
-  venue: "",
-  startTime: "10:00",
-  endTime: "11:00",
-  owner: "企画運営",
-  status: "準備中",
-  note: "",
-}
-
-type ProjectSortKey = keyof Omit<EventProject, "id">
-type SortOrder = "asc" | "desc"
-
-function timeToMinutes(value: string) {
-  const [hour = "0", minute = "0"] = value.split(":")
-  return Number(hour) * 60 + Number(minute)
-}
+import {
+  EVENT_DEPARTMENTS,
+  PROJECT_STATUSES,
+  projectStatusVariants,
+} from "./project-config"
+import { useProjectTable } from "./use-project-table"
 
 type ProjectManagerProps = {
   projects: EventProject[]
@@ -58,112 +33,22 @@ type ProjectManagerProps = {
 }
 
 export function ProjectManager({ projects, onProjectsChange }: ProjectManagerProps) {
-  const [filters, setFilters] = useState<Record<ProjectSortKey, string[]>>({
-    title: [],
-    organizationName: [],
-    department: [],
-    venue: [],
-    startTime: [],
-    endTime: [],
-    owner: [],
-    status: [],
-    note: [],
-  })
-  const [sortKey, setSortKey] = useState<ProjectSortKey>("startTime")
-  const [sortOrder, setSortOrder] = useState<SortOrder>("asc")
-  const [draft, setDraft] = useState(emptyProject)
-  const [adding, setAdding] = useState(false)
-
-  const headerOptions = useMemo(
-    () => ({
-      title: projects.map((project) => project.title),
-      organizationName: projects.map((project) => project.organizationName),
-      department: projects.map((project) => project.department),
-      venue: projects.map((project) => project.venue),
-      startTime: projects.flatMap((project) => [project.startTime, project.endTime]),
-      owner: projects.map((project) => project.owner),
-      status: projects.map((project) => project.status),
-      note: projects.map((project) => project.note),
-    }),
-    [projects],
-  )
-
-  const visibleProjects = useMemo(() => {
-    return projects
-      .filter((project) => {
-        const standardKeys = (["title", "organizationName", "department", "venue", "owner", "status", "note"] as ProjectSortKey[])
-        const matchesStandardFilters = standardKeys.every((key) =>
-          matchesSelectedValues([project[key]], filters[key]),
-        )
-        const matchesTime = matchesSelectedValues(
-          [project.startTime, project.endTime, `${project.startTime}-${project.endTime}`],
-          filters.startTime,
-        )
-        return matchesStandardFilters && matchesTime
-      })
-      .sort((a, b) => {
-        if (sortKey === "startTime") {
-          const result =
-            timeToMinutes(a.startTime) - timeToMinutes(b.startTime) ||
-            timeToMinutes(a.endTime) - timeToMinutes(b.endTime)
-          return sortOrder === "asc" ? result : -result
-        }
-        const result =
-          a[sortKey].localeCompare(b[sortKey], "ja")
-        return sortOrder === "asc" ? result : -result
-      })
-  }, [projects, filters, sortKey, sortOrder])
-
-  const updateFilter = (key: ProjectSortKey, value: string[]) => setFilters((prev) => ({ ...prev, [key]: value }))
-
-  const updateProject = (id: string, update: Partial<Omit<EventProject, "id">>) => {
-    onProjectsChange((prev) => prev.map((project) => (project.id === id ? { ...project, ...update } : project)))
-  }
-
-  const toggleSort = (key: ProjectSortKey) => {
-    if (sortKey === key) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
-    } else {
-      setSortKey(key)
-      setSortOrder("asc")
-    }
-  }
-
-  const addProject = () => {
-    if (!draft.title.trim()) return
-    onProjectsChange((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        ...draft,
-        title: draft.title.trim(),
-        organizationName: draft.organizationName.trim() || "運営本部",
-        venue: draft.venue.trim(),
-        owner: draft.owner.trim(),
-        note: draft.note.trim(),
-      },
-    ])
-    setDraft(emptyProject)
-    setAdding(false)
-  }
-
-  const exportProjects = () => {
-    downloadCsv(
-      "企画",
-      ["企画名", "参加団体", "部門", "会場", "開始時刻", "終了時刻", "担当", "状態", "メモ"],
-      visibleProjects.map((project) => [
-        project.title,
-        project.organizationName,
-        project.department,
-        project.venue,
-        project.startTime,
-        project.endTime,
-        project.owner,
-        project.status,
-        project.note,
-      ]),
-    )
-  }
+  const {
+    filters,
+    sortKey,
+    sortOrder,
+    draft,
+    adding,
+    headerOptions,
+    visibleProjects,
+    setDraft,
+    setAdding,
+    updateFilter,
+    updateProject,
+    toggleSort,
+    addProject,
+    exportProjects,
+  } = useProjectTable(projects, onProjectsChange)
 
   return (
     <div className="mx-auto flex h-[calc(100svh-5.5rem)] max-w-7xl flex-col px-4 py-5 md:py-6">
@@ -253,7 +138,7 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
                       <SelectValue>{draft.status}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {(["準備中", "確定", "当日対応", "要確認"] as ProjectStatus[]).map((status) => (
+                      {PROJECT_STATUSES.map((status) => (
                         <SelectItem key={`draft-${status}`} value={status}>
                           {status}
                         </SelectItem>
@@ -261,7 +146,7 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
                     </SelectContent>
                   </Select>
                 ) : (
-                  <SelectHeader label="状態" column="status" value={filters.status} options={["準備中", "確定", "当日対応", "要確認"]} onChange={(value) => updateFilter("status", value)} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
+                  <SelectHeader label="状態" column="status" value={filters.status} options={PROJECT_STATUSES} onChange={(value) => updateFilter("status", value)} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
                 )}
               </TableHead>
               <TableHead className="hidden min-w-64 xl:table-cell">
@@ -311,10 +196,10 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
                 <TableCell>
                   <EditableSelectCell
                     value={project.status}
-                    options={["準備中", "確定", "当日対応", "要確認"]}
+                    options={PROJECT_STATUSES}
                     onCommit={(value) => updateProject(project.id, { status: value })}
                   >
-                    <Badge variant={statusVariants[project.status]}>{project.status}</Badge>
+                    <Badge variant={projectStatusVariants[project.status]}>{project.status}</Badge>
                   </EditableSelectCell>
                 </TableCell>
                 <TableCell className="hidden max-w-72 truncate text-muted-foreground xl:table-cell">
