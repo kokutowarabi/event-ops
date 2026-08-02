@@ -1,6 +1,5 @@
 import {
   useEffect,
-  useMemo,
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
@@ -9,7 +8,6 @@ import { createPortal } from "react-dom"
 import type { Member } from "@/lib/members"
 import { downloadCsv } from "@/lib/csv"
 import { operationPeriod } from "@/lib/event-schedule"
-import { parseMemberRoles } from "@/lib/member-role"
 import type {
   Shift,
   ShiftData,
@@ -19,7 +17,6 @@ import type {
 } from "@/lib/shift-data"
 import {
   ShiftAssignmentView,
-  type AssignmentCoverageGroup,
 } from "./shift-assignment-view"
 import { useShiftCreationActions } from "./shift-creation-actions"
 import { ShiftDesktopView } from "./shift-desktop-view"
@@ -37,21 +34,13 @@ import {
 } from "./shift-dialogs"
 import type { FilterPanelPosition } from "./shift-filter-ui"
 import {
-  addDays,
   adjustConflictingShiftRanges,
   clampShiftEnd,
-  COVERAGE_SLOT_MINUTES,
-  coverageTimeSlots,
-  createShiftTemplateColor,
-  dateDiff,
   DEFAULT_SHIFT_TEMPLATE_ID,
   END_MINUTES,
   formatTime,
   getShiftAdjustmentChanges,
-  orderMemberIdsWithPins,
   shiftsEqual,
-  shiftTemplates,
-  type ShiftTemplateColor,
 } from "./shift-domain"
 import { SHIFT_CREATION_ENABLED } from "./shift-layout"
 import type {
@@ -66,10 +55,13 @@ import type {
   ResizingShift,
   ShiftViewMode,
 } from "./shift-types"
+import {
+  ALL_DEPARTMENTS,
+  ALL_ROLES,
+  useShiftDerivedData,
+} from "./use-shift-derived-data"
 
 export type { Shift, ShiftData, ShiftSchedule, ShiftTemplate } from "@/lib/shift-data"
-
-const ALL_DEPARTMENTS = "すべてのセクション"
 
 function isTextEditingTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false
@@ -93,7 +85,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   const [shiftFilter, setShiftFilter] = useState("")
   const [memberSearch, setMemberSearch] = useState("")
   const [departmentFilter, setDepartmentFilter] = useState(ALL_DEPARTMENTS)
-  const [roleFilter, setRoleFilter] = useState("すべての役職")
+  const [roleFilter, setRoleFilter] = useState(ALL_ROLES)
   const [pinnedMemberIds, setPinnedMemberIds] = useState<string[]>([])
   const [shifts, setShifts] = useState<Shift[]>(initialShiftData.shifts)
   const [customShiftTemplates, setCustomShiftTemplates] = useState<Record<ShiftTemplateId, ShiftTemplate>>(initialShiftData.customShiftTemplates)
@@ -159,180 +151,39 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
   }, [copying, creatingShift, customShiftTemplates, moving, onShiftDataChange, resizing, shiftSchedule, shifts])
 
   const isAdmin = true
-  const memberIds = useMemo(() => new Set(members.map((member) => member.id)), [members])
-  const selectedShift = shifts.find((shift) => shift.id === selectedShiftId && memberIds.has(shift.memberId)) ?? null
-  const allShiftTemplates = useMemo(
-    () => ({ ...shiftTemplates, ...customShiftTemplates }),
-    [customShiftTemplates],
-  )
-  const shiftTemplateColors = useMemo(
-    () =>
-      Object.fromEntries(
-        Object.keys(allShiftTemplates).map((templateId, index) => [
-          templateId,
-          createShiftTemplateColor(index),
-        ]),
-      ) as Record<ShiftTemplateId, ShiftTemplateColor>,
-    [allShiftTemplates],
-  )
-  const getShiftTemplateColor = (templateId: ShiftTemplateId) =>
-    shiftTemplateColors[templateId] ?? createShiftTemplateColor(0)
-  const memberName = (memberId: string) => members.find((member) => member.id === memberId)?.name ?? ""
-
-  const departments = useMemo(() => {
-    return Array.from(new Set(members.map((member) => member.department).filter(Boolean))).sort()
-  }, [members])
-  const roles = useMemo(() => {
-    return Array.from(
-      new Set(members.flatMap((member) => parseMemberRoles(member.role))),
-    ).sort()
-  }, [members])
-
-  const dateTabs = useMemo(() => {
-    if (!shiftSchedule) return []
-    return Array.from({ length: dateDiff(shiftSchedule.startDate, shiftSchedule.endDate) + 1 }, (_, index) =>
-      addDays(shiftSchedule.startDate, index),
-    )
-  }, [shiftSchedule])
-
-  const scheduledMembers = useMemo(() => {
-    if (!shiftSchedule) return []
-    return members.filter((member) => shiftSchedule.memberIds.includes(member.id))
-  }, [members, shiftSchedule])
-
-  const invitedMembers = useMemo(() => {
-    if (!shiftSchedule) return []
-    const query = memberSearch.trim().toLowerCase()
-    const filteredByDepartment =
-      departmentFilter === ALL_DEPARTMENTS
-        ? scheduledMembers
-        : scheduledMembers.filter((member) => member.department === departmentFilter)
-    const filteredByRole =
-      roleFilter === "すべての役職"
-        ? filteredByDepartment
-        : filteredByDepartment.filter((member) => parseMemberRoles(member.role).includes(roleFilter))
-    if (!query) return filteredByRole
-    return filteredByRole.filter((member) =>
-      [member.name, member.department, member.role].some((value) => value.toLowerCase().includes(query)),
-    )
-  }, [departmentFilter, memberSearch, roleFilter, scheduledMembers, shiftSchedule])
-
-  const selectedDateShifts = useMemo(() => {
-    if (!shiftSchedule) return []
-    return shifts.filter(
-      (shift) => shift.date === selectedDate && shiftSchedule.memberIds.includes(shift.memberId) && memberIds.has(shift.memberId),
-    )
-  }, [memberIds, selectedDate, shiftSchedule, shifts])
-  const visibleSelectedDateShifts = useMemo(() => {
-    const query = shiftFilter.trim().toLowerCase()
-    if (!query) return selectedDateShifts
-    return selectedDateShifts.filter((shift) => {
-      const template = allShiftTemplates[shift.templateId]
-      return [template?.label, shift.note].some((value) => value?.toLowerCase().includes(query))
-    })
-  }, [allShiftTemplates, selectedDateShifts, shiftFilter])
-  const filteredInvitedMembers = useMemo(() => {
-    if (!shiftFilter.trim()) return invitedMembers
-    const visibleMemberIds = new Set(visibleSelectedDateShifts.map((shift) => shift.memberId))
-    return invitedMembers.filter((member) => visibleMemberIds.has(member.id))
-  }, [invitedMembers, shiftFilter, visibleSelectedDateShifts])
-  const visibleMemberOrder = useMemo(
-    () => orderMemberIdsWithPins(
-      scheduledMembers.map((member) => member.id),
-      filteredInvitedMembers.map((member) => member.id),
-      pinnedMemberIds,
-    ),
-    [filteredInvitedMembers, pinnedMemberIds, scheduledMembers],
-  )
-  const scheduledMembersById = useMemo(
-    () => new Map(scheduledMembers.map((member) => [member.id, member])),
-    [scheduledMembers],
-  )
-  const visibleInvitedMembers = useMemo(
-    () => visibleMemberOrder.flatMap((memberId) => {
-      const member = scheduledMembersById.get(memberId)
-      return member ? [member] : []
-    }),
-    [scheduledMembersById, visibleMemberOrder],
-  )
-  const visiblePinnedMemberIds = useMemo(
-    () => visibleMemberOrder.filter((memberId) => pinnedMemberIds.includes(memberId)),
-    [pinnedMemberIds, visibleMemberOrder],
-  )
-  const visiblePinnedMemberIdSet = useMemo(
-    () => new Set(visiblePinnedMemberIds),
-    [visiblePinnedMemberIds],
-  )
-  const visiblePinnedMembers = useMemo(
-    () => visiblePinnedMemberIds.flatMap((memberId) => {
-      const member = scheduledMembersById.get(memberId)
-      return member ? [member] : []
-    }),
-    [scheduledMembersById, visiblePinnedMemberIds],
-  )
-  const exportableShifts = useMemo(() => {
-    const visibleMemberIds = new Set(filteredInvitedMembers.map((member) => member.id))
-    const memberNames = new Map(members.map((member) => [member.id, member.name]))
-    return visibleSelectedDateShifts
-      .filter((shift) => visibleMemberIds.has(shift.memberId))
-      .sort(
-        (left, right) =>
-          left.start - right.start
-          || (memberNames.get(left.memberId) ?? "").localeCompare(
-            memberNames.get(right.memberId) ?? "",
-            "ja",
-          ),
-      )
-  }, [filteredInvitedMembers, members, visibleSelectedDateShifts])
-  const filterSummary = useMemo(
-    () =>
-      [
-        shiftFilter ? `業務: ${shiftFilter}` : "",
-        memberSearch ? `氏名: ${memberSearch}` : "",
-        departmentFilter !== ALL_DEPARTMENTS ? `所属: ${departmentFilter}` : "",
-        roleFilter !== "すべての役職" ? `役職: ${roleFilter}` : "",
-      ]
-        .filter(Boolean)
-        .join("・"),
-    [departmentFilter, memberSearch, roleFilter, shiftFilter],
-  )
-  const hasActiveFilters = Boolean(
-    shiftFilter.trim()
-    || memberSearch.trim()
-    || departmentFilter !== ALL_DEPARTMENTS
-    || roleFilter !== "すべての役職",
-  )
-  const hasNoFilterResults = hasActiveFilters && filteredInvitedMembers.length === 0
-  const shiftFilterOptions = useMemo(() => {
-    return [
-      ...Object.values(allShiftTemplates).map((template) => template.label),
-      ...selectedDateShifts.map((shift) => shift.note),
-    ].filter(Boolean)
-  }, [allShiftTemplates, selectedDateShifts])
-  const assignmentCoverage = useMemo<AssignmentCoverageGroup[]>(() => {
-    return Object.entries(allShiftTemplates)
-      .map(([templateId, template]) => {
-        const typedTemplateId = templateId as ShiftTemplateId
-        const assignments = selectedDateShifts
-          .filter((shift) => shift.templateId === typedTemplateId)
-          .sort((left, right) => left.start - right.start || left.memberId.localeCompare(right.memberId))
-        const slotCounts = coverageTimeSlots.map((slotStart) => {
-          const slotEnd = slotStart + COVERAGE_SLOT_MINUTES
-          return assignments.filter((shift) => shift.start < slotEnd && shift.end > slotStart).length
-        })
-        return {
-          templateId: typedTemplateId,
-          template,
-          assignments,
-          slotCounts,
-          maxOverlap: Math.max(0, ...slotCounts),
-          totalMinutes: assignments.reduce((total, shift) => total + shift.end - shift.start, 0),
-          memberCount: new Set(assignments.map((shift) => shift.memberId)).size,
-        }
-      })
-      .filter((group) => group.assignments.length > 0)
-      .sort((left, right) => right.maxOverlap - left.maxOverlap || left.template.label.localeCompare(right.template.label, "ja"))
-  }, [allShiftTemplates, selectedDateShifts])
+  const {
+    selectedShift,
+    allShiftTemplates,
+    getShiftTemplateColor,
+    memberName,
+    departments,
+    roles,
+    dateTabs,
+    scheduledMembers,
+    selectedDateShifts,
+    visibleSelectedDateShifts,
+    visibleMembers,
+    visiblePinnedMemberIds,
+    visiblePinnedMemberIdSet,
+    visiblePinnedMembers,
+    exportableShifts,
+    filterSummary,
+    hasNoFilterResults,
+    shiftFilterOptions,
+    assignmentCoverage,
+  } = useShiftDerivedData({
+    members,
+    schedule: shiftSchedule,
+    selectedDate,
+    shifts,
+    customTemplates: customShiftTemplates,
+    selectedShiftId,
+    shiftFilter,
+    memberSearch,
+    departmentFilter,
+    roleFilter,
+    pinnedMemberIds,
+  })
 
   const currentDraftBaseShifts = draftBaseShifts ?? shifts
   const draftConflictResolution = draftShift
@@ -722,7 +573,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
             filtersOpen={filtersOpen && filterAnchor === "mobile"}
             hasNoFilterResults={hasNoFilterResults}
             pinnedMembers={visiblePinnedMembers}
-            members={visibleInvitedMembers}
+            members={visibleMembers}
             pinnedMemberIds={visiblePinnedMemberIdSet}
             selectedDateShifts={selectedDateShifts}
             visibleDateShifts={visibleSelectedDateShifts}
@@ -751,7 +602,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
             filterSummary={filterSummary}
             filtersOpen={filtersOpen && filterAnchor === "table"}
             hasNoFilterResults={hasNoFilterResults}
-            members={visibleInvitedMembers}
+            members={visibleMembers}
             pinnedMemberIds={visiblePinnedMemberIds}
             pinnedMemberIdSet={visiblePinnedMemberIdSet}
             selectedDateShifts={selectedDateShifts}
@@ -828,7 +679,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
               setShiftFilter("")
               setMemberSearch("")
               setDepartmentFilter(ALL_DEPARTMENTS)
-              setRoleFilter("すべての役職")
+              setRoleFilter(ALL_ROLES)
             }}
             onClose={() => {
               setFiltersOpen(false)
