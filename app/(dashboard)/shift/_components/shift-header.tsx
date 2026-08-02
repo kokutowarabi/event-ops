@@ -60,17 +60,17 @@ export function ShiftHeader({
                 <span>{formatCompactDate(selectedDate)}</span>
               </div>
             </SelectTrigger>
-            <SelectContent className="w-max min-w-80">
+            <SelectContent className="w-max">
               {dates.map((date) => (
                 <SelectItem key={date} value={date} hideIndicator className="pr-2 pl-2">
                   <span className="grid size-4 shrink-0 place-items-center">
-                    {date === selectedDate ? <Check className="size-3.5" /> : null}
+                    {date === selectedDate ? <Check className="size-4" /> : null}
                   </span>
                   <span className={date === selectedDate ? "font-semibold" : ""}>
                     {formatCompactDate(date)}
                   </span>
                   <span
-                    className={`ml-auto pl-5 text-xs font-normal ${
+                    className={`ml-auto text-xs font-normal ${
                       date === selectedDate ? "" : "text-muted-foreground!"
                     }`}
                   >
