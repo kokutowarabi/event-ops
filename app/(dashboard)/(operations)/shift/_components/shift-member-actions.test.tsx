@@ -1,8 +1,11 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { ShiftMemberActions } from "./shift-member-actions"
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+})
 
 describe("shift member actions", () => {
   it("opens an ellipsis card and pins the member", () => {
@@ -44,5 +47,31 @@ describe("shift member actions", () => {
 
     fireEvent.change(memoInput, { target: { value: "引き継ぎ済み" } })
     expect(onMemoChange).toHaveBeenCalledWith("引き継ぎ済み")
+  })
+
+  it("opens on hover and stays open while the pointer moves into the card", () => {
+    vi.useFakeTimers()
+    render(
+      <ShiftMemberActions
+        memberName="田中 太郎"
+        memo=""
+        pinned={false}
+        onTogglePin={vi.fn()}
+        onMemoChange={vi.fn()}
+      />,
+    )
+
+    const trigger = screen.getByRole("button", { name: "田中 太郎の操作" })
+    fireEvent.pointerEnter(trigger.parentElement!)
+    const card = screen.getByRole("dialog", { name: "田中 太郎の操作" })
+
+    fireEvent.pointerLeave(trigger.parentElement!)
+    fireEvent.pointerEnter(card)
+    act(() => vi.advanceTimersByTime(150))
+    expect(screen.getByRole("dialog", { name: "田中 太郎の操作" })).toBeTruthy()
+
+    fireEvent.pointerLeave(card)
+    act(() => vi.advanceTimersByTime(150))
+    expect(screen.queryByRole("dialog", { name: "田中 太郎の操作" })).toBeNull()
   })
 })

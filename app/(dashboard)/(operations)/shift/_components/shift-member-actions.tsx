@@ -1,9 +1,11 @@
-import { useId, useState } from "react"
+import { useCallback, useEffect, useId, useRef, useState } from "react"
 import { CircleEllipsis, Pin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+
+const HOVER_CLOSE_DELAY_MS = 120
 
 type ShiftMemberActionsProps = {
   memberName: string
@@ -22,6 +24,32 @@ export function ShiftMemberActions({
 }: ShiftMemberActionsProps) {
   const [open, setOpen] = useState(false)
   const memoId = useId()
+  const closeTimerRef = useRef<number | null>(null)
+
+  const cancelScheduledClose = useCallback(() => {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }, [])
+
+  const openOnHover = () => {
+    cancelScheduledClose()
+    setOpen(true)
+  }
+
+  const scheduleClose = useCallback(() => {
+    cancelScheduledClose()
+    closeTimerRef.current = window.setTimeout(() => {
+      const focusedElement = document.activeElement
+      const editingMemo = focusedElement instanceof HTMLInputElement
+        && focusedElement.closest("[data-shift-member-actions-card]")
+      if (!editingMemo) setOpen(false)
+      closeTimerRef.current = null
+    }, HOVER_CLOSE_DELAY_MS)
+  }, [cancelScheduledClose])
+
+  useEffect(() => cancelScheduledClose, [cancelScheduledClose])
 
   const togglePin = () => {
     onTogglePin()
@@ -30,24 +58,33 @@ export function ShiftMemberActions({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={
-          <Button
-            type="button"
-            size="icon-sm"
-            variant={pinned ? "secondary" : "ghost"}
-            aria-label={`${memberName}の操作`}
-          />
-        }
+      <span
+        className="inline-flex"
+        onPointerEnter={openOnHover}
+        onPointerLeave={scheduleClose}
       >
-        <CircleEllipsis className="size-4" />
-      </PopoverTrigger>
+        <PopoverTrigger
+          render={
+            <Button
+              type="button"
+              size="icon-sm"
+              variant={pinned ? "secondary" : "ghost"}
+              aria-label={`${memberName}の操作`}
+            />
+          }
+        >
+          <CircleEllipsis className="size-4" />
+        </PopoverTrigger>
+      </span>
       <PopoverContent
+        data-shift-member-actions-card
         role="dialog"
         aria-label={`${memberName}の操作`}
         align="start"
         sideOffset={-28}
         className="w-64 p-0"
+        onPointerEnter={cancelScheduledClose}
+        onPointerLeave={scheduleClose}
       >
         <div className="p-3">
           <Label htmlFor={memoId}>メモ</Label>
@@ -56,7 +93,6 @@ export function ShiftMemberActions({
             value={memo}
             onChange={(event) => onMemoChange(event.target.value)}
             placeholder="メモを入力"
-            autoFocus
             className="mt-2"
           />
         </div>
