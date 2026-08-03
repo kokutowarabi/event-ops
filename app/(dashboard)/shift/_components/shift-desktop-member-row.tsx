@@ -110,7 +110,7 @@ export function ShiftDesktopMemberRow({
             onPointerUp={() => onFinishCreate(member.id)}
             onPointerCancel={onCancelCreate}
             onPointerLeave={() => onLeaveTimeline(member.id)}
-            className="absolute inset-y-0 rounded-lg border border-dashed border-border/80 text-left transition enabled:cursor-copy enabled:hover:bg-muted/30 disabled:cursor-default"
+            className="absolute inset-y-0 rounded-lg border border-dashed border-border/80 text-left enabled:cursor-copy disabled:cursor-default"
             style={{
               left: TIMELINE_PADDING_WIDTH,
               width: TIMELINE_WIDTH,
