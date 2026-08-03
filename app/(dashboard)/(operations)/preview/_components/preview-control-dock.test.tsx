@@ -32,6 +32,16 @@ describe("preview control dock", () => {
     expect(screen.getByRole("navigation", { name: "管理画面へ移動" })).toBeTruthy()
   })
 
+  it("joins the handle and card into one shadowed surface", () => {
+    renderDock()
+    const dock = screen.getByRole("complementary", { name: "サイトプレビュー操作" })
+    const handle = screen.getByRole("button", { name: "プレビュー操作を開く" })
+
+    expect(dock.className).toContain("drop-shadow-2xl")
+    expect(handle.className).toContain("right-full")
+    expect(handle.className).not.toContain("shadow-lg")
+  })
+
   it("opens when the edge handle is dragged to the left", () => {
     renderDock()
     const dock = screen.getByRole("complementary", { name: "サイトプレビュー操作" })

@@ -126,7 +126,7 @@ export function PreviewControlDock({
       aria-label="サイトプレビュー操作"
       data-state={open ? "open" : "closed"}
       className={cn(
-        "fixed right-2 top-1/2 z-50 w-[min(20rem,calc(100vw-2rem))] -translate-y-1/2 transition-transform duration-300 ease-out motion-reduce:transition-none",
+        "fixed right-2 top-1/2 z-50 w-[min(20rem,calc(100vw-2rem))] -translate-y-1/2 drop-shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none",
         !open && dragOffset === null && "translate-x-[calc(100%+0.5rem)]",
         dragOffset !== null && "transition-none",
       )}
@@ -139,7 +139,7 @@ export function PreviewControlDock({
         aria-label={open ? "プレビュー操作を収納" : "プレビュー操作を開く"}
         aria-controls={panelId}
         aria-expanded={open}
-        className="absolute -left-5 top-1/2 z-10 flex h-20 w-7 -translate-y-1/2 touch-none cursor-ew-resize items-center justify-center rounded-l-2xl border border-r-0 bg-popover/95 text-muted-foreground shadow-lg backdrop-blur"
+        className="absolute right-full top-1/2 z-10 flex h-20 w-7 -translate-y-1/2 touch-none cursor-ew-resize items-center justify-center rounded-l-2xl border border-r-0 bg-popover/95 text-muted-foreground backdrop-blur"
         onPointerDown={startDrag}
         onPointerMove={updateDrag}
         onPointerUp={finishDrag}
@@ -148,12 +148,16 @@ export function PreviewControlDock({
       >
         <GripVertical className="size-4" />
       </button>
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-px top-1/2 z-10 h-16 w-1 -translate-y-1/2 bg-popover/95 backdrop-blur"
+      />
 
       <div
         id={panelId}
         inert={!open}
         aria-hidden={!open}
-        className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-2xl border bg-popover/95 p-4 text-popover-foreground shadow-2xl backdrop-blur-xl"
+        className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-2xl border bg-popover/95 p-4 text-popover-foreground backdrop-blur-xl"
       >
         <div className="flex items-start gap-3">
           <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
