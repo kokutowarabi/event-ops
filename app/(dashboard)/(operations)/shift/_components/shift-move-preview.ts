@@ -14,7 +14,8 @@ export function getMovingPreviewForMember(
   memberId: string,
 ) {
   if (
-    !movingShift
+    !moving
+    || !movingShift
     || !isMovingPreviewVisibleForMember(moving, memberId)
     || movingShift.memberId === memberId
   ) {

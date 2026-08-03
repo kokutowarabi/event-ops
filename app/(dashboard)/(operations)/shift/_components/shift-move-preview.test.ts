@@ -27,6 +27,7 @@ const movingShift: Shift = {
   start: 6 * 60,
   end: 7 * 60,
   templateId: "unassigned",
+  kind: "day",
   note: "",
 }
 
