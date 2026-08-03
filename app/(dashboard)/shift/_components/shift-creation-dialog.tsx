@@ -22,13 +22,10 @@ import { ShiftAdjustmentSummary } from "./shift-adjustment-summary"
 import {
   clampShiftEnd,
   formatDate,
-  formatTime,
-  parseTime,
-  SLOT_MINUTES,
-  timeOptions,
   type ShiftAdjustmentChange,
 } from "./shift-domain"
 import { ShiftTemplateCreator } from "./shift-template-creator"
+import { ShiftTimeFields } from "./shift-time-fields"
 import type {
   DraftShift,
   DraftShiftSetter,
@@ -144,66 +141,14 @@ export function ShiftCreationDialog({
                   onCreate={onCreateTemplate}
                 />
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="grid gap-1.5">
-                  <Label>開始</Label>
-                  <Select
-                    value={formatTime(draft.start)}
-                    onValueChange={(value) => {
-                      if (value === null) return
-                      const start = parseTime(value)
-                      setDraft((current) =>
-                        current
-                          ? {
-                              ...current,
-                              start,
-                              end: clampShiftEnd(
-                                Math.max(current.end, start + SLOT_MINUTES),
-                                start,
-                              ),
-                            }
-                          : current,
-                      )
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue>{formatTime(draft.start)}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timeOptions.slice(0, -1).map((option) => (
-                        <SelectItem key={`draft-start-${option.value}`} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-1.5">
-                  <Label>終了</Label>
-                  <Select
-                    value={formatTime(draft.end)}
-                    onValueChange={(value) => {
-                      if (value === null) return
-                      setDraft((current) =>
-                        current
-                          ? { ...current, end: clampShiftEnd(parseTime(value), current.start) }
-                          : current,
-                      )
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue>{formatTime(draft.end)}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timeOptions.slice(1).map((option) => (
-                        <SelectItem key={`draft-end-${option.value}`} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              <ShiftTimeFields
+                start={draft.start}
+                end={draft.end}
+                keyPrefix="draft"
+                onChange={(time) =>
+                  setDraft((current) => (current ? { ...current, ...time } : current))
+                }
+              />
               <div className="grid gap-1.5">
                 <Label htmlFor="draft-note">業務・メモ</Label>
                 <Input

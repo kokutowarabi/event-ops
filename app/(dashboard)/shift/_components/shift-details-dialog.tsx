@@ -21,13 +21,10 @@ import {
 import type { Member } from "@/lib/members"
 import type { Shift, ShiftTemplate, ShiftTemplateId } from "@/lib/shift-data"
 import {
-  clampShiftEnd,
   formatDate,
   formatTime,
-  parseTime,
-  SLOT_MINUTES,
-  timeOptions,
 } from "./shift-domain"
+import { ShiftTimeFields } from "./shift-time-fields"
 
 type ShiftDetailsDialogProps = {
   open: boolean
@@ -115,59 +112,12 @@ export function ShiftDetailsDialog({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="grid gap-1.5">
-                    <Label>開始</Label>
-                    <Select
-                      value={formatTime(shift.start)}
-                      onValueChange={(value) => {
-                        if (value === null) return
-                        const start = parseTime(value)
-                        onUpdate(shift.id, {
-                          start,
-                          end: clampShiftEnd(
-                            Math.max(shift.end, start + SLOT_MINUTES),
-                            start,
-                          ),
-                        })
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue>{formatTime(shift.start)}</SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {timeOptions.slice(0, -1).map((option) => (
-                          <SelectItem key={`detail-start-${option.value}`} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label>終了</Label>
-                    <Select
-                      value={formatTime(shift.end)}
-                      onValueChange={(value) =>
-                        value !== null &&
-                        onUpdate(shift.id, {
-                          end: clampShiftEnd(parseTime(value), shift.start),
-                        })
-                      }
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue>{formatTime(shift.end)}</SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {timeOptions.slice(1).map((option) => (
-                          <SelectItem key={`detail-end-${option.value}`} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                <ShiftTimeFields
+                  start={shift.start}
+                  end={shift.end}
+                  keyPrefix="detail"
+                  onChange={(time) => onUpdate(shift.id, time)}
+                />
                 <div className="grid gap-1.5">
                   <Label htmlFor="shift-note">業務・メモ</Label>
                   <Input
