@@ -1,15 +1,12 @@
 "use client"
 
-import { useEventOps } from "../../../_components/event-ops-provider"
-import { ProjectManager } from "./project-manager"
+import dynamic from "next/dynamic"
+import { ProjectsRouteLoading } from "./projects-route-loading"
 
-export function ProjectsView() {
-  const { projects, setProjects } = useEventOps()
-
-  return (
-    <ProjectManager
-      projects={projects}
-      onProjectsChange={setProjects}
-    />
-  )
-}
+export const ProjectsView = dynamic(
+  () => import("./projects-data-view").then((module) => module.ProjectsDataView),
+  {
+    ssr: false,
+    loading: ProjectsRouteLoading,
+  },
+)

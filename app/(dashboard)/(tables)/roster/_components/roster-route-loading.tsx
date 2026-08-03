@@ -1,13 +1,18 @@
 import { Users } from "lucide-react"
-import { TableRouteLoading } from "../../../_components/loading-primitives"
+import { TablePageSkeleton } from "../../_components/table-page-skeleton"
 
 export function RosterRouteLoading() {
   return (
-    <TableRouteLoading
+    <TablePageSkeleton
       icon={Users}
       title="名簿"
-      columns={["氏名", "メールアドレス", "所属局", "役職"]}
-      maxWidthClass="max-w-6xl"
+      columns={[
+        { label: "氏名", className: "min-w-56" },
+        { label: "メールアドレス", className: "hidden min-w-64 md:table-cell" },
+        { label: "所属局", className: "min-w-44" },
+        { label: "役職", className: "hidden min-w-44 sm:table-cell" },
+        { label: "", className: "w-22" },
+      ]}
     />
   )
 }

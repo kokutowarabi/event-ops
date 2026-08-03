@@ -60,7 +60,7 @@ export function OrganizationManager({
     <TablePageShell
       icon={Building2}
       title="参加団体管理"
-      count={visibleOrganizations.length}
+      footer={`${visibleOrganizations.length} 件表示中`}
       actions={(
         <>
           <Button type="button" size="icon" className="ml-2 size-8" onClick={adding ? addOrganization : () => setAdding(true)} disabled={adding && !draft.name.trim()} aria-label={adding ? "参加団体を追加" : "追加欄を開く"}>

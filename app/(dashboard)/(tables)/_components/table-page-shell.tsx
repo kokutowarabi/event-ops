@@ -5,7 +5,7 @@ type TablePageShellProps = {
   icon: LucideIcon
   title: string
   actions: ReactNode
-  count: number
+  footer: ReactNode
   children: ReactNode
 }
 
@@ -13,7 +13,7 @@ export function TablePageShell({
   icon: Icon,
   title,
   actions,
-  count,
+  footer,
   children,
 }: TablePageShellProps) {
   return (
@@ -31,7 +31,7 @@ export function TablePageShell({
       </div>
 
       <p className="mt-2 shrink-0 text-right text-xs text-muted-foreground">
-        {count} 件表示中
+        {footer}
       </p>
     </div>
   )

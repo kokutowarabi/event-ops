@@ -55,7 +55,7 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
     <TablePageShell
       icon={ClipboardList}
       title="企画管理"
-      count={visibleProjects.length}
+      footer={`${visibleProjects.length} 件表示中`}
       actions={(
         <>
           <Button type="button" size="icon" className="ml-2 size-8" onClick={adding ? addProject : () => setAdding(true)} disabled={adding && !draft.title.trim()} aria-label={adding ? "企画を追加" : "追加欄を開く"}>

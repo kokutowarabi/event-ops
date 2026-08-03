@@ -1,20 +1,12 @@
 "use client"
 
-import { useEventOps } from "../../../_components/event-ops-provider"
-import { OrganizationManager } from "./organization-manager"
+import dynamic from "next/dynamic"
+import { OrganizationsRouteLoading } from "./organizations-route-loading"
 
-export function OrganizationsView() {
-  const {
-    organizations,
-    setOrganizations,
-    deleteOrganization,
-  } = useEventOps()
-
-  return (
-    <OrganizationManager
-      organizations={organizations}
-      onOrganizationsChange={setOrganizations}
-      onDeleteOrganization={deleteOrganization}
-    />
-  )
-}
+export const OrganizationsView = dynamic(
+  () => import("./organizations-data-view").then((module) => module.OrganizationsDataView),
+  {
+    ssr: false,
+    loading: OrganizationsRouteLoading,
+  },
+)
