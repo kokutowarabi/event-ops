@@ -14,6 +14,7 @@ export type ShiftDesktopViewProps = {
   filtersOpen: boolean
   hasNoFilterResults: boolean
   members: Member[]
+  memberMemos: Record<string, string>
   pinnedMemberIds: string[]
   pinnedMemberIdSet: Set<string>
   selectedDateShifts: Shift[]
@@ -30,6 +31,7 @@ export type ShiftDesktopViewProps = {
   getCreatePreview: (memberId: string) => DesktopCreatePreview | null
   onToggleFilters: (event: MouseEvent<HTMLButtonElement>) => void
   onTogglePin: (memberId: string) => void
+  onMemberMemoChange: (memberId: string, memo: string) => void
   onBeginCreate: (memberId: string, event: PointerEvent<HTMLButtonElement>) => void
   onMoveCreate: (memberId: string, event: PointerEvent<HTMLButtonElement>) => void
   onFinishCreate: (memberId: string) => void
@@ -59,6 +61,7 @@ export function ShiftDesktopView({
   filtersOpen,
   hasNoFilterResults,
   members,
+  memberMemos,
   pinnedMemberIds,
   pinnedMemberIdSet,
   selectedDateShifts,
@@ -75,6 +78,7 @@ export function ShiftDesktopView({
   getCreatePreview,
   onToggleFilters,
   onTogglePin,
+  onMemberMemoChange,
   onBeginCreate,
   onMoveCreate,
   onFinishCreate,
@@ -121,6 +125,7 @@ export function ShiftDesktopView({
           <ShiftDesktopMemberRow
             key={`member-row-${member.id}`}
             member={member}
+            memo={memberMemos[member.id] ?? ""}
             pinned={pinnedMemberIdSet.has(member.id)}
             pinnedIndex={pinnedMemberIds.indexOf(member.id)}
             selectedDateShifts={selectedDateShifts}
@@ -136,6 +141,7 @@ export function ShiftDesktopView({
             getTemplateColor={getTemplateColor}
             getCreatePreview={getCreatePreview}
             onTogglePin={onTogglePin}
+            onMemoChange={(memo) => onMemberMemoChange(member.id, memo)}
             onBeginCreate={onBeginCreate}
             onMoveCreate={onMoveCreate}
             onFinishCreate={onFinishCreate}

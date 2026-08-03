@@ -53,11 +53,19 @@ export type { Shift, ShiftData, ShiftSchedule, ShiftTemplate } from "@/lib/shift
 
 type ShiftManagerProps = {
   members: Member[]
+  memberMemos: Record<string, string>
   initialShiftData: ShiftData
   onShiftDataChange: (data: ShiftData) => void
+  onMemberMemoChange: (memberId: string, memo: string) => void
 }
 
-export function ShiftManager({ members, initialShiftData, onShiftDataChange }: ShiftManagerProps) {
+export function ShiftManager({
+  members,
+  memberMemos,
+  initialShiftData,
+  onShiftDataChange,
+  onMemberMemoChange,
+}: ShiftManagerProps) {
   const defaultStartDate = operationPeriod.startDate
   const [shiftViewMode, setShiftViewMode] = useState<ShiftViewMode>("member")
   const [shiftSchedule, setShiftSchedule] = useState<ShiftSchedule | null>(initialShiftData.schedule)
@@ -347,6 +355,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
             hasNoFilterResults={hasNoFilterResults}
             pinnedMembers={visiblePinnedMembers}
             members={visibleMembers}
+            memberMemos={memberMemos}
             pinnedMemberIds={visiblePinnedMemberIdSet}
             selectedDateShifts={selectedDateShifts}
             visibleDateShifts={visibleSelectedDateShifts}
@@ -357,6 +366,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
             getCreatePreview={getMobileCreatePreview}
             onToggleFilters={(event) => toggleFilters("mobile", event)}
             onTogglePin={toggleMemberPin}
+            onMemberMemoChange={onMemberMemoChange}
             onBeginCreate={beginCreateMobileShift}
             onMoveCreate={moveCreateMobileShift}
             onFinishCreate={finishCreateShift}
@@ -376,6 +386,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
             filtersOpen={filtersOpen && filterAnchor === "table"}
             hasNoFilterResults={hasNoFilterResults}
             members={visibleMembers}
+            memberMemos={memberMemos}
             pinnedMemberIds={visiblePinnedMemberIds}
             pinnedMemberIdSet={visiblePinnedMemberIdSet}
             selectedDateShifts={selectedDateShifts}
@@ -392,6 +403,7 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
             getCreatePreview={getCreatePreview}
             onToggleFilters={(event) => toggleFilters("table", event)}
             onTogglePin={toggleMemberPin}
+            onMemberMemoChange={onMemberMemoChange}
             onBeginCreate={beginCreateShift}
             onMoveCreate={moveCreateShift}
             onFinishCreate={finishCreateShift}

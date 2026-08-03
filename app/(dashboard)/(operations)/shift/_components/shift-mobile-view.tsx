@@ -17,6 +17,7 @@ type ShiftMobileViewProps = {
   hasNoFilterResults: boolean
   pinnedMembers: Member[]
   members: Member[]
+  memberMemos: Record<string, string>
   pinnedMemberIds: Set<string>
   selectedDateShifts: Shift[]
   visibleDateShifts: Shift[]
@@ -27,6 +28,7 @@ type ShiftMobileViewProps = {
   getCreatePreview: (memberId: string) => MobileCreatePreview | null
   onToggleFilters: (event: MouseEvent<HTMLButtonElement>) => void
   onTogglePin: (memberId: string) => void
+  onMemberMemoChange: (memberId: string, memo: string) => void
   onBeginCreate: (memberId: string, event: PointerEvent<HTMLButtonElement>) => void
   onMoveCreate: (memberId: string, event: PointerEvent<HTMLButtonElement>) => void
   onFinishCreate: (memberId: string) => void
@@ -43,6 +45,7 @@ export function ShiftMobileView({
   hasNoFilterResults,
   pinnedMembers,
   members,
+  memberMemos,
   pinnedMemberIds,
   selectedDateShifts,
   visibleDateShifts,
@@ -53,6 +56,7 @@ export function ShiftMobileView({
   getCreatePreview,
   onToggleFilters,
   onTogglePin,
+  onMemberMemoChange,
   onBeginCreate,
   onMoveCreate,
   onFinishCreate,
@@ -106,6 +110,7 @@ export function ShiftMobileView({
         <ShiftMobileMember
           key={`mobile-member-${member.id}`}
           member={member}
+          memo={memberMemos[member.id] ?? ""}
           pinned={pinnedMemberIds.has(member.id)}
           selectedDateShifts={selectedDateShifts}
           visibleDateShifts={visibleDateShifts}
@@ -117,6 +122,7 @@ export function ShiftMobileView({
           createPreview={getCreatePreview(member.id)}
           getTemplateColor={getTemplateColor}
           onTogglePin={() => onTogglePin(member.id)}
+          onMemoChange={(memo) => onMemberMemoChange(member.id, memo)}
           onBeginCreate={(event) => onBeginCreate(member.id, event)}
           onMoveCreate={(event) => onMoveCreate(member.id, event)}
           onFinishCreate={() => onFinishCreate(member.id)}

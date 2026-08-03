@@ -10,14 +10,22 @@ export function ShiftView({
 }: {
   initialShiftData: ShiftData
 }) {
-  const { members, getShiftData, saveShiftData } = useEventOps()
+  const {
+    members,
+    memberMemos,
+    getShiftData,
+    saveShiftData,
+    setMemberMemo,
+  } = useEventOps()
   const [mountedShiftData] = useState(() => getShiftData(initialShiftData))
 
   return (
     <ShiftManager
       members={members}
+      memberMemos={memberMemos}
       initialShiftData={mountedShiftData}
       onShiftDataChange={saveShiftData}
+      onMemberMemoChange={setMemberMemo}
     />
   )
 }

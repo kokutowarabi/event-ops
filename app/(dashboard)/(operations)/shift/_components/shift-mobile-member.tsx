@@ -33,6 +33,7 @@ export type MobileCreatePreview = {
 
 type ShiftMobileMemberProps = {
   member: Member
+  memo: string
   pinned: boolean
   selectedDateShifts: Shift[]
   visibleDateShifts: Shift[]
@@ -42,6 +43,7 @@ type ShiftMobileMemberProps = {
   createPreview: MobileCreatePreview | null
   getTemplateColor: (templateId: ShiftTemplateId) => ShiftTemplateColor
   onTogglePin: () => void
+  onMemoChange: (memo: string) => void
   onBeginCreate: (event: PointerEvent<HTMLButtonElement>) => void
   onMoveCreate: (event: PointerEvent<HTMLButtonElement>) => void
   onFinishCreate: () => void
@@ -53,6 +55,7 @@ type ShiftMobileMemberProps = {
 
 export function ShiftMobileMember({
   member,
+  memo,
   pinned,
   selectedDateShifts,
   visibleDateShifts,
@@ -62,6 +65,7 @@ export function ShiftMobileMember({
   createPreview,
   getTemplateColor,
   onTogglePin,
+  onMemoChange,
   onBeginCreate,
   onMoveCreate,
   onFinishCreate,
@@ -94,8 +98,10 @@ export function ShiftMobileMember({
         </div>
         <ShiftMemberActions
           memberName={member.name}
+          memo={memo}
           pinned={pinned}
           onTogglePin={onTogglePin}
+          onMemoChange={onMemoChange}
         />
       </div>
       <div className="relative" style={{ height: MOBILE_TIMELINE_TRACK_HEIGHT }}>

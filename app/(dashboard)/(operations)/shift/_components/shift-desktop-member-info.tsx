@@ -6,16 +6,20 @@ import { ShiftMemberActions } from "./shift-member-actions"
 
 type ShiftDesktopMemberInfoProps = {
   member: Member
+  memo: string
   pinned: boolean
   top: number
   onTogglePin: (memberId: string) => void
+  onMemoChange: (memo: string) => void
 }
 
 export function ShiftDesktopMemberInfo({
   member,
+  memo,
   pinned,
   top,
   onTogglePin,
+  onMemoChange,
 }: ShiftDesktopMemberInfoProps) {
   return (
     <div
@@ -26,8 +30,10 @@ export function ShiftDesktopMemberInfo({
         <div className="min-w-0 font-medium">{member.name}</div>
         <ShiftMemberActions
           memberName={member.name}
+          memo={memo}
           pinned={pinned}
           onTogglePin={() => onTogglePin(member.id)}
+          onMemoChange={onMemoChange}
         />
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">

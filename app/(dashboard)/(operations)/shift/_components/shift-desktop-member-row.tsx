@@ -24,19 +24,24 @@ type ShiftDesktopMemberRowProps = Omit<
   | "filtersOpen"
   | "hasNoFilterResults"
   | "members"
+  | "memberMemos"
   | "pinnedMemberIds"
   | "pinnedMemberIdSet"
   | "creatingShift"
   | "onToggleFilters"
+  | "onMemberMemoChange"
 > & {
   member: Member
+  memo: string
   pinned: boolean
   pinnedIndex: number
   movingPreviewShift: Shift | null
+  onMemoChange: (memo: string) => void
 }
 
 export function ShiftDesktopMemberRow({
   member,
+  memo,
   pinned,
   pinnedIndex,
   selectedDateShifts,
@@ -52,6 +57,7 @@ export function ShiftDesktopMemberRow({
   getTemplateColor,
   getCreatePreview,
   onTogglePin,
+  onMemoChange,
   onBeginCreate,
   onMoveCreate,
   onFinishCreate,
@@ -95,9 +101,11 @@ export function ShiftDesktopMemberRow({
     <div className="contents">
       <ShiftDesktopMemberInfo
         member={member}
+        memo={memo}
         pinned={pinned}
         top={pinnedTop}
         onTogglePin={onTogglePin}
+        onMemoChange={onMemoChange}
       />
       <div
         className={`border-b py-3 ${pinned ? "sticky z-15 h-[88px] bg-card shadow-sm" : ""}`}

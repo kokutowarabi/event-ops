@@ -20,6 +20,8 @@ type EventOpsContextValue = {
   members: Member[]
   setMembers: Dispatch<SetStateAction<Member[]>>
   deleteMember: (id: string) => void
+  memberMemos: Record<string, string>
+  setMemberMemo: (memberId: string, memo: string) => void
   organizations: EventOrganization[]
   setOrganizations: Dispatch<SetStateAction<EventOrganization[]>>
   deleteOrganization: (organization: EventOrganization) => void
@@ -39,12 +41,22 @@ export function EventOpsProvider({
   initialState: DashboardState
 }) {
   const [members, setMembers] = useState(initialState.members)
+  const [memberMemos, setMemberMemos] = useState<Record<string, string>>({})
   const [organizations, setOrganizations] = useState(initialState.organizations)
   const [projects, setProjects] = useState(initialState.projects)
   const shiftDataRef = useRef<ShiftData | null>(null)
 
   const deleteMember = useCallback((id: string) => {
     setMembers((current) => current.filter((member) => member.id !== id))
+    setMemberMemos((current) => {
+      const next = { ...current }
+      delete next[id]
+      return next
+    })
+  }, [])
+
+  const setMemberMemo = useCallback((memberId: string, memo: string) => {
+    setMemberMemos((current) => ({ ...current, [memberId]: memo }))
   }, [])
 
   const deleteOrganization = useCallback((organization: EventOrganization) => {
@@ -72,6 +84,8 @@ export function EventOpsProvider({
       members,
       setMembers,
       deleteMember,
+      memberMemos,
+      setMemberMemo,
       organizations,
       setOrganizations,
       deleteOrganization,
@@ -84,10 +98,12 @@ export function EventOpsProvider({
       deleteMember,
       deleteOrganization,
       getShiftData,
+      memberMemos,
       members,
       organizations,
       projects,
       saveShiftData,
+      setMemberMemo,
     ],
   )
 
