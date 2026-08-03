@@ -4,6 +4,7 @@ import { ShiftDesktopCreatePreview } from "./shift-desktop-create-preview"
 import { ShiftDesktopMemberInfo } from "./shift-desktop-member-info"
 import { ShiftDesktopShiftBlock } from "./shift-desktop-shift-block"
 import { DEFAULT_SHIFT_TEMPLATE_ID, SLOT_MINUTES, START_MINUTES } from "./shift-domain"
+import { getShiftRowStackClass } from "./shift-dnd-stacking"
 import { getMovingPreviewForMember } from "./shift-move-preview"
 import {
   DESKTOP_MEMBER_ROW_HEIGHT,
@@ -98,6 +99,13 @@ export function ShiftDesktopMemberRow({
       ? [...movingMemberShifts, { ...copyingShift, memberId: member.id }]
       : movingMemberShifts
   const createPreview = getCreatePreview(member.id)
+  const rowDndActive = Boolean(
+    createPreview
+    || movingMemberPreview
+    || memberShifts.some((shift) => shift.id === moving?.id || shift.id === resizing?.id)
+    || copying?.sourceId && memberShifts.some((shift) => shift.id === copying.sourceId)
+    || copying?.previewMemberIds.includes(member.id),
+  )
 
   return (
     <div className="contents">
@@ -110,7 +118,7 @@ export function ShiftDesktopMemberRow({
         onMemoChange={onMemoChange}
       />
       <div
-        className={`border-b py-3 ${pinned ? "sticky z-15 h-[88px] bg-card shadow-sm" : ""}`}
+        className={`border-b py-3 ${getShiftRowStackClass(pinned, rowDndActive)}`}
         style={pinned ? { top: pinnedTop } : undefined}
       >
         <div className="relative h-16" style={{ width: TIMELINE_TRACK_WIDTH }}>

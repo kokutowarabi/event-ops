@@ -4,6 +4,7 @@ import { ShiftHandles } from "./shift-handles"
 import { useShiftHandleHover } from "./shift-handle-hover"
 import { isMovingPreviewVisibleForMember } from "./shift-move-preview"
 import { ShiftSplitTimeLabels } from "./shift-split-time-labels"
+import { getShiftBlockStackClass } from "./shift-dnd-stacking"
 import { formatTime, shouldSplitShiftTimeLabels, SLOT_MINUTES, START_MINUTES } from "./shift-domain"
 import { SLOT_WIDTH, TIMELINE_PADDING_WIDTH } from "./shift-layout"
 import type { ShiftDesktopViewProps } from "./shift-desktop-view"
@@ -89,6 +90,7 @@ export function ShiftDesktopShiftBlock({
     && copyingShift?.memberId !== memberId
   const isCopyingSource = copying?.sourceId === shift.id && !isCopyingAlias
   const isInteractionAlias = isMovingAlias || isCopyingAlias
+  const isDndActive = isMovingShift || isResizingShift || isCopyingSource || isInteractionAlias
   const handleHover = useShiftHandleHover(shift.id)
 
   return (
@@ -129,7 +131,7 @@ export function ShiftDesktopShiftBlock({
           onCancelResize()
         }}
         aria-label={`${memberName} ${formatTime(shift.start)}-${formatTime(shift.end)}の詳細`}
-        className={`${isInteractionAlias ? "pointer-events-none" : "pointer-events-auto"} absolute top-2 box-border h-12 select-none rounded-md border text-left transition hover:z-30 hover:ring-2 hover:ring-inset hover:ring-ring/40 ${hasSplitEditingTimes || adjustsConflictingShifts ? "overflow-visible" : "overflow-hidden"} ${isHiddenMovingSource ? "opacity-0" : ""} ${isMovingAlias || isMovingSourceAlias || isCopyingAlias ? "opacity-40 ring-2 ring-inset ring-ring/30" : ""} ${isSingleSlotShift ? "px-0" : "px-3 shadow-sm"} ${editable && !isInteractionAlias ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
+        className={`${isInteractionAlias ? "pointer-events-none" : "pointer-events-auto"} ${getShiftBlockStackClass(isDndActive)} absolute top-2 box-border h-12 select-none rounded-md border text-left transition hover:ring-2 hover:ring-inset hover:ring-ring/40 ${hasSplitEditingTimes || adjustsConflictingShifts ? "overflow-visible" : "overflow-hidden"} ${isHiddenMovingSource ? "opacity-0" : ""} ${isMovingAlias || isMovingSourceAlias || isCopyingAlias ? "opacity-40 ring-2 ring-inset ring-ring/30" : ""} ${isSingleSlotShift ? "px-0" : "px-3 shadow-sm"} ${editable && !isInteractionAlias ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
         style={{
           left,
           width: visualWidth,
