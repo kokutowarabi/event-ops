@@ -1,5 +1,6 @@
 import type { MouseEvent } from "react"
 import { ListFilter, Pin } from "lucide-react"
+import { MobileCardSection } from "@/components/common/mobile-card-section"
 import type { Member } from "@/lib/members"
 import type { Shift, ShiftTemplate, ShiftTemplateId } from "@/lib/shift-data"
 import { Button } from "@/components/ui/button"
@@ -105,41 +106,30 @@ export function ShiftMobileView({
       ) : null}
       <div className="space-y-5 pb-4">
         {memberGroups.map((group) => (
-          <section
+          <MobileCardSection
             key={group.department}
-            aria-labelledby={`shift-mobile-department-${group.department}`}
+            title={group.department}
+            titleId={`shift-mobile-department-${group.department}`}
+            headerClassName="px-1"
           >
-            <div className="mb-2 flex items-baseline gap-2 px-1">
-              <h2
-                id={`shift-mobile-department-${group.department}`}
-                className="font-semibold"
-              >
-                {group.department}
-              </h2>
-              <span className="text-xs text-muted-foreground">
-                {group.members.length}人
-              </span>
-            </div>
-            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 overscroll-x-contain">
-              {group.members.map((member) => (
-                <ShiftMobileMember
-                  key={`mobile-member-${member.id}`}
-                  member={member}
-                  memo={memberMemos[member.id] ?? ""}
-                  pinned={pinnedMemberIds.has(member.id)}
-                  selectedDateShifts={selectedDateShifts}
-                  visibleDateShifts={visibleDateShifts}
-                  editable={editable}
-                  templates={templates}
-                  getTemplateColor={getTemplateColor}
-                  onTogglePin={() => onTogglePin(member.id)}
-                  onMemoChange={(memo) => onMemberMemoChange(member.id, memo)}
-                  onCreateAt={(start) => onCreateAt(member.id, start)}
-                  onOpenShift={onOpenShift}
-                />
-              ))}
-            </div>
-          </section>
+            {group.members.map((member) => (
+              <ShiftMobileMember
+                key={`mobile-member-${member.id}`}
+                member={member}
+                memo={memberMemos[member.id] ?? ""}
+                pinned={pinnedMemberIds.has(member.id)}
+                selectedDateShifts={selectedDateShifts}
+                visibleDateShifts={visibleDateShifts}
+                editable={editable}
+                templates={templates}
+                getTemplateColor={getTemplateColor}
+                onTogglePin={() => onTogglePin(member.id)}
+                onMemoChange={(memo) => onMemberMemoChange(member.id, memo)}
+                onCreateAt={(start) => onCreateAt(member.id, start)}
+                onOpenShift={onOpenShift}
+              />
+            ))}
+          </MobileCardSection>
         ))}
       </div>
     </div>

@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react"
+import { MobileCardSection } from "@/components/common/mobile-card-section"
 import type { Member, SortKey } from "@/lib/members"
 import { RosterMobileDraftCard, RosterMobileMemberCard } from "./roster-mobile-card"
 import { RosterMobileFilters } from "./roster-mobile-filters"
@@ -79,22 +80,21 @@ export function RosterMobileView({
       ) : (
         <div className="space-y-5 py-4">
           {groups.map((group) => (
-            <section key={group.department} aria-labelledby={`mobile-department-${group.department}`}>
-              <div className="mb-2 flex items-baseline gap-2 px-3">
-                <h2 id={`mobile-department-${group.department}`} className="font-semibold">{group.department}</h2>
-                <span className="text-xs text-muted-foreground">{group.members.length}人</span>
-              </div>
-              <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-2 overscroll-x-contain">
-                {group.members.map((member) => (
-                  <RosterMobileMemberCard
-                    key={member.id}
-                    member={member}
-                    onEdit={() => onEditMember(member)}
-                    onDelete={() => onDeleteMember(member.id)}
-                  />
-                ))}
-              </div>
-            </section>
+            <MobileCardSection
+              key={group.department}
+              title={group.department}
+              titleId={`mobile-department-${group.department}`}
+              scrollerClassName="px-3"
+            >
+              {group.members.map((member) => (
+                <RosterMobileMemberCard
+                  key={member.id}
+                  member={member}
+                  onEdit={() => onEditMember(member)}
+                  onDelete={() => onDeleteMember(member.id)}
+                />
+              ))}
+            </MobileCardSection>
           ))}
         </div>
       )}
