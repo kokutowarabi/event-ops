@@ -145,7 +145,6 @@ export function useShiftDrafts({
 
   return {
     draftShift,
-    draftBaseShifts,
     templateDraft,
     adjustmentChanges,
     canCreateDraft: conflictResolution !== null,

@@ -126,7 +126,6 @@ export function ShiftDesktopView({
             selectedDateShifts={selectedDateShifts}
             visibleDateShifts={visibleDateShifts}
             hoveredSlot={hoveredSlot}
-            creatingShift={creatingShift}
             moving={moving}
             resizing={resizing}
             copying={copying}

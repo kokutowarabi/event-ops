@@ -25,6 +25,7 @@ type ShiftDesktopMemberRowProps = Omit<
   | "members"
   | "pinnedMemberIds"
   | "pinnedMemberIdSet"
+  | "creatingShift"
   | "onToggleFilters"
 > & {
   member: Member
@@ -40,7 +41,6 @@ export function ShiftDesktopMemberRow({
   selectedDateShifts,
   visibleDateShifts,
   hoveredSlot,
-  creatingShift,
   moving,
   resizing,
   copying,

@@ -161,7 +161,6 @@ export function ShiftManager({ members, initialShiftData, onShiftDataChange }: S
 
   const {
     draftShift,
-    draftBaseShifts,
     templateDraft,
     adjustmentChanges: draftAdjustmentChanges,
     canCreateDraft,
