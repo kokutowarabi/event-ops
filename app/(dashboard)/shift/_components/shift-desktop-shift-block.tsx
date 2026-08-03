@@ -140,7 +140,6 @@ export function ShiftDesktopShiftBlock({
           <ShiftSplitTimeLabels
             start={shift.start}
             end={shift.end}
-            alignBottomToTopEdge={isResizingShift}
           />
         ) : isSingleSlotShift ? null : (
           <>
