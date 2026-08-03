@@ -65,7 +65,7 @@ function FilterHeader<T extends string>({
 
   return (
     <div
-      className={`relative -m-2 flex h-10 w-[calc(100%+1rem)] min-w-0 items-center gap-1 rounded-md px-2 transition ${
+      className={`relative -m-2 flex h-10 w-[calc(100%+1rem)] min-w-0 items-center gap-1 rounded-md pl-5 pr-2 transition ${
         active ? "bg-primary/15 text-primary ring-1 ring-inset ring-primary/35" : ""
       }`}
     >

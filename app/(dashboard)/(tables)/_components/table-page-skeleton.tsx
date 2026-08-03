@@ -32,7 +32,7 @@ export function TablePageSkeleton({
             {columns.map((column, index) => (
               <TableHead key={`${column.label}-${index}`} className={column.className}>
                 {column.label ? (
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 pl-3">
                     {column.label}
                     <Filter className="size-3.5 text-muted-foreground" aria-hidden="true" />
                     <ArrowUpDown className="size-3.5 text-muted-foreground" aria-hidden="true" />

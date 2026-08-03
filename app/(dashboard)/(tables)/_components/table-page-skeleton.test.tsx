@@ -22,6 +22,7 @@ describe("table page skeleton", () => {
 
     const table = screen.getByRole("table", { name: "名簿のデータを読み込み中" })
     expect(screen.getByText("メンバーを追加")).toBeTruthy()
+    expect(screen.getByText("氏名").classList.contains("pl-3")).toBe(true)
     const headerRow = within(table).getAllByRole("row")[0]
     expect(headerRow.classList.contains("bg-muted/80")).toBe(true)
     expect(headerRow.classList.contains("[&>th]:border-b-2")).toBe(true)
