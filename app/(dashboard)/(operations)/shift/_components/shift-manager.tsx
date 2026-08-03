@@ -174,6 +174,7 @@ export function ShiftManager({
     setDraftBaseShifts,
     setTemplateDraft,
     openAssignmentDraft,
+    openMemberDraft,
     createDraftShift,
     closeDraftShift,
     createShiftTemplate,
@@ -216,12 +217,9 @@ export function ShiftManager({
   const {
     beginCreateShift,
     moveCreateShift,
-    beginCreateMobileShift,
-    moveCreateMobileShift,
     finishCreateShift,
     cancelCreateShift,
     getCreatePreview,
-    getMobileCreatePreview,
   } = useShiftCreationActions({
     editable: isAdmin,
     hasSchedule: shiftSchedule !== null,
@@ -359,24 +357,13 @@ export function ShiftManager({
             pinnedMemberIds={visiblePinnedMemberIdSet}
             selectedDateShifts={selectedDateShifts}
             visibleDateShifts={visibleSelectedDateShifts}
-            hoveredSlot={hoveredSlot}
             editable={isAdmin}
             templates={allShiftTemplates}
             getTemplateColor={getShiftTemplateColor}
-            getCreatePreview={getMobileCreatePreview}
             onToggleFilters={(event) => toggleFilters("mobile", event)}
             onTogglePin={toggleMemberPin}
             onMemberMemoChange={onMemberMemoChange}
-            onBeginCreate={beginCreateMobileShift}
-            onMoveCreate={moveCreateMobileShift}
-            onFinishCreate={finishCreateShift}
-            onCancelCreate={cancelCreateShift}
-            onLeaveTimeline={(memberId) => {
-              if (!creatingShift || creatingShift.memberId !== memberId) {
-                setHoveredSlot(null)
-              }
-            }}
-            onClearHover={() => setHoveredSlot(null)}
+            onCreateAt={openMemberDraft}
             onOpenShift={openShiftDetail}
           />
 

@@ -8,12 +8,7 @@ import {
   isSlotOccupied,
   timeSlots,
 } from "./shift-domain"
-import {
-  MOBILE_SLOT_HEIGHT,
-  MOBILE_TIMELINE_PADDING_HEIGHT,
-  SLOT_WIDTH,
-  TIMELINE_PADDING_WIDTH,
-} from "./shift-layout"
+import { SLOT_WIDTH, TIMELINE_PADDING_WIDTH } from "./shift-layout"
 import type { CreatingShift, DraftShift, DraftShiftSetter } from "./shift-types"
 
 type ShiftCreationActionsOptions = {
@@ -45,20 +40,21 @@ export function useShiftCreationActions({
   setDraftShift,
   setShiftsWithoutHistory,
 }: ShiftCreationActionsOptions) {
-  const getSlotFromPointer = (event: PointerEvent<HTMLButtonElement>, orientation: "horizontal" | "vertical") => {
+  const getSlotFromPointer = (event: PointerEvent<HTMLButtonElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
-    const position = orientation === "horizontal" ? event.clientX - rect.left : event.clientY - rect.top
-    const slotSize = orientation === "horizontal" ? SLOT_WIDTH : MOBILE_SLOT_HEIGHT
-    return Math.min(Math.max(Math.floor(position / slotSize), 0), timeSlots.length - 1)
+    const position = event.clientX - rect.left
+    return Math.min(
+      Math.max(Math.floor(position / SLOT_WIDTH), 0),
+      timeSlots.length - 1,
+    )
   }
 
-  const beginCreate = (
+  const beginCreateShift = (
     memberId: string,
     event: PointerEvent<HTMLButtonElement>,
-    orientation: "horizontal" | "vertical",
   ) => {
     if (!editable || !hasSchedule) return
-    const slot = getSlotFromPointer(event, orientation)
+    const slot = getSlotFromPointer(event)
     if (isSlotOccupied(shiftsRef.current, memberId, selectedDate, slot)) {
       setHoveredSlot(null)
       return
@@ -69,13 +65,12 @@ export function useShiftCreationActions({
     setCreatingShift({ memberId, startSlot: slot, currentSlot: slot, adjustedShiftIds: [] })
   }
 
-  const moveCreate = (
+  const moveCreateShift = (
     memberId: string,
     event: PointerEvent<HTMLButtonElement>,
-    orientation: "horizontal" | "vertical",
   ) => {
     if (!editable || !hasSchedule) return
-    const slot = getSlotFromPointer(event, orientation)
+    const slot = getSlotFromPointer(event)
     if (!creatingShift) {
       setHoveredSlot(
         isSlotOccupied(shiftsRef.current, memberId, selectedDate, slot)
@@ -138,33 +133,12 @@ export function useShiftCreationActions({
     }
   }
 
-  const getMobileCreatePreview = (memberId: string) => {
-    const range = getPreviewRange(creatingShift, memberId)
-    if (!range) return null
-    return {
-      top: MOBILE_TIMELINE_PADDING_HEIGHT + range.startSlot * MOBILE_SLOT_HEIGHT,
-      height: Math.max((range.endSlot - range.startSlot) * MOBILE_SLOT_HEIGHT, MOBILE_SLOT_HEIGHT),
-      startSlot: range.startSlot,
-      endSlot: range.endSlot,
-      start: range.start,
-      end: range.end,
-      adjustsConflictingShifts: range.adjustsConflictingShifts,
-    }
-  }
-
   return {
-    beginCreateShift: (memberId: string, event: PointerEvent<HTMLButtonElement>) =>
-      beginCreate(memberId, event, "horizontal"),
-    moveCreateShift: (memberId: string, event: PointerEvent<HTMLButtonElement>) =>
-      moveCreate(memberId, event, "horizontal"),
-    beginCreateMobileShift: (memberId: string, event: PointerEvent<HTMLButtonElement>) =>
-      beginCreate(memberId, event, "vertical"),
-    moveCreateMobileShift: (memberId: string, event: PointerEvent<HTMLButtonElement>) =>
-      moveCreate(memberId, event, "vertical"),
+    beginCreateShift,
+    moveCreateShift,
     finishCreateShift: finishCreate,
     cancelCreateShift: cancelCreate,
     getCreatePreview,
-    getMobileCreatePreview,
   }
 }
 

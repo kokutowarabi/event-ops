@@ -8,6 +8,7 @@ import type {
 import {
   adjustConflictingShiftRanges,
   clampShiftEnd,
+  DEFAULT_SHIFT_TEMPLATE_ID,
   END_MINUTES,
   getShiftAdjustmentChanges,
 } from "./shift-domain"
@@ -92,6 +93,42 @@ export function useShiftDrafts({
     })
   }
 
+  const openMemberDraft = (memberId: string, start: number) => {
+    const occupied = selectedDateShifts.some(
+      (shift) =>
+        shift.memberId === memberId
+        && shift.start <= start
+        && shift.end > start,
+    )
+    if (occupied) return
+
+    const template = templates[DEFAULT_SHIFT_TEMPLATE_ID]
+    const nextShiftStart = selectedDateShifts.reduce<number | null>(
+      (nextStart, shift) => {
+        if (shift.memberId !== memberId || shift.start <= start) return nextStart
+        return nextStart === null ? shift.start : Math.min(nextStart, shift.start)
+      },
+      null,
+    )
+    const end = clampShiftEnd(
+      Math.min(
+        start + template.defaultMinutes,
+        nextShiftStart ?? END_MINUTES,
+      ),
+      start,
+    )
+
+    setDraftBaseShifts(null)
+    setDraftShift({
+      memberId,
+      date: selectedDate,
+      start,
+      end,
+      templateId: DEFAULT_SHIFT_TEMPLATE_ID,
+      note: template.note,
+    })
+  }
+
   const createDraftShift = () => {
     if (!draftShift || !conflictResolution) return
     const template = templates[draftShift.templateId]
@@ -152,6 +189,7 @@ export function useShiftDrafts({
     setDraftBaseShifts,
     setTemplateDraft,
     openAssignmentDraft,
+    openMemberDraft,
     createDraftShift,
     closeDraftShift,
     createShiftTemplate,

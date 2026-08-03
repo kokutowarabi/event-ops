@@ -1,14 +1,11 @@
-import type { MouseEvent, PointerEvent } from "react"
+import type { MouseEvent } from "react"
 import { ListFilter, Pin } from "lucide-react"
 import type { Member } from "@/lib/members"
 import type { Shift, ShiftTemplate, ShiftTemplateId } from "@/lib/shift-data"
 import { Button } from "@/components/ui/button"
 import { ShiftFilterEmptyState } from "./shift-filter-ui"
 import type { ShiftTemplateColor } from "./shift-domain"
-import {
-  ShiftMobileMember,
-  type MobileCreatePreview,
-} from "./shift-mobile-member"
+import { ShiftMobileMember } from "./shift-mobile-member"
 
 export function groupShiftMembersByDepartment(members: Member[]) {
   const groups = new Map<string, Member[]>()
@@ -33,20 +30,13 @@ type ShiftMobileViewProps = {
   pinnedMemberIds: Set<string>
   selectedDateShifts: Shift[]
   visibleDateShifts: Shift[]
-  hoveredSlot: { memberId: string; slot: number } | null
   editable: boolean
   templates: Record<ShiftTemplateId, ShiftTemplate>
   getTemplateColor: (templateId: ShiftTemplateId) => ShiftTemplateColor
-  getCreatePreview: (memberId: string) => MobileCreatePreview | null
   onToggleFilters: (event: MouseEvent<HTMLButtonElement>) => void
   onTogglePin: (memberId: string) => void
   onMemberMemoChange: (memberId: string, memo: string) => void
-  onBeginCreate: (memberId: string, event: PointerEvent<HTMLButtonElement>) => void
-  onMoveCreate: (memberId: string, event: PointerEvent<HTMLButtonElement>) => void
-  onFinishCreate: (memberId: string) => void
-  onCancelCreate: () => void
-  onLeaveTimeline: (memberId: string) => void
-  onClearHover: () => void
+  onCreateAt: (memberId: string, start: number) => void
   onOpenShift: (shiftId: string) => void
 }
 
@@ -61,20 +51,13 @@ export function ShiftMobileView({
   pinnedMemberIds,
   selectedDateShifts,
   visibleDateShifts,
-  hoveredSlot,
   editable,
   templates,
   getTemplateColor,
-  getCreatePreview,
   onToggleFilters,
   onTogglePin,
   onMemberMemoChange,
-  onBeginCreate,
-  onMoveCreate,
-  onFinishCreate,
-  onCancelCreate,
-  onLeaveTimeline,
-  onClearHover,
+  onCreateAt,
   onOpenShift,
 }: ShiftMobileViewProps) {
   const memberGroups = groupShiftMembersByDepartment(members)
@@ -146,21 +129,12 @@ export function ShiftMobileView({
                   pinned={pinnedMemberIds.has(member.id)}
                   selectedDateShifts={selectedDateShifts}
                   visibleDateShifts={visibleDateShifts}
-                  hoveredSlot={
-                    hoveredSlot?.memberId === member.id ? hoveredSlot.slot : null
-                  }
                   editable={editable}
                   templates={templates}
-                  createPreview={getCreatePreview(member.id)}
                   getTemplateColor={getTemplateColor}
                   onTogglePin={() => onTogglePin(member.id)}
                   onMemoChange={(memo) => onMemberMemoChange(member.id, memo)}
-                  onBeginCreate={(event) => onBeginCreate(member.id, event)}
-                  onMoveCreate={(event) => onMoveCreate(member.id, event)}
-                  onFinishCreate={() => onFinishCreate(member.id)}
-                  onCancelCreate={onCancelCreate}
-                  onLeaveTimeline={() => onLeaveTimeline(member.id)}
-                  onClearHover={onClearHover}
+                  onCreateAt={(start) => onCreateAt(member.id, start)}
                   onOpenShift={onOpenShift}
                 />
               ))}
