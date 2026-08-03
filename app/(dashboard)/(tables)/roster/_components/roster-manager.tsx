@@ -243,6 +243,7 @@ export function RosterManager({ members, departments = memberDepartments, roles 
                         type="button"
                         variant="ghost"
                         size="icon-xs"
+                        className="md:hidden"
                         onClick={() => setDetailDraft(member)}
                         aria-label={`${member.name}の詳細`}
                       >
