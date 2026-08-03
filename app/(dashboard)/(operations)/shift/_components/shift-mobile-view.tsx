@@ -10,6 +10,18 @@ import {
   type MobileCreatePreview,
 } from "./shift-mobile-member"
 
+export function groupShiftMembersByDepartment(members: Member[]) {
+  const groups = new Map<string, Member[]>()
+  members.forEach((member) => {
+    const department = member.department || "所属未設定"
+    groups.set(department, [...(groups.get(department) ?? []), member])
+  })
+  return Array.from(groups, ([department, groupedMembers]) => ({
+    department,
+    members: groupedMembers,
+  }))
+}
+
 type ShiftMobileViewProps = {
   visible: boolean
   filterSummary: string
@@ -65,6 +77,8 @@ export function ShiftMobileView({
   onClearHover,
   onOpenShift,
 }: ShiftMobileViewProps) {
+  const memberGroups = groupShiftMembersByDepartment(members)
+
   return (
     <div className={`${visible ? "space-y-3 md:hidden" : "hidden"} min-h-0 flex-1 overflow-auto select-none`}>
       <Button
@@ -106,32 +120,54 @@ export function ShiftMobileView({
       {hasNoFilterResults ? (
         <ShiftFilterEmptyState className="rounded-lg border bg-card" />
       ) : null}
-      {members.map((member) => (
-        <ShiftMobileMember
-          key={`mobile-member-${member.id}`}
-          member={member}
-          memo={memberMemos[member.id] ?? ""}
-          pinned={pinnedMemberIds.has(member.id)}
-          selectedDateShifts={selectedDateShifts}
-          visibleDateShifts={visibleDateShifts}
-          hoveredSlot={
-            hoveredSlot?.memberId === member.id ? hoveredSlot.slot : null
-          }
-          editable={editable}
-          templates={templates}
-          createPreview={getCreatePreview(member.id)}
-          getTemplateColor={getTemplateColor}
-          onTogglePin={() => onTogglePin(member.id)}
-          onMemoChange={(memo) => onMemberMemoChange(member.id, memo)}
-          onBeginCreate={(event) => onBeginCreate(member.id, event)}
-          onMoveCreate={(event) => onMoveCreate(member.id, event)}
-          onFinishCreate={() => onFinishCreate(member.id)}
-          onCancelCreate={onCancelCreate}
-          onLeaveTimeline={() => onLeaveTimeline(member.id)}
-          onClearHover={onClearHover}
-          onOpenShift={onOpenShift}
-        />
-      ))}
+      <div className="space-y-5 pb-4">
+        {memberGroups.map((group) => (
+          <section
+            key={group.department}
+            aria-labelledby={`shift-mobile-department-${group.department}`}
+          >
+            <div className="mb-2 flex items-baseline gap-2 px-1">
+              <h2
+                id={`shift-mobile-department-${group.department}`}
+                className="font-semibold"
+              >
+                {group.department}
+              </h2>
+              <span className="text-xs text-muted-foreground">
+                {group.members.length}人
+              </span>
+            </div>
+            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 overscroll-x-contain">
+              {group.members.map((member) => (
+                <ShiftMobileMember
+                  key={`mobile-member-${member.id}`}
+                  member={member}
+                  memo={memberMemos[member.id] ?? ""}
+                  pinned={pinnedMemberIds.has(member.id)}
+                  selectedDateShifts={selectedDateShifts}
+                  visibleDateShifts={visibleDateShifts}
+                  hoveredSlot={
+                    hoveredSlot?.memberId === member.id ? hoveredSlot.slot : null
+                  }
+                  editable={editable}
+                  templates={templates}
+                  createPreview={getCreatePreview(member.id)}
+                  getTemplateColor={getTemplateColor}
+                  onTogglePin={() => onTogglePin(member.id)}
+                  onMemoChange={(memo) => onMemberMemoChange(member.id, memo)}
+                  onBeginCreate={(event) => onBeginCreate(member.id, event)}
+                  onMoveCreate={(event) => onMoveCreate(member.id, event)}
+                  onFinishCreate={() => onFinishCreate(member.id)}
+                  onCancelCreate={onCancelCreate}
+                  onLeaveTimeline={() => onLeaveTimeline(member.id)}
+                  onClearHover={onClearHover}
+                  onOpenShift={onOpenShift}
+                />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
     </div>
   )
 }

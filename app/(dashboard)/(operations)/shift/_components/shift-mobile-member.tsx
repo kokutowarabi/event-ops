@@ -82,7 +82,10 @@ export function ShiftMobileMember({
   )
 
   return (
-    <section className="rounded-lg border bg-card p-3">
+    <article
+      aria-label={`${member.name}のシフトカード`}
+      className="w-[min(86vw,22rem)] shrink-0 snap-start rounded-xl border bg-card p-3 shadow-sm"
+    >
       <div className="mb-3 flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="font-medium">{member.name}</div>
@@ -104,7 +107,8 @@ export function ShiftMobileMember({
           onMemoChange={onMemoChange}
         />
       </div>
-      <div className="relative" style={{ height: MOBILE_TIMELINE_TRACK_HEIGHT }}>
+      <div className="h-[min(58svh,34rem)] overflow-y-auto overscroll-y-contain rounded-lg pr-1">
+        <div className="relative" style={{ height: MOBILE_TIMELINE_TRACK_HEIGHT }}>
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-y-0 left-14 right-0 rounded-lg"
@@ -232,7 +236,8 @@ export function ShiftMobileMember({
             </button>
           )
         })}
+        </div>
       </div>
-    </section>
+    </article>
   )
 }
