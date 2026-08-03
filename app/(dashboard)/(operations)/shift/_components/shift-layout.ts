@@ -15,6 +15,14 @@ export const MOBILE_TIMELINE_TRACK_HEIGHT =
 export const MOBILE_TIMELINE_GRID_BACKGROUND =
   `repeating-linear-gradient(to bottom, transparent 0, transparent ${MOBILE_SLOT_HEIGHT - 1}px, color-mix(in oklch, var(--border), transparent 35%) ${MOBILE_SLOT_HEIGHT - 1}px, color-mix(in oklch, var(--border), transparent 35%) ${MOBILE_SLOT_HEIGHT}px)`
 
+export function getMobileSlotOffset(minutes: number) {
+  return ((minutes - START_MINUTES) / SLOT_MINUTES) * MOBILE_SLOT_HEIGHT
+}
+
+export function getMobileTimelineOffset(minutes: number) {
+  return MOBILE_TIMELINE_PADDING_HEIGHT + getMobileSlotOffset(minutes)
+}
+
 export const DESKTOP_TIMELINE_HEADER_HEIGHT = 64
 export const DESKTOP_MEMBER_ROW_HEIGHT = 88
 export const DESKTOP_MEMBER_COLUMN_WIDTH = 15 * 16

@@ -18,8 +18,8 @@ const occupiedShift: Shift = {
   id: "shift-a",
   memberId: member.id,
   date: "2026-10-26",
-  start: 7 * 60,
-  end: 8 * 60,
+  start: 8 * 60,
+  end: 9 * 60,
   templateId: "reception",
   kind: "morning",
   note: "受付",
@@ -69,5 +69,17 @@ describe("shift mobile member", () => {
     fireEvent.click(blockedRange!)
 
     expect(onCreateAt).not.toHaveBeenCalled()
+  })
+
+  it("aligns time labels and shift tops to the same fifteen-minute grid", () => {
+    const { container } = renderMember([occupiedShift])
+    const timeMarker = container.querySelector('[data-mobile-time="8:00"]')
+    const shift = screen.getByRole("button", { name: "8:00-9:00受付" })
+
+    expect(timeMarker).toBeTruthy()
+    expect((timeMarker as HTMLElement).style.top).toBe(shift.style.top)
+    expect(timeMarker?.querySelector("span")?.className).toContain(
+      "-translate-y-1/2",
+    )
   })
 })
