@@ -1,4 +1,3 @@
-import { useMemo, useState } from "react"
 import { Building2, Download, Plus, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -20,31 +19,13 @@ import {
 } from "@/components/ui/table"
 import { EditableSelectCell, EditableTextCell } from "@/components/common/editable-cell"
 import { SearchHeader, SelectHeader } from "@/components/common/table-column-header"
-import { downloadCsv } from "@/lib/csv"
 import { type EventDepartment, type EventOrganization, type OrganizationStatus } from "@/lib/event-data"
-import { matchesSelectedValues } from "@/lib/table-filters"
-
-const EVENT_DEPARTMENTS: EventDepartment[] = ["模擬店", "屋外ステージ", "教室"]
-const statusVariants: Record<OrganizationStatus, "default" | "secondary" | "destructive" | "outline"> = {
-  承認済み: "default",
-  確認中: "secondary",
-  申請中: "outline",
-  要対応: "destructive",
-}
-
-const emptyOrganization: Omit<EventOrganization, "id"> = {
-  name: "",
-  category: "体験",
-  department: "教室",
-  representative: "",
-  contact: "",
-  status: "申請中",
-  booth: "",
-  note: "",
-}
-
-type OrganizationSortKey = keyof Omit<EventOrganization, "id">
-type SortOrder = "asc" | "desc"
+import {
+  EVENT_DEPARTMENTS,
+  ORGANIZATION_STATUSES,
+  organizationStatusVariants,
+} from "./organization-config"
+import { useOrganizationTable } from "./use-organization-table"
 
 type OrganizationManagerProps = {
   organizations: EventOrganization[]
@@ -57,98 +38,22 @@ export function OrganizationManager({
   onOrganizationsChange,
   onDeleteOrganization,
 }: OrganizationManagerProps) {
-  const [filters, setFilters] = useState<Record<OrganizationSortKey, string[]>>({
-    name: [],
-    category: [],
-    department: [],
-    representative: [],
-    contact: [],
-    status: [],
-    booth: [],
-    note: [],
-  })
-  const [sortKey, setSortKey] = useState<OrganizationSortKey>("name")
-  const [sortOrder, setSortOrder] = useState<SortOrder>("asc")
-  const [draft, setDraft] = useState(emptyOrganization)
-  const [adding, setAdding] = useState(false)
-
-  const headerOptions = useMemo(
-    () => ({
-      name: organizations.map((organization) => organization.name),
-      category: organizations.map((organization) => organization.category),
-      department: organizations.map((organization) => organization.department),
-      representative: organizations.map((organization) => organization.representative),
-      booth: organizations.map((organization) => organization.booth),
-      status: organizations.map((organization) => organization.status),
-      note: organizations.map((organization) => organization.note),
-    }),
-    [organizations],
-  )
-
-  const visibleOrganizations = useMemo(() => {
-    return organizations
-      .filter((organization) => {
-        return (Object.keys(filters) as OrganizationSortKey[]).every((key) =>
-          matchesSelectedValues([organization[key]], filters[key]),
-        )
-      })
-      .sort((a, b) => {
-        const result = a[sortKey].localeCompare(b[sortKey], "ja")
-        return sortOrder === "asc" ? result : -result
-      })
-  }, [organizations, filters, sortKey, sortOrder])
-
-  const updateFilter = (key: OrganizationSortKey, value: string[]) => setFilters((prev) => ({ ...prev, [key]: value }))
-
-  const updateOrganization = (id: string, update: Partial<Omit<EventOrganization, "id">>) => {
-    onOrganizationsChange((prev) =>
-      prev.map((organization) => (organization.id === id ? { ...organization, ...update } : organization)),
-    )
-  }
-
-  const toggleSort = (key: OrganizationSortKey) => {
-    if (sortKey === key) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
-    } else {
-      setSortKey(key)
-      setSortOrder("asc")
-    }
-  }
-
-  const addOrganization = () => {
-    if (!draft.name.trim()) return
-    onOrganizationsChange((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        ...draft,
-        name: draft.name.trim(),
-        representative: draft.representative.trim(),
-        contact: draft.contact.trim(),
-        booth: draft.booth.trim(),
-        note: draft.note.trim(),
-      },
-    ])
-    setDraft(emptyOrganization)
-    setAdding(false)
-  }
-
-  const exportOrganizations = () => {
-    downloadCsv(
-      "参加団体",
-      ["参加団体名", "種別", "部門", "代表者", "連絡先", "配置", "状態", "メモ"],
-      visibleOrganizations.map((organization) => [
-        organization.name,
-        organization.category,
-        organization.department,
-        organization.representative,
-        organization.contact,
-        organization.booth,
-        organization.status,
-        organization.note,
-      ]),
-    )
-  }
+  const {
+    filters,
+    sortKey,
+    sortOrder,
+    draft,
+    adding,
+    headerOptions,
+    visibleOrganizations,
+    setDraft,
+    setAdding,
+    updateFilter,
+    updateOrganization,
+    toggleSort,
+    addOrganization,
+    exportOrganizations,
+  } = useOrganizationTable(organizations, onOrganizationsChange)
 
   return (
     <div className="mx-auto flex h-[calc(100svh-5.5rem)] max-w-7xl flex-col px-4 py-5 md:py-6">
@@ -228,7 +133,7 @@ export function OrganizationManager({
                       <SelectValue>{draft.status}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {(["申請中", "確認中", "承認済み", "要対応"] as OrganizationStatus[]).map((status) => (
+                      {ORGANIZATION_STATUSES.map((status) => (
                         <SelectItem key={`draft-${status}`} value={status}>
                           {status}
                         </SelectItem>
@@ -236,7 +141,7 @@ export function OrganizationManager({
                     </SelectContent>
                   </Select>
                 ) : (
-                  <SelectHeader label="状態" column="status" value={filters.status} options={["申請中", "確認中", "承認済み", "要対応"]} onChange={(value) => updateFilter("status", value)} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
+                  <SelectHeader label="状態" column="status" value={filters.status} options={ORGANIZATION_STATUSES} onChange={(value) => updateFilter("status", value)} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
                 )}
               </TableHead>
               <TableHead className="hidden min-w-64 lg:table-cell">
@@ -283,10 +188,10 @@ export function OrganizationManager({
                 <TableCell>
                   <EditableSelectCell
                     value={organization.status}
-                    options={["申請中", "確認中", "承認済み", "要対応"]}
+                    options={ORGANIZATION_STATUSES}
                     onCommit={(value) => updateOrganization(organization.id, { status: value })}
                   >
-                    <Badge variant={statusVariants[organization.status]}>{organization.status}</Badge>
+                    <Badge variant={organizationStatusVariants[organization.status]}>{organization.status}</Badge>
                   </EditableSelectCell>
                 </TableCell>
                 <TableCell className="hidden max-w-72 truncate text-muted-foreground lg:table-cell">
