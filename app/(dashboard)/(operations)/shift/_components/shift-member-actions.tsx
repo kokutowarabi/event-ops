@@ -99,22 +99,20 @@ export function ShiftMemberActions({
         aria-label={`${memberName}の操作`}
         align="start"
         sideOffset={-28}
-        className="w-64 p-0"
+        className="relative w-64 p-0"
         onPointerEnter={cancelScheduledClose}
         onPointerLeave={scheduleClose}
       >
-        <div className="flex items-center justify-between border-b p-2 md:hidden">
-          <span className="pl-1 text-sm font-medium">メンバー操作</span>
-          <Button
-            type="button"
-            size="icon-sm"
-            variant="ghost"
-            aria-label={`${memberName}の操作を閉じる`}
-            onClick={() => setOpen(false)}
-          >
-            <X className="size-4" />
-          </Button>
-        </div>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          className="absolute right-2 top-2 md:hidden"
+          aria-label={`${memberName}の操作を閉じる`}
+          onClick={() => setOpen(false)}
+        >
+          <X className="size-4" />
+        </Button>
         <div className="p-3">
           <Label htmlFor={memoId}>メモ</Label>
           <Input

@@ -101,6 +101,7 @@ describe("shift member actions", () => {
 
     fireEvent.click(trigger)
     const card = screen.getByRole("dialog", { name: "田中 太郎の操作" })
+    expect(screen.queryByText("メンバー操作")).toBeNull()
     fireEvent.pointerLeave(trigger.parentElement!)
     fireEvent.pointerLeave(card)
     expect(screen.getByRole("dialog", { name: "田中 太郎の操作" })).toBeTruthy()
