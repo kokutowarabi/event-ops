@@ -57,6 +57,8 @@ export function useShiftMoveActions({
       pointerY: clientY,
       start: shift.start,
       end: shift.end,
+      previewStart: shift.start,
+      previewEnd: shift.end,
       previewMemberId: shift.memberId,
       canDrop: true,
     })
@@ -135,6 +137,8 @@ export function useShiftMoveActions({
           ...current,
           pointerX: event.clientX,
           pointerY: event.clientY,
+          previewStart: start,
+          previewEnd: end,
           previewMemberId: candidateMemberId,
           canDrop,
         }

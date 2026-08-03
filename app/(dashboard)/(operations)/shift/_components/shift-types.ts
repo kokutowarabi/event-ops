@@ -46,6 +46,8 @@ export type MovingShift = {
   pointerY: number
   start: number
   end: number
+  previewStart: number
+  previewEnd: number
   previewMemberId: string
   canDrop: boolean
 }

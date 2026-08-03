@@ -4,7 +4,7 @@ import { ShiftDesktopCreatePreview } from "./shift-desktop-create-preview"
 import { ShiftDesktopMemberInfo } from "./shift-desktop-member-info"
 import { ShiftDesktopShiftBlock } from "./shift-desktop-shift-block"
 import { DEFAULT_SHIFT_TEMPLATE_ID, SLOT_MINUTES, START_MINUTES } from "./shift-domain"
-import { isMovingPreviewVisibleForMember } from "./shift-move-preview"
+import { getMovingPreviewForMember } from "./shift-move-preview"
 import {
   DESKTOP_MEMBER_ROW_HEIGHT,
   DESKTOP_TIMELINE_HEADER_HEIGHT,
@@ -85,12 +85,14 @@ export function ShiftDesktopMemberRow({
   const memberShifts = (pinned ? selectedDateShifts : visibleDateShifts)
     .filter((shift) => shift.memberId === member.id)
   const allMemberShifts = selectedDateShifts.filter((shift) => shift.memberId === member.id)
-  const movingMemberShifts =
-    movingPreviewShift
-    && isMovingPreviewVisibleForMember(moving, member.id)
-    && movingPreviewShift.memberId !== member.id
-      ? [...memberShifts, { ...movingPreviewShift, memberId: member.id }]
-      : memberShifts
+  const movingMemberPreview = getMovingPreviewForMember(
+    moving,
+    movingPreviewShift,
+    member.id,
+  )
+  const movingMemberShifts = movingMemberPreview
+    ? [...memberShifts, movingMemberPreview]
+    : memberShifts
   const visibleMemberShifts =
     copyingShift && copying?.previewMemberIds.includes(member.id) && copyingShift.memberId !== member.id
       ? [...movingMemberShifts, { ...copyingShift, memberId: member.id }]
