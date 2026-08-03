@@ -1,4 +1,3 @@
-import { useMemo, useState } from "react"
 import { BarChart3, CalendarDays, Download, Trophy } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,16 +9,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { downloadCsv } from "@/lib/csv"
 import type { EventDepartment, EventProject } from "@/lib/event-data"
 import { eventSchedule, formatJapaneseDate } from "@/lib/event-schedule"
 import type { VisitorVote } from "@/lib/supabase/votes"
+import { projectVoteTotal } from "@/lib/votes"
 import {
-  projectVoteTotal,
-  totalVotes,
-  votesByDate,
-  votesOnDate,
-} from "@/lib/votes"
+  ALL_VOTE_DATES,
+  ALL_VOTE_DEPARTMENTS,
+  useVoteRanking,
+  voteDepartments,
+} from "./use-vote-ranking"
 
 type ProjectVoteProps = {
   projects: EventProject[]
@@ -27,71 +26,20 @@ type ProjectVoteProps = {
   loading?: boolean
 }
 
-const departments: EventDepartment[] = ["模擬店", "屋外ステージ", "教室"]
-const allVoteDates = "all"
-const allDepartments = "all"
-
 export function ProjectVote({
   projects,
   votes,
   loading = false,
 }: ProjectVoteProps) {
-  const [selectedVoteDate, setSelectedVoteDate] = useState(allVoteDates)
-  const [selectedDepartment, setSelectedDepartment] = useState<
-    EventDepartment | typeof allDepartments
-  >(allDepartments)
-
-  const stats = useMemo(() => {
-    const departmentTotals = departments.map((department) => ({
-      department,
-      count: projects
-        .filter((project) => project.department === department)
-        .reduce((total, project) => total + projectVoteTotal(project.id, votes), 0),
-    }))
-
-    return {
-      departmentTotals,
-      allVotes: totalVotes(votes),
-      dailyTotals: votesByDate(votes),
-    }
-  }, [projects, votes])
-
-  const rankingStats = useMemo(() => {
-    const rankingVotes = selectedVoteDate === allVoteDates
-      ? votes
-      : votesOnDate(votes, selectedVoteDate)
-    const rankingProjects = selectedDepartment === allDepartments
-      ? projects
-      : projects.filter((project) => project.department === selectedDepartment)
-    const ranking = [...rankingProjects].sort((a, b) => {
-      const voteDifference = projectVoteTotal(b.id, rankingVotes)
-        - projectVoteTotal(a.id, rankingVotes)
-      return voteDifference || a.title.localeCompare(b.title, "ja")
-    })
-
-    return {
-      ranking,
-      votes: rankingVotes,
-    }
-  }, [projects, selectedDepartment, selectedVoteDate, votes])
-
-  const exportRanking = () => {
-    const voteDateLabel = selectedVoteDate === allVoteDates
-      ? "全投票日"
-      : formatJapaneseDate(selectedVoteDate, false)
-    downloadCsv(
-      `投票結果_${selectedVoteDate === allVoteDates ? "全投票日" : selectedVoteDate}_${selectedDepartment === allDepartments ? "全部門" : selectedDepartment}`,
-      ["順位", "投票日", "部門", "企画名", "参加団体", "票数"],
-      rankingStats.ranking.map((project, index) => [
-        index + 1,
-        voteDateLabel,
-        project.department,
-        project.title,
-        project.organizationName,
-        projectVoteTotal(project.id, rankingStats.votes),
-      ]),
-    )
-  }
+  const {
+    selectedVoteDate,
+    selectedDepartment,
+    stats,
+    rankingStats,
+    setSelectedVoteDate,
+    setSelectedDepartment,
+    exportRanking,
+  } = useVoteRanking(projects, votes)
 
   return (
     <div className="mx-auto flex h-[calc(100svh-4rem)] max-w-7xl flex-col px-3 py-4 md:px-4 md:py-6">
@@ -178,7 +126,7 @@ export function ProjectVote({
                 >
                   <SelectTrigger className="min-w-44 bg-background">
                     <SelectValue>
-                      {selectedVoteDate === allVoteDates
+                      {selectedVoteDate === ALL_VOTE_DATES
                         ? "全投票日"
                         : `${formatJapaneseDate(selectedVoteDate, false)}・${
                             eventSchedule.festivalDays.find(
@@ -188,7 +136,7 @@ export function ProjectVote({
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={allVoteDates}>全投票日</SelectItem>
+                    <SelectItem value={ALL_VOTE_DATES}>全投票日</SelectItem>
                     {eventSchedule.festivalDays.map((day) => (
                       <SelectItem key={day.date} value={day.date}>
                         {formatJapaneseDate(day.date, false)}・{day.label}
@@ -203,20 +151,22 @@ export function ProjectVote({
                   value={selectedDepartment}
                   onValueChange={(value) => {
                     if (value !== null) {
-                      setSelectedDepartment(value as EventDepartment | typeof allDepartments)
+                      setSelectedDepartment(
+                        value as EventDepartment | typeof ALL_VOTE_DEPARTMENTS,
+                      )
                     }
                   }}
                 >
                   <SelectTrigger className="min-w-36 bg-background">
                     <SelectValue>
-                      {selectedDepartment === allDepartments
+                      {selectedDepartment === ALL_VOTE_DEPARTMENTS
                         ? "全部門"
                         : selectedDepartment}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={allDepartments}>全部門</SelectItem>
-                    {departments.map((department) => (
+                    <SelectItem value={ALL_VOTE_DEPARTMENTS}>全部門</SelectItem>
+                    {voteDepartments.map((department) => (
                       <SelectItem key={department} value={department}>
                         {department}
                       </SelectItem>
