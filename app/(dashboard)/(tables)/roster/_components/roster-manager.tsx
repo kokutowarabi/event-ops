@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
 import {
+  Check,
   Download,
   Info,
   Plus,
@@ -10,6 +11,13 @@ import { exportToCsv, memberDepartments, memberRoles, type Member, type SortKey,
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -170,11 +178,30 @@ export function RosterManager({ members, departments = memberDepartments, roles 
               </TableHead>
               <TableHead className="min-w-44">
                 {adding ? (
-                  <select value={draft.department} onChange={(event) => setDraft((prev) => ({ ...prev, department: event.target.value }))} className="h-8 w-full rounded-lg border border-input bg-background px-2 text-sm">
-                    {departments.map((department) => <option key={department} value={department}>{department}</option>)}
-                  </select>
+                  <Select
+                    value={draft.department}
+                    onValueChange={(value) => {
+                      if (value !== null) setDraft((prev) => ({ ...prev, department: value }))
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-full bg-background">
+                      <SelectValue>{draft.department}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="w-max">
+                      {departments.map((department) => (
+                        <SelectItem key={department} value={department} hideIndicator className="pr-2 pl-2">
+                          <span className="grid size-4 shrink-0 place-items-center">
+                            {department === draft.department ? <Check className="size-4" /> : null}
+                          </span>
+                          <span className={department === draft.department ? "font-semibold" : ""}>
+                            {department}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
-                  <SelectHeader label="所属局" column="department" value={filters.department} options={departments} onChange={(value) => updateFilter("department", value)} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
+                  <SelectHeader label="所属" column="department" value={filters.department} options={departments} onChange={(value) => updateFilter("department", value)} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
                 )}
               </TableHead>
               <TableHead className="hidden min-w-44 sm:table-cell">

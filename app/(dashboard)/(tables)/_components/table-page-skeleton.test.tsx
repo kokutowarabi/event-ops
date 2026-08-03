@@ -15,7 +15,7 @@ describe("table page skeleton", () => {
         addLabel="メンバーを追加"
         columns={[
           { label: "氏名", className: "min-w-56" },
-          { label: "所属局", className: "min-w-44" },
+          { label: "所属", className: "min-w-44" },
         ]}
       />,
     )

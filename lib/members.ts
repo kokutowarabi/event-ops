@@ -67,7 +67,7 @@ export type SortKey = keyof Omit<Member, "id">
 export type SortOrder = "asc" | "desc"
 
 export function exportToCsv(members: Member[]): void {
-  const headers = ["氏名", "メールアドレス", "所属局", "役職"]
+  const headers = ["氏名", "メールアドレス", "所属", "役職"]
   const rows = members.map((m) => [m.name, m.email, m.department, m.role])
   downloadCsv("メンバー名簿", headers, rows)
 }
