@@ -36,10 +36,14 @@ describe("preview control dock", () => {
     renderDock()
     const dock = screen.getByRole("complementary", { name: "サイトプレビュー操作" })
     const handle = screen.getByRole("button", { name: "プレビュー操作を開く" })
+    const card = dock.querySelector("[id][aria-hidden]")
 
     expect(dock.className).toContain("drop-shadow-2xl")
     expect(handle.className).toContain("right-full")
     expect(handle.className).not.toContain("shadow-lg")
+    expect(handle.className).toContain("bg-white")
+    expect(card?.className).toContain("bg-white")
+    expect(card?.className).not.toContain("backdrop-blur")
   })
 
   it("opens when the edge handle is dragged to the left", () => {

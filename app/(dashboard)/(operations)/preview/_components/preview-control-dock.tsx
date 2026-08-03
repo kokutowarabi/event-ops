@@ -140,7 +140,7 @@ export function PreviewControlDock({
           aria-label={open ? "プレビュー操作を収納" : "プレビュー操作を開く"}
           aria-controls={panelId}
           aria-expanded={open}
-          className="absolute right-full top-1/2 z-10 flex h-20 w-7 -translate-y-1/2 touch-none cursor-ew-resize items-center justify-center rounded-l-2xl border border-r-0 bg-popover/95 text-muted-foreground backdrop-blur"
+          className="absolute right-full top-1/2 z-10 flex h-20 w-7 -translate-y-1/2 touch-none cursor-ew-resize items-center justify-center rounded-l-2xl border border-r-0 bg-white text-muted-foreground"
           onPointerDown={startDrag}
           onPointerMove={updateDrag}
           onPointerUp={finishDrag}
@@ -151,14 +151,14 @@ export function PreviewControlDock({
         </button>
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute -left-px top-1/2 z-10 h-16 w-1 -translate-y-1/2 bg-popover/95 backdrop-blur"
+          className="pointer-events-none absolute -left-px top-1/2 z-10 h-16 w-1 -translate-y-1/2 bg-white"
         />
 
         <div
           id={panelId}
           inert={!open}
           aria-hidden={!open}
-          className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-2xl border bg-popover/95 p-4 text-popover-foreground backdrop-blur-xl"
+          className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-2xl border bg-white p-4 text-popover-foreground"
         >
           <div className="flex items-start gap-3">
             <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
