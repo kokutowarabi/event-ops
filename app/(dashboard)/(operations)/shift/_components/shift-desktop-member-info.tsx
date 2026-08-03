@@ -1,9 +1,8 @@
-import { Pin } from "lucide-react"
 import type { Member } from "@/lib/members"
 import { MemberRoleBadges } from "@/components/common/member-role-badges"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { memberDepartmentBadgeClass } from "@/lib/member-department"
+import { ShiftMemberActions } from "./shift-member-actions"
 
 type ShiftDesktopMemberInfoProps = {
   member: Member
@@ -25,16 +24,11 @@ export function ShiftDesktopMemberInfo({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 font-medium">{member.name}</div>
-        <Button
-          type="button"
-          size="icon-sm"
-          variant={pinned ? "secondary" : "ghost"}
-          aria-label={pinned ? `${member.name}のピン留めを解除` : `${member.name}をピン留め`}
-          aria-pressed={pinned}
-          onClick={() => onTogglePin(member.id)}
-        >
-          <Pin className={`size-4 ${pinned ? "fill-current" : ""}`} />
-        </Button>
+        <ShiftMemberActions
+          memberName={member.name}
+          pinned={pinned}
+          onTogglePin={() => onTogglePin(member.id)}
+        />
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
         <Badge

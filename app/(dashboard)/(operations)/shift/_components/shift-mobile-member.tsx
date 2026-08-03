@@ -1,8 +1,6 @@
 import type { PointerEvent } from "react"
-import { Pin } from "lucide-react"
 import { MemberRoleBadges } from "@/components/common/member-role-badges"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { memberDepartmentBadgeClass } from "@/lib/member-department"
 import type { Member } from "@/lib/members"
 import type { Shift, ShiftTemplate, ShiftTemplateId } from "@/lib/shift-data"
@@ -23,6 +21,7 @@ import {
   MOBILE_TIMELINE_TRACK_HEIGHT,
   SHIFT_DND_CREATION_ENABLED,
 } from "./shift-layout"
+import { ShiftMemberActions } from "./shift-member-actions"
 
 export type MobileCreatePreview = {
   top: number
@@ -93,18 +92,11 @@ export function ShiftMobileMember({
             <MemberRoleBadges value={member.role} />
           </div>
         </div>
-        <Button
-          type="button"
-          size="icon-sm"
-          variant={pinned ? "secondary" : "ghost"}
-          aria-label={
-            pinned ? `${member.name}のピン留めを解除` : `${member.name}をピン留め`
-          }
-          aria-pressed={pinned}
-          onClick={onTogglePin}
-        >
-          <Pin className={`size-4 ${pinned ? "fill-current" : ""}`} />
-        </Button>
+        <ShiftMemberActions
+          memberName={member.name}
+          pinned={pinned}
+          onTogglePin={onTogglePin}
+        />
       </div>
       <div className="relative" style={{ height: MOBILE_TIMELINE_TRACK_HEIGHT }}>
         <div
