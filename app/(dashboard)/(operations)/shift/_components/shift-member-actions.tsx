@@ -48,10 +48,7 @@ export function ShiftMemberActions({
     if (!usesHoverInteraction()) return
     cancelScheduledClose()
     closeTimerRef.current = window.setTimeout(() => {
-      const focusedElement = document.activeElement
-      const editingMemo = focusedElement instanceof HTMLInputElement
-        && focusedElement.closest("[data-shift-member-actions-card]")
-      if (!editingMemo) setOpen(false)
+      setOpen(false)
       closeTimerRef.current = null
     }, HOVER_CLOSE_DELAY_MS)
   }, [cancelScheduledClose])
@@ -94,7 +91,6 @@ export function ShiftMemberActions({
         </PopoverTrigger>
       </span>
       <PopoverContent
-        data-shift-member-actions-card
         role="dialog"
         aria-label={`${memberName}の操作`}
         align="start"

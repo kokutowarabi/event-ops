@@ -83,6 +83,30 @@ describe("shift member actions", () => {
     expect(screen.queryByRole("dialog", { name: "田中 太郎の操作" })).toBeNull()
   })
 
+  it("closes on desktop hover-out even while the memo has focus", () => {
+    useDesktopViewport()
+    vi.useFakeTimers()
+    render(
+      <ShiftMemberActions
+        memberName="田中 太郎"
+        memo=""
+        pinned={false}
+        onTogglePin={vi.fn()}
+        onMemoChange={vi.fn()}
+      />,
+    )
+
+    const trigger = screen.getByRole("button", { name: "田中 太郎の操作" })
+    fireEvent.pointerEnter(trigger.parentElement!)
+    const card = screen.getByRole("dialog", { name: "田中 太郎の操作" })
+    fireEvent.focus(screen.getByRole("textbox", { name: "メモ" }))
+
+    fireEvent.pointerLeave(card)
+    act(() => vi.advanceTimersByTime(150))
+
+    expect(screen.queryByRole("dialog", { name: "田中 太郎の操作" })).toBeNull()
+  })
+
   it("keeps the card open on mobile until its close button is pressed", () => {
     useDesktopViewport(false)
     render(
