@@ -8,7 +8,7 @@ describe("shift member actions", () => {
   it("opens an ellipsis card and pins the member", () => {
     const onTogglePin = vi.fn()
     const onMemoChange = vi.fn()
-    render(
+    const { container } = render(
       <ShiftMemberActions
         memberName="田中 太郎"
         memo=""
@@ -18,6 +18,7 @@ describe("shift member actions", () => {
       />,
     )
 
+    expect(container.querySelector(".lucide-circle-ellipsis")).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: "田中 太郎の操作" }))
     expect(screen.getByRole("dialog", { name: "田中 太郎の操作" })).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: "固定する" }))

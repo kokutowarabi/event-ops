@@ -1,5 +1,5 @@
 import { useId, useState } from "react"
-import { Ellipsis, Pin } from "lucide-react"
+import { CircleEllipsis, Pin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -40,7 +40,7 @@ export function ShiftMemberActions({
           />
         }
       >
-        <Ellipsis className="size-4" />
+        <CircleEllipsis className="size-4" />
       </PopoverTrigger>
       <PopoverContent
         role="dialog"
