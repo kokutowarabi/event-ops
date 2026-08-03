@@ -4,9 +4,9 @@ import {
   Building2,
   CalendarClock,
   CalendarDays,
-  ChevronsRight,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
-  GripVertical,
   MonitorCog,
   Users,
   type LucideIcon,
@@ -121,103 +121,96 @@ export function PreviewControlDock({
   }
 
   return (
-    <aside
-      ref={panelRef}
-      aria-label="サイトプレビュー操作"
-      data-state={open ? "open" : "closed"}
-      className={cn(
-        "fixed right-2 top-1/2 z-50 w-[min(20rem,calc(100vw-2rem))] -translate-y-1/2 drop-shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none",
-        !open && dragOffset === null && "translate-x-[calc(100%+0.5rem)]",
-        dragOffset !== null && "transition-none",
-      )}
-      style={dragOffset === null
-        ? undefined
-        : { transform: `translate3d(${dragOffset}px, -50%, 0)` }}
-    >
-      <button
-        type="button"
-        aria-label={open ? "プレビュー操作を収納" : "プレビュー操作を開く"}
-        aria-controls={panelId}
-        aria-expanded={open}
-        className="absolute right-full top-1/2 z-10 flex h-20 w-7 -translate-y-1/2 touch-none cursor-ew-resize items-center justify-center rounded-l-2xl border border-r-0 bg-popover/95 text-muted-foreground backdrop-blur"
-        onPointerDown={startDrag}
-        onPointerMove={updateDrag}
-        onPointerUp={finishDrag}
-        onPointerCancel={finishDrag}
-        onClick={toggleFromHandle}
+    <div className="pointer-events-none fixed right-2 top-1/2 z-50 w-[min(20rem,calc(100vw-2rem))] -translate-y-1/2">
+      <aside
+        ref={panelRef}
+        aria-label="サイトプレビュー操作"
+        data-state={open ? "open" : "closed"}
+        className={cn(
+          "pointer-events-auto relative w-full drop-shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none",
+          !open && dragOffset === null && "translate-x-[calc(100%+0.5rem)]",
+          dragOffset !== null && "transition-none",
+        )}
+        style={dragOffset === null
+          ? undefined
+          : { transform: `translateX(${dragOffset}px)` }}
       >
-        <GripVertical className="size-4" />
-      </button>
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute -left-px top-1/2 z-10 h-16 w-1 -translate-y-1/2 bg-popover/95 backdrop-blur"
-      />
+        <button
+          type="button"
+          aria-label={open ? "プレビュー操作を収納" : "プレビュー操作を開く"}
+          aria-controls={panelId}
+          aria-expanded={open}
+          className="absolute right-full top-1/2 z-10 flex h-20 w-7 -translate-y-1/2 touch-none cursor-ew-resize items-center justify-center rounded-l-2xl border border-r-0 bg-popover/95 text-muted-foreground backdrop-blur"
+          onPointerDown={startDrag}
+          onPointerMove={updateDrag}
+          onPointerUp={finishDrag}
+          onPointerCancel={finishDrag}
+          onClick={toggleFromHandle}
+        >
+          {open ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
+        </button>
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-px top-1/2 z-10 h-16 w-1 -translate-y-1/2 bg-popover/95 backdrop-blur"
+        />
 
-      <div
-        id={panelId}
-        inert={!open}
-        aria-hidden={!open}
-        className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-2xl border bg-popover/95 p-4 text-popover-foreground backdrop-blur-xl"
-      >
-        <div className="flex items-start gap-3">
-          <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
-            <MonitorCog className="size-4" />
+        <div
+          id={panelId}
+          inert={!open}
+          aria-hidden={!open}
+          className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-2xl border bg-popover/95 p-4 text-popover-foreground backdrop-blur-xl"
+        >
+          <div className="flex items-start gap-3">
+            <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
+              <MonitorCog className="size-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-semibold">プレビュー操作</h2>
+              <p className="text-xs text-muted-foreground">日時テストと管理画面への移動</p>
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="font-semibold">プレビュー操作</h2>
-            <p className="text-xs text-muted-foreground">日時テストと管理画面への移動</p>
+
+          <Badge variant="outline" className="mt-4 bg-primary/5">
+            企画管理と連動・{projectCount}企画
+          </Badge>
+
+          <div className="mt-4 grid gap-2">
+            <Label htmlFor={inputId} className="flex items-center gap-2">
+              <CalendarClock className="size-4 text-muted-foreground" />
+              プレビュー日時
+            </Label>
+            <Input
+              id={inputId}
+              type="datetime-local"
+              value={previewDateTime}
+              onInput={(event) => onPreviewDateTimeChange(event.currentTarget.value)}
+            />
+            <Button type="button" variant="outline" onClick={onUseCurrentDateTime}>
+              現在日時を使用
+            </Button>
           </div>
-          <Button
-            type="button"
-            size="icon-sm"
-            variant="ghost"
-            aria-label="プレビュー操作を収納"
-            onClick={() => setOpen(false)}
-          >
-            <ChevronsRight className="size-4" />
-          </Button>
-        </div>
 
-        <Badge variant="outline" className="mt-4 bg-primary/5">
-          企画管理と連動・{projectCount}企画
-        </Badge>
-
-        <div className="mt-4 grid gap-2">
-          <Label htmlFor={inputId} className="flex items-center gap-2">
-            <CalendarClock className="size-4 text-muted-foreground" />
-            プレビュー日時
-          </Label>
-          <Input
-            id={inputId}
-            type="datetime-local"
-            value={previewDateTime}
-            onInput={(event) => onPreviewDateTimeChange(event.currentTarget.value)}
-          />
-          <Button type="button" variant="outline" onClick={onUseCurrentDateTime}>
-            現在日時を使用
-          </Button>
+          <div className="mt-4 border-t pt-4">
+            <p className="mb-2 text-xs font-medium text-muted-foreground">管理画面へ移動</p>
+            <nav className="grid grid-cols-2 gap-2" aria-label="管理画面へ移動">
+              {managementRoutes.map((route) => {
+                const Icon = route.icon
+                return (
+                  <Link
+                    key={route.href}
+                    href={route.href}
+                    prefetch
+                    className={cn(buttonVariants({ size: "sm", variant: "outline" }), "justify-start")}
+                  >
+                    <Icon className="size-4" />
+                    {route.label}
+                  </Link>
+                )
+              })}
+            </nav>
+          </div>
         </div>
-
-        <div className="mt-4 border-t pt-4">
-          <p className="mb-2 text-xs font-medium text-muted-foreground">管理画面へ移動</p>
-          <nav className="grid grid-cols-2 gap-2" aria-label="管理画面へ移動">
-            {managementRoutes.map((route) => {
-              const Icon = route.icon
-              return (
-                <Link
-                  key={route.href}
-                  href={route.href}
-                  prefetch
-                  className={cn(buttonVariants({ size: "sm", variant: "outline" }), "justify-start")}
-                >
-                  <Icon className="size-4" />
-                  {route.label}
-                </Link>
-              )
-            })}
-          </nav>
-        </div>
-      </div>
-    </aside>
+      </aside>
+    </div>
   )
 }

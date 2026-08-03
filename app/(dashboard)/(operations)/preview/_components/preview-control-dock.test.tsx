@@ -50,9 +50,13 @@ describe("preview control dock", () => {
 
     fireEvent.pointerDown(handle, { pointerId: 1, clientX: 380 })
     fireEvent.pointerMove(handle, { pointerId: 1, clientX: 180 })
+    expect(dock.style.transform).toContain("translateX(")
+    expect(dock.style.transform).not.toContain("-50%")
     fireEvent.pointerUp(handle, { pointerId: 1, clientX: 180 })
 
     expect(dock.getAttribute("data-state")).toBe("open")
+    expect(dock.querySelector(".lucide-chevron-right")).toBeTruthy()
+    expect(screen.getAllByRole("button", { name: "プレビュー操作を収納" })).toHaveLength(1)
   })
 
   it("updates the preview time and exposes management destinations", () => {
