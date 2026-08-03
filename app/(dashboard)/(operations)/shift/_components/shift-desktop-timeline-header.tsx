@@ -1,7 +1,7 @@
 import type { MouseEvent } from "react"
 import { ListFilter } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { START_MINUTES, timeOptions } from "./shift-domain"
+import { SLOT_MINUTES, START_MINUTES, timeOptions } from "./shift-domain"
 import { SLOT_WIDTH, TIMELINE_PADDING_WIDTH, TIMELINE_TRACK_WIDTH } from "./shift-layout"
 import type { CreatingShift, MovingShift, ResizingShift } from "./shift-types"
 
@@ -15,6 +15,8 @@ type ShiftDesktopTimelineHeaderProps = {
   onToggleFilters: (event: MouseEvent<HTMLButtonElement>) => void
 }
 
+const MAJOR_LABEL_HIDE_RANGE_SLOTS = 30 / SLOT_MINUTES
+
 export function ShiftDesktopTimelineHeader({
   filterSummary,
   filtersOpen,
@@ -24,6 +26,11 @@ export function ShiftDesktopTimelineHeader({
   resizing,
   onToggleFilters,
 }: ShiftDesktopTimelineHeaderProps) {
+  const hoveredSlotIndex =
+    creatingShift === null && moving === null && resizing === null
+      ? hoveredSlot?.slot ?? null
+      : null
+
   return (
     <>
       <div className="sticky left-0 top-0 z-30 flex h-16 items-center border-b border-r bg-card px-3">
@@ -49,17 +56,18 @@ export function ShiftDesktopTimelineHeader({
         <div className="relative h-full" style={{ width: TIMELINE_TRACK_WIDTH }}>
           {timeOptions.map((slot, index) => {
             const isMajor = (slot.minutes - START_MINUTES) % 120 === 0
-            const isHovered =
-              creatingShift === null
-              && moving === null
-              && resizing === null
-              && hoveredSlot?.slot === index
+            const isHovered = hoveredSlotIndex === index
+            const hidesNearbyMajorLabel =
+              isMajor
+              && hoveredSlotIndex !== null
+              && hoveredSlotIndex !== index
+              && Math.abs(hoveredSlotIndex - index) <= MAJOR_LABEL_HIDE_RANGE_SLOTS
             return (
               <span
                 key={`time-slot-${slot.value}`}
                 className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-xs transition ${isHovered
                   ? "font-semibold text-foreground opacity-100"
-                  : isMajor
+                  : isMajor && !hidesNearbyMajorLabel
                     ? "text-muted-foreground opacity-100"
                     : "text-muted-foreground opacity-0"
                 }`}
