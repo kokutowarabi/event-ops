@@ -6,6 +6,7 @@ export function ProjectsRouteLoading() {
     <TablePageSkeleton
       icon={ClipboardList}
       title="企画管理"
+      addLabel="企画を追加"
       columns={[
         { label: "企画名", className: "min-w-60" },
         { label: "参加団体", className: "hidden min-w-52 md:table-cell" },

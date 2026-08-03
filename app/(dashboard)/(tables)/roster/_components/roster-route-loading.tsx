@@ -6,6 +6,7 @@ export function RosterRouteLoading() {
     <TablePageSkeleton
       icon={Users}
       title="名簿"
+      addLabel="メンバーを追加"
       columns={[
         { label: "氏名", className: "min-w-56" },
         { label: "メールアドレス", className: "hidden min-w-64 md:table-cell" },

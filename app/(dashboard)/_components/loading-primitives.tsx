@@ -19,15 +19,22 @@ export function Skeleton({
   )
 }
 
-export function LoadingActions({ includeAdd = true }: { includeAdd?: boolean }) {
+export function LoadingActions({
+  includeAdd = true,
+  addLabel = "追加",
+}: {
+  includeAdd?: boolean
+  addLabel?: string
+}) {
   return (
     <div
       className={includeAdd ? "ml-2 flex items-center gap-4" : "flex items-center gap-2"}
       aria-hidden="true"
     >
       {includeAdd ? (
-        <span className="grid size-8 place-items-center rounded-md bg-primary/15 text-muted-foreground">
+        <span className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary/15 px-3 text-sm text-muted-foreground">
           <Plus className="size-4" />
+          {addLabel}
         </span>
       ) : null}
       <span className="inline-flex h-8 items-center gap-1.5 rounded-md border bg-background px-3 text-sm text-muted-foreground">

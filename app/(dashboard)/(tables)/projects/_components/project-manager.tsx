@@ -58,8 +58,9 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
       footer={`${visibleProjects.length} 件表示中`}
       actions={(
         <>
-          <Button type="button" size="icon" className="ml-2 size-8" onClick={adding ? addProject : () => setAdding(true)} disabled={adding && !draft.title.trim()} aria-label={adding ? "企画を追加" : "追加欄を開く"}>
+          <Button type="button" size="sm" className="ml-2" onClick={adding ? addProject : () => setAdding(true)} disabled={adding && !draft.title.trim()}>
             <Plus className="size-4" />
+            {adding ? "追加を確定" : "企画を追加"}
           </Button>
           <Button
             type="button"

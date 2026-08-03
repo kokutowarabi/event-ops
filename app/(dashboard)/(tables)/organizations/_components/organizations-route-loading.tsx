@@ -6,6 +6,7 @@ export function OrganizationsRouteLoading() {
     <TablePageSkeleton
       icon={Building2}
       title="参加団体管理"
+      addLabel="団体を追加"
       columns={[
         { label: "参加団体名", className: "min-w-60" },
         { label: "種別", className: "min-w-36" },

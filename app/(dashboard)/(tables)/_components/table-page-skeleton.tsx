@@ -11,17 +11,19 @@ export type TableSkeletonColumn = {
 export function TablePageSkeleton({
   icon,
   title,
+  addLabel,
   columns,
 }: {
   icon: LucideIcon
   title: string
+  addLabel: string
   columns: TableSkeletonColumn[]
 }) {
   return (
     <TablePageShell
       icon={icon}
       title={title}
-      actions={<LoadingActions />}
+      actions={<LoadingActions addLabel={addLabel} />}
       footer={<Skeleton className="ml-auto h-3 w-20" />}
     >
       <Table aria-label={`${title}のデータを読み込み中`}>

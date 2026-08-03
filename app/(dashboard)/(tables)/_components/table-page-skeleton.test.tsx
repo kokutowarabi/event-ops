@@ -12,6 +12,7 @@ describe("table page skeleton", () => {
       <TablePageSkeleton
         icon={Users}
         title="名簿"
+        addLabel="メンバーを追加"
         columns={[
           { label: "氏名", className: "min-w-56" },
           { label: "所属局", className: "min-w-44" },
@@ -20,6 +21,7 @@ describe("table page skeleton", () => {
     )
 
     const table = screen.getByRole("table", { name: "名簿のデータを読み込み中" })
+    expect(screen.getByText("メンバーを追加")).toBeTruthy()
     const rows = within(table).getAllByRole("row").slice(1)
     expect(rows).toHaveLength(LOADING_ROWS.length)
     rows.forEach((row) => {

@@ -135,8 +135,9 @@ export function RosterManager({ members, departments = memberDepartments, roles 
         footer={`${visibleMembers.length} 件表示中`}
         actions={(
           <>
-            <Button type="button" size="icon" className="ml-2 size-8" onClick={adding ? addMember : () => setAdding(true)} disabled={adding && (!draft.name.trim() || !draft.email.trim())} aria-label={adding ? "メンバーを追加" : "追加欄を開く"}>
+            <Button type="button" size="sm" className="ml-2" onClick={adding ? addMember : () => setAdding(true)} disabled={adding && (!draft.name.trim() || !draft.email.trim())}>
               <Plus className="size-4" />
+              {adding ? "追加を確定" : "メンバーを追加"}
             </Button>
             <Button
               variant="outline"
