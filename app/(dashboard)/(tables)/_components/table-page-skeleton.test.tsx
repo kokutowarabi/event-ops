@@ -22,6 +22,9 @@ describe("table page skeleton", () => {
 
     const table = screen.getByRole("table", { name: "名簿のデータを読み込み中" })
     expect(screen.getByText("メンバーを追加")).toBeTruthy()
+    const headerRow = within(table).getAllByRole("row")[0]
+    expect(headerRow.classList.contains("bg-muted/80")).toBe(true)
+    expect(headerRow.classList.contains("[&>th]:border-b-2")).toBe(true)
     const rows = within(table).getAllByRole("row").slice(1)
     expect(rows).toHaveLength(LOADING_ROWS.length)
     rows.forEach((row) => {

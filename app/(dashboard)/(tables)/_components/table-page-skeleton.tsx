@@ -1,6 +1,7 @@
 import { ArrowUpDown, Filter, type LucideIcon } from "lucide-react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table"
 import { LOADING_ROWS, LoadingActions, Skeleton } from "../../_components/loading-primitives"
+import { TablePageHeader } from "./table-page-header"
 import { TablePageShell } from "./table-page-shell"
 
 export type TableSkeletonColumn = {
@@ -27,8 +28,7 @@ export function TablePageSkeleton({
       footer={<Skeleton className="ml-auto h-3 w-20" />}
     >
       <Table aria-label={`${title}のデータを読み込み中`}>
-        <TableHeader className="sticky top-0 z-10 bg-card">
-          <TableRow className="bg-muted/40 hover:bg-muted/40">
+        <TablePageHeader>
             {columns.map((column, index) => (
               <TableHead key={`${column.label}-${index}`} className={column.className}>
                 {column.label ? (
@@ -40,8 +40,7 @@ export function TablePageSkeleton({
                 ) : null}
               </TableHead>
             ))}
-          </TableRow>
-        </TableHeader>
+        </TablePageHeader>
         <TableBody>
           {LOADING_ROWS.map((row) => (
             <TableRow key={row}>

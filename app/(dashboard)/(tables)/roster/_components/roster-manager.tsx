@@ -15,7 +15,6 @@ import {
   TableBody,
   TableCell,
   TableHead,
-  TableHeader,
   TableRow,
 } from "@/components/ui/table"
 import { EditableMultiSelectCell, EditableSelectCell, EditableTextCell } from "@/components/common/editable-cell"
@@ -24,6 +23,7 @@ import { SearchHeader, SelectHeader } from "@/components/common/table-column-hea
 import { memberDepartmentBadgeClass } from "@/lib/member-department"
 import { joinMemberRoles, memberRoleBadgeClass, parseMemberRoles } from "@/lib/member-role"
 import { matchesSelectedValues } from "@/lib/table-filters"
+import { TablePageHeader } from "../../_components/table-page-header"
 import { TablePageShell } from "../../_components/table-page-shell"
 import { MemberDetailDialog } from "./member-detail-dialog"
 
@@ -153,8 +153,7 @@ export function RosterManager({ members, departments = memberDepartments, roles 
         )}
       >
         <Table>
-          <TableHeader className="sticky top-0 z-10 bg-card">
-            <TableRow className="bg-muted/40 hover:bg-muted/40">
+          <TablePageHeader>
               <TableHead className="min-w-56">
                 {adding ? (
                   <Input value={draft.name} onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))} placeholder="氏名" className="h-8 bg-background" />
@@ -194,8 +193,7 @@ export function RosterManager({ members, departments = memberDepartments, roles 
               </TableHead>
               <TableHead className="w-22">
               </TableHead>
-            </TableRow>
-          </TableHeader>
+          </TablePageHeader>
           <TableBody>
             {visibleMembers.length === 0 ? (
               <TableRow>

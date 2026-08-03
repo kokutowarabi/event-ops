@@ -14,12 +14,12 @@ import {
   TableBody,
   TableCell,
   TableHead,
-  TableHeader,
   TableRow,
 } from "@/components/ui/table"
 import { EditableSelectCell, EditableTextCell } from "@/components/common/editable-cell"
 import { SearchHeader, SelectHeader } from "@/components/common/table-column-header"
 import { type EventDepartment, type EventProject, type ProjectStatus } from "@/lib/event-data"
+import { TablePageHeader } from "../../_components/table-page-header"
 import { TablePageShell } from "../../_components/table-page-shell"
 import {
   EVENT_DEPARTMENTS,
@@ -77,8 +77,7 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
       )}
     >
         <Table>
-          <TableHeader className="sticky top-0 z-10 bg-card">
-            <TableRow className="bg-muted/40 hover:bg-muted/40">
+          <TablePageHeader>
               <TableHead className="min-w-60">
                 {adding ? (
                   <Input value={draft.title} onChange={(event) => setDraft((prev) => ({ ...prev, title: event.target.value }))} placeholder="企画名" className="h-8 bg-background" />
@@ -161,8 +160,7 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
                 )}
               </TableHead>
               <TableHead className="w-16" />
-            </TableRow>
-          </TableHeader>
+          </TablePageHeader>
           <TableBody>
             {visibleProjects.map((project) => (
               <TableRow key={project.id}>
