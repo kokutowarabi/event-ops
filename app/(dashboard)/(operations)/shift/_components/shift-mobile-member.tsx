@@ -92,7 +92,7 @@ export function ShiftMobileMember({
           onMemoChange={onMemoChange}
         />
       </div>
-      <div className="h-[min(58svh,34rem)] overflow-y-auto overscroll-y-contain rounded-lg pr-1">
+      <div className="h-[min(58svh,34rem)] overflow-y-auto overscroll-y-auto rounded-lg pr-1">
         <div className="relative" style={{ height: MOBILE_TIMELINE_TRACK_HEIGHT }}>
           <div
             aria-hidden="true"

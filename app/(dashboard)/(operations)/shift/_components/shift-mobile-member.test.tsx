@@ -82,4 +82,12 @@ describe("shift mobile member", () => {
       "-translate-y-1/2",
     )
   })
+
+  it("allows scrolling to continue into the surrounding mobile page", () => {
+    const { container } = renderMember([])
+    const timelineScroller = container.querySelector(".overflow-y-auto")
+
+    expect(timelineScroller?.className).toContain("overscroll-y-auto")
+    expect(timelineScroller?.className).not.toContain("overscroll-y-contain")
+  })
 })
