@@ -2,12 +2,11 @@ import type { Dispatch, PointerEvent, SetStateAction } from "react"
 import type { Shift } from "@/lib/shift-data"
 import {
   adjustConflictingShiftRanges,
-  END_MINUTES,
   getShiftAdjustmentChanges,
   SLOT_MINUTES,
-  START_MINUTES,
 } from "./shift-domain"
 import { SLOT_WIDTH } from "./shift-layout"
+import { getResizedShiftRange } from "./shift-resize-range"
 import type { PendingShiftAdjustment, ResizeEdge, ResizingShift } from "./shift-types"
 
 type ShiftResizeActionsOptions = {
@@ -57,22 +56,7 @@ export function useShiftResizeActions({
     const deltaSlots = Math.round((event.clientX - resizing.originX) / SLOT_WIDTH)
     if (deltaSlots !== 0) didResizeRef.current = true
     const deltaMinutes = deltaSlots * SLOT_MINUTES
-    const desiredRange =
-      resizing.edge === "start"
-        ? {
-          start: Math.min(
-            Math.max(resizing.start + deltaMinutes, START_MINUTES),
-            resizing.end - SLOT_MINUTES,
-          ),
-          end: resizing.end,
-        }
-        : {
-          start: resizing.start,
-          end: Math.max(
-            Math.min(resizing.end + deltaMinutes, END_MINUTES),
-            resizing.start + SLOT_MINUTES,
-          ),
-        }
+    const desiredRange = getResizedShiftRange(resizing, resizing.edge, deltaMinutes)
     const conflictResolution = adjustConflictingShiftRanges(
       baseShifts,
       shift.memberId,
