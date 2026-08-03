@@ -17,6 +17,7 @@ export const MOBILE_TIMELINE_GRID_BACKGROUND =
 
 export const DESKTOP_TIMELINE_HEADER_HEIGHT = 64
 export const DESKTOP_MEMBER_ROW_HEIGHT = 88
+export const DESKTOP_MEMBER_COLUMN_WIDTH = 15 * 16
 
 // MVPでは新規作成ボタンを閉じ、タイムライン上のD&D作成だけを提供する。
 export const SHIFT_CREATION_ENABLED = false

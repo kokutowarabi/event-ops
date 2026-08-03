@@ -1,11 +1,13 @@
-import type { Dispatch, PointerEvent, SetStateAction } from "react"
+import { useCallback, useRef, type Dispatch, type PointerEvent, type SetStateAction } from "react"
 import type { Shift } from "@/lib/shift-data"
 import {
   adjustConflictingShiftRanges,
   getShiftAdjustmentChanges,
   SLOT_MINUTES,
 } from "./shift-domain"
-import { SLOT_WIDTH } from "./shift-layout"
+import { DESKTOP_MEMBER_COLUMN_WIDTH, SLOT_WIDTH } from "./shift-layout"
+import { useHorizontalDragAutoScroll } from "./shift-horizontal-auto-scroll"
+import type { PointerCoordinates } from "./shift-pointer"
 import { getResizedShiftRange } from "./shift-resize-range"
 import type { PendingShiftAdjustment, ResizeEdge, ResizingShift } from "./shift-types"
 
@@ -21,6 +23,16 @@ type ShiftResizeActionsOptions = {
   commitShiftPreview: (initialShifts: Shift[] | null) => void
 }
 
+export function getResizeDeltaSlots(
+  pointerX: number,
+  originX: number,
+  currentScrollLeft: number,
+  originScrollLeft: number,
+) {
+  const deltaPixels = pointerX - originX + currentScrollLeft - originScrollLeft
+  return Math.round(deltaPixels / SLOT_WIDTH)
+}
+
 export function useShiftResizeActions({
   editable,
   resizing,
@@ -32,28 +44,20 @@ export function useShiftResizeActions({
   setShiftsWithoutHistory,
   commitShiftPreview,
 }: ShiftResizeActionsOptions) {
-  const startResize = (shift: Shift, edge: ResizeEdge, event: PointerEvent<HTMLSpanElement>) => {
-    if (!editable) return
-    event.stopPropagation()
-    event.currentTarget.setPointerCapture(event.pointerId)
-    initialShiftsRef.current = shiftsRef.current
-    didResizeRef.current = false
-    setResizing({
-      id: shift.id,
-      edge,
-      originX: event.clientX,
-      start: shift.start,
-      end: shift.end,
-      adjustedShiftIds: [],
-    })
-  }
+  const scrollContainerRef = useRef<HTMLElement | null>(null)
 
-  const moveResize = (event: PointerEvent<HTMLElement>) => {
+  const updateResizePreview = useCallback((event: PointerCoordinates) => {
     if (!resizing) return
     const baseShifts = initialShiftsRef.current ?? shiftsRef.current
     const shift = baseShifts.find((item) => item.id === resizing.id)
     if (!shift) return
-    const deltaSlots = Math.round((event.clientX - resizing.originX) / SLOT_WIDTH)
+    const currentScrollLeft = scrollContainerRef.current?.scrollLeft ?? 0
+    const deltaSlots = getResizeDeltaSlots(
+      event.clientX,
+      resizing.originX,
+      currentScrollLeft,
+      resizing.originScrollLeft,
+    )
     if (deltaSlots !== 0) didResizeRef.current = true
     const deltaMinutes = deltaSlots * SLOT_MINUTES
     const desiredRange = getResizedShiftRange(resizing, resizing.edge, deltaMinutes)
@@ -78,9 +82,57 @@ export function useShiftResizeActions({
     }
     setShiftsWithoutHistory(baseShifts)
     setResizing((current) => (current ? { ...current, adjustedShiftIds: [] } : current))
+  }, [
+    didResizeRef,
+    initialShiftsRef,
+    resizing,
+    setResizing,
+    setShiftsWithoutHistory,
+    shiftsRef,
+  ])
+
+  const {
+    start: startAutoScroll,
+    update: updateAutoScroll,
+    stop: stopAutoScroll,
+  } = useHorizontalDragAutoScroll(updateResizePreview)
+
+  const startResize = (shift: Shift, edge: ResizeEdge, event: PointerEvent<HTMLSpanElement>) => {
+    if (!editable) return
+    event.stopPropagation()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    initialShiftsRef.current = shiftsRef.current
+    didResizeRef.current = false
+    const scrollContainer = event.currentTarget.closest<HTMLElement>(
+      "[data-shift-scroll-container]",
+    )
+    scrollContainerRef.current = scrollContainer
+    setResizing({
+      id: shift.id,
+      edge,
+      originX: event.clientX,
+      originScrollLeft: scrollContainer?.scrollLeft ?? 0,
+      start: shift.start,
+      end: shift.end,
+      adjustedShiftIds: [],
+    })
+    if (scrollContainer) {
+      startAutoScroll(
+        scrollContainer,
+        { clientX: event.clientX, clientY: event.clientY },
+        DESKTOP_MEMBER_COLUMN_WIDTH,
+      )
+    }
+  }
+
+  const moveResize = (event: PointerCoordinates) => {
+    updateResizePreview(event)
+    updateAutoScroll(event)
   }
 
   const stopResize = () => {
+    stopAutoScroll()
+    scrollContainerRef.current = null
     const baseShifts = initialShiftsRef.current
     if (baseShifts && resizing) {
       const nextShifts = shiftsRef.current
@@ -101,6 +153,8 @@ export function useShiftResizeActions({
   }
 
   const cancelResize = () => {
+    stopAutoScroll()
+    scrollContainerRef.current = null
     if (initialShiftsRef.current) setShiftsWithoutHistory(initialShiftsRef.current)
     initialShiftsRef.current = null
     didResizeRef.current = false

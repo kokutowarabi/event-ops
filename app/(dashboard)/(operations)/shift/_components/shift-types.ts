@@ -33,6 +33,7 @@ export type ResizingShift = {
   id: string
   edge: ResizeEdge
   originX: number
+  originScrollLeft: number
   start: number
   end: number
   adjustedShiftIds: string[]
