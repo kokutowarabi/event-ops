@@ -74,8 +74,17 @@ export function useShiftCreationActions({
     event: PointerEvent<HTMLButtonElement>,
     orientation: "horizontal" | "vertical",
   ) => {
-    if (!editable || !creatingShift || creatingShift.memberId !== memberId) return
+    if (!editable || !hasSchedule) return
     const slot = getSlotFromPointer(event, orientation)
+    if (!creatingShift) {
+      setHoveredSlot(
+        isSlotOccupied(shiftsRef.current, memberId, selectedDate, slot)
+          ? null
+          : { memberId, slot },
+      )
+      return
+    }
+    if (creatingShift.memberId !== memberId) return
     const { start, end } = getCreateShiftTimeRange(creatingShift.startSlot, slot)
     const baseShifts = initialShiftsRef.current ?? shiftsRef.current
     const conflictResolution = adjustConflictingShiftRanges(
