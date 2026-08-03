@@ -22,7 +22,7 @@ type DashboardRoute = {
 }
 
 const dashboardRoutes: DashboardRoute[] = [
-  { href: "/", label: "名簿", icon: Users },
+  { href: "/roster", label: "名簿", icon: Users },
   { href: "/organizations", label: "参加団体", icon: Building2 },
   { href: "/projects", label: "企画", icon: ClipboardList },
   { href: "/shift", label: "シフト", icon: CalendarDays },
@@ -31,7 +31,7 @@ const dashboardRoutes: DashboardRoute[] = [
 ]
 
 function isCurrentRoute(pathname: string, href: string) {
-  return href === "/" ? pathname === href : pathname.startsWith(href)
+  return pathname === href || pathname.startsWith(`${href}/`)
 }
 
 function DashboardRouteLink({

@@ -1,5 +1,5 @@
 import { Users } from "lucide-react"
-import { TableRouteLoading } from "../loading-primitives"
+import { TableRouteLoading } from "../../../_components/loading-primitives"
 
 export function RosterRouteLoading() {
   return (

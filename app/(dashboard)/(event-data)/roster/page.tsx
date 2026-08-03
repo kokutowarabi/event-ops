@@ -1,4 +1,4 @@
-import { RosterView } from "../_components/roster/roster-view"
+import { RosterView } from "./_components/roster-view"
 
 export default function RosterPage() {
   return <RosterView />

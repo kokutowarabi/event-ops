@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { useEventOps } from "../event-ops-provider"
+import { useEventOps } from "../../../_components/event-ops-provider"
 import { RosterManager } from "./roster-manager"
 import { parseMemberRoles } from "@/lib/member-role"
 

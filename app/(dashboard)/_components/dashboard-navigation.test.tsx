@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { DashboardNavigation } from "./dashboard-navigation"
 
 const navigation = vi.hoisted(() => ({
-  pathname: "/",
+  pathname: "/roster",
   prefetch: vi.fn(),
   push: vi.fn(),
 }))
@@ -31,7 +31,7 @@ describe("dashboard navigation prefetching", () => {
     })
 
     expect(navigation.prefetch.mock.calls.map(([href]) => href)).toEqual([
-      "/",
+      "/roster",
       "/organizations",
       "/projects",
       "/shift",
