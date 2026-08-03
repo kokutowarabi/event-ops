@@ -60,7 +60,7 @@ export function EditableTextCell({ value, placeholder, className, children, onCo
         setDraft(value)
         setEditing(true)
       }}
-      className={`block w-full cursor-text text-left ${className ?? ""}`}
+      className={cn("block w-full min-w-0 max-w-full truncate cursor-text text-left", className)}
     >
       {children ?? (value || <span className="text-muted-foreground">—</span>)}
     </button>
@@ -101,7 +101,7 @@ export function EditableSelectCell<T extends string>({ value, options, children,
   }
 
   return (
-    <button type="button" onClick={() => setEditing(true)} className="block w-full cursor-text text-left">
+    <button type="button" onClick={() => setEditing(true)} className="block w-full min-w-0 max-w-full truncate cursor-text text-left">
       {children ?? value}
     </button>
   )
@@ -183,7 +183,7 @@ export function EditableMultiSelectCell({
         setDraft(values)
         setEditing(true)
       }}
-      className="block w-full cursor-text text-left"
+      className="block w-full min-w-0 max-w-full truncate cursor-text text-left"
     >
       {children ?? values.join("・")}
     </button>

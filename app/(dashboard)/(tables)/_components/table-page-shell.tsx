@@ -26,7 +26,7 @@ export function TablePageShell({
         {actions}
       </header>
 
-      <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-card">
+      <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-card [&_tbody_td:not([colspan])]:max-w-72 [&_tbody_td:not([colspan])]:overflow-hidden [&_tbody_td:not([colspan])]:text-ellipsis">
         {children}
       </div>
 
