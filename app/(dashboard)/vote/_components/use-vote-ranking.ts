@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { downloadCsv } from "@/lib/csv"
-import type { EventDepartment, EventProject } from "@/lib/event-data"
+import { eventDepartments, type EventDepartment, type EventProject } from "@/lib/event-data"
 import { formatJapaneseDate } from "@/lib/event-schedule"
 import type { VisitorVote } from "@/lib/supabase/votes"
 import {
@@ -10,11 +10,7 @@ import {
   votesOnDate,
 } from "@/lib/votes"
 
-export const voteDepartments: EventDepartment[] = [
-  "模擬店",
-  "屋外ステージ",
-  "教室",
-]
+export const voteDepartments = eventDepartments
 export const ALL_VOTE_DATES = "all"
 export const ALL_VOTE_DEPARTMENTS = "all"
 

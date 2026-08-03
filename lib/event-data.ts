@@ -1,6 +1,12 @@
 export type OrganizationStatus = "申請中" | "確認中" | "承認済み" | "要対応"
 export type EventDepartment = "模擬店" | "屋外ステージ" | "教室"
 
+export const eventDepartments: EventDepartment[] = [
+  "模擬店",
+  "屋外ステージ",
+  "教室",
+]
+
 export type EventOrganization = {
   id: string
   name: string

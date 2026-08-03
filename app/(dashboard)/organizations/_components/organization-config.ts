@@ -1,14 +1,10 @@
 import type {
-  EventDepartment,
   EventOrganization,
   OrganizationStatus,
 } from "@/lib/event-data"
+import { eventDepartments } from "@/lib/event-data"
 
-export const EVENT_DEPARTMENTS: EventDepartment[] = [
-  "模擬店",
-  "屋外ステージ",
-  "教室",
-]
+export const EVENT_DEPARTMENTS = eventDepartments
 
 export const ORGANIZATION_STATUSES: OrganizationStatus[] = [
   "申請中",
