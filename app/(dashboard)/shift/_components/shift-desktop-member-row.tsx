@@ -4,6 +4,7 @@ import { ShiftDesktopCreatePreview } from "./shift-desktop-create-preview"
 import { ShiftDesktopMemberInfo } from "./shift-desktop-member-info"
 import { ShiftDesktopShiftBlock } from "./shift-desktop-shift-block"
 import { DEFAULT_SHIFT_TEMPLATE_ID, SLOT_MINUTES, START_MINUTES } from "./shift-domain"
+import { isMovingPreviewVisibleForMember } from "./shift-move-preview"
 import {
   DESKTOP_MEMBER_ROW_HEIGHT,
   DESKTOP_TIMELINE_HEADER_HEIGHT,
@@ -79,7 +80,9 @@ export function ShiftDesktopMemberRow({
     .filter((shift) => shift.memberId === member.id)
   const allMemberShifts = selectedDateShifts.filter((shift) => shift.memberId === member.id)
   const movingMemberShifts =
-    movingPreviewShift && moving?.previewMemberId === member.id && movingPreviewShift.memberId !== member.id
+    movingPreviewShift
+    && isMovingPreviewVisibleForMember(moving, member.id)
+    && movingPreviewShift.memberId !== member.id
       ? [...memberShifts, { ...movingPreviewShift, memberId: member.id }]
       : memberShifts
   const visibleMemberShifts =

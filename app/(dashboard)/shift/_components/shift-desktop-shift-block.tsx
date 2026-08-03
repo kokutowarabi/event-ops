@@ -2,6 +2,7 @@ import type { KeyboardEvent } from "react"
 import type { Shift } from "@/lib/shift-data"
 import { ShiftHandles } from "./shift-handles"
 import { useShiftHandleHover } from "./shift-handle-hover"
+import { isMovingPreviewVisibleForMember } from "./shift-move-preview"
 import { ShiftSplitTimeLabels } from "./shift-split-time-labels"
 import { formatTime, shouldSplitShiftTimeLabels, SLOT_MINUTES, START_MINUTES } from "./shift-domain"
 import { SLOT_WIDTH, TIMELINE_PADDING_WIDTH } from "./shift-layout"
@@ -79,7 +80,8 @@ export function ShiftDesktopShiftBlock({
   const adjustsConflictingShifts = isResizingShift && (resizing?.adjustedShiftIds.length ?? 0) > 0
   const isMovingAlias = isMovingShift && movingPreviewShift?.memberId !== shift.memberId
   const isMovingSource = isMovingShift && !isMovingAlias
-  const isMovingSourceAlias = isMovingSource && moving?.previewMemberId === shift.memberId
+  const isMovingSourceAlias =
+    isMovingSource && isMovingPreviewVisibleForMember(moving, shift.memberId)
   const isHiddenMovingSource = isMovingSource && !isMovingSourceAlias
   const isCopyingAlias =
     copying?.sourceId === shift.id
