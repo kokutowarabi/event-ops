@@ -1,6 +1,6 @@
 "use client"
 
-import { useEventOps } from "../../_components/event-ops-provider"
+import { useEventOps } from "../../../_components/event-ops-provider"
 import { ProjectManager } from "./project-manager"
 
 export function ProjectsView() {

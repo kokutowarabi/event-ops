@@ -3,7 +3,7 @@ import {
   LOADING_ROWS,
   LoadingActions,
   Skeleton,
-} from "../../_components/loading-primitives"
+} from "../../../_components/loading-primitives"
 import { formatCompactDate, operationPeriod } from "@/lib/event-schedule"
 
 export function ShiftRouteLoading() {

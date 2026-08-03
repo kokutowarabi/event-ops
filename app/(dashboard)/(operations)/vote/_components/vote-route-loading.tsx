@@ -1,5 +1,5 @@
 import { BarChart3 } from "lucide-react"
-import { LoadingActions } from "../../_components/loading-primitives"
+import { LoadingActions } from "../../../_components/loading-primitives"
 import { VoteDataSkeleton } from "./vote-data-skeleton"
 
 export function VoteRouteLoading() {

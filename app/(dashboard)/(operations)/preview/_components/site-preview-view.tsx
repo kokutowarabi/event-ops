@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useMemo } from "react"
-import { useEventOps } from "../../_components/event-ops-provider"
+import { useEventOps } from "../../../_components/event-ops-provider"
 import { SitePreview } from "./site-preview"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { castVisitorVote } from "@/lib/supabase/votes"

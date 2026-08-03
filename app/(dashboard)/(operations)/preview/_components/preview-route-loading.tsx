@@ -1,5 +1,5 @@
 import { MonitorSmartphone } from "lucide-react"
-import { Skeleton } from "../../_components/loading-primitives"
+import { Skeleton } from "../../../_components/loading-primitives"
 import { siteConfig } from "@/lib/site-config"
 
 export function PreviewRouteLoading() {

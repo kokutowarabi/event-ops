@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useEventOps } from "../../_components/event-ops-provider"
+import { useEventOps } from "../../../_components/event-ops-provider"
 import { ShiftManager } from "./shift-manager"
 import type { ShiftData } from "@/lib/shift-data"
 

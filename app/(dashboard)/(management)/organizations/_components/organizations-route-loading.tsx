@@ -1,5 +1,5 @@
 import { Building2 } from "lucide-react"
-import { TableRouteLoading } from "../../_components/loading-primitives"
+import { TableRouteLoading } from "../../../_components/loading-primitives"
 
 export function OrganizationsRouteLoading() {
   return (

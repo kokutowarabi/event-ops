@@ -1,5 +1,5 @@
 import { ClipboardList } from "lucide-react"
-import { TableRouteLoading } from "../../_components/loading-primitives"
+import { TableRouteLoading } from "../../../_components/loading-primitives"
 
 export function ProjectsRouteLoading() {
   return (
