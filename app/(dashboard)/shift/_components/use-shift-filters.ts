@@ -6,7 +6,7 @@ import {
 } from "react"
 import type { FilterPanelPosition } from "./shift-filter-ui"
 import type { FilterAnchor } from "./shift-types"
-import { ALL_DEPARTMENTS, ALL_ROLES } from "./use-shift-derived-data"
+import { ALL_DEPARTMENTS, ALL_ROLES } from "./shift-filter-values"
 
 export function useShiftFilters() {
   const [filtersOpen, setFiltersOpen] = useState(false)

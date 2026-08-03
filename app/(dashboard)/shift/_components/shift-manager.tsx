@@ -41,10 +41,8 @@ import type {
   ResizingShift,
   ShiftViewMode,
 } from "./shift-types"
-import {
-  ALL_DEPARTMENTS,
-  useShiftDerivedData,
-} from "./use-shift-derived-data"
+import { ALL_DEPARTMENTS } from "./shift-filter-values"
+import { useShiftDerivedData } from "./use-shift-derived-data"
 import { useShiftFilters } from "./use-shift-filters"
 import { useShiftHistory } from "./use-shift-history"
 import { useShiftHistoryShortcuts } from "./use-shift-history-shortcuts"
