@@ -76,17 +76,24 @@ type EditableSelectCellProps<T extends string> = {
 
 export function EditableSelectCell<T extends string>({ value, options, children, onCommit }: EditableSelectCellProps<T>) {
   const [editing, setEditing] = useState(false)
+  const [open, setOpen] = useState(false)
 
   if (editing) {
     return (
       <Select
+        open={open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen)
+          if (!nextOpen) setEditing(false)
+        }}
         value={value}
         onValueChange={(nextValue) => {
           if (nextValue !== null) onCommit(nextValue as T)
+          setOpen(false)
           setEditing(false)
         }}
       >
-        <SelectTrigger autoFocus className="h-8 w-full bg-background" onBlur={() => window.setTimeout(() => setEditing(false), 120)}>
+        <SelectTrigger autoFocus className="h-8 w-full bg-background">
           <SelectValue>{value}</SelectValue>
         </SelectTrigger>
         <SelectContent>
@@ -101,7 +108,14 @@ export function EditableSelectCell<T extends string>({ value, options, children,
   }
 
   return (
-    <button type="button" onClick={() => setEditing(true)} className="block w-full min-w-0 max-w-full truncate cursor-text text-left">
+    <button
+      type="button"
+      onClick={() => {
+        setOpen(true)
+        setEditing(true)
+      }}
+      className="block w-full min-w-0 max-w-full truncate cursor-text text-left"
+    >
       {children ?? value}
     </button>
   )
