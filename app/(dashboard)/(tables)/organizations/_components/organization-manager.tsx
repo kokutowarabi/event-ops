@@ -20,6 +20,7 @@ import {
 import { EditableSelectCell, EditableTextCell } from "@/components/common/editable-cell"
 import { SearchHeader, SelectHeader } from "@/components/common/table-column-header"
 import { type EventDepartment, type EventOrganization, type OrganizationStatus } from "@/lib/event-data"
+import { TablePageShell } from "../../_components/table-page-shell"
 import {
   EVENT_DEPARTMENTS,
   ORGANIZATION_STATUSES,
@@ -56,27 +57,29 @@ export function OrganizationManager({
   } = useOrganizationTable(organizations, onOrganizationsChange)
 
   return (
-    <div className="mx-auto flex h-[calc(100svh-5.5rem)] max-w-7xl flex-col px-4 py-5 md:py-6">
-      <header className="mb-4 flex shrink-0 items-center gap-2">
-        <Building2 className="size-5 text-muted-foreground" />
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">参加団体管理</h1>
-        <Button type="button" size="icon" className="ml-2 size-8" onClick={adding ? addOrganization : () => setAdding(true)} disabled={adding && !draft.name.trim()} aria-label={adding ? "参加団体を追加" : "追加欄を開く"}>
-          <Plus className="size-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="ml-2"
-          onClick={exportOrganizations}
-          disabled={visibleOrganizations.length === 0}
-        >
-          <Download className="size-4" />
-          CSV
-        </Button>
-      </header>
-
-      <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-card">
+    <TablePageShell
+      icon={Building2}
+      title="参加団体管理"
+      count={visibleOrganizations.length}
+      actions={(
+        <>
+          <Button type="button" size="icon" className="ml-2 size-8" onClick={adding ? addOrganization : () => setAdding(true)} disabled={adding && !draft.name.trim()} aria-label={adding ? "参加団体を追加" : "追加欄を開く"}>
+            <Plus className="size-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="ml-2"
+            onClick={exportOrganizations}
+            disabled={visibleOrganizations.length === 0}
+          >
+            <Download className="size-4" />
+            CSV
+          </Button>
+        </>
+      )}
+    >
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-card">
             <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -215,8 +218,6 @@ export function OrganizationManager({
             ))}
           </TableBody>
         </Table>
-      </div>
-      <p className="mt-2 shrink-0 text-right text-xs text-muted-foreground">{visibleOrganizations.length} 件表示中</p>
-    </div>
+    </TablePageShell>
   )
 }

@@ -24,6 +24,7 @@ import { SearchHeader, SelectHeader } from "@/components/common/table-column-hea
 import { memberDepartmentBadgeClass } from "@/lib/member-department"
 import { joinMemberRoles, memberRoleBadgeClass, parseMemberRoles } from "@/lib/member-role"
 import { matchesSelectedValues } from "@/lib/table-filters"
+import { TablePageShell } from "../../_components/table-page-shell"
 import { MemberDetailDialog } from "./member-detail-dialog"
 
 type RosterManagerProps = {
@@ -127,26 +128,29 @@ export function RosterManager({ members, departments = memberDepartments, roles 
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100svh-5.5rem)] max-w-6xl flex-col px-4 py-5 md:py-6">
-      <header className="mb-4 flex shrink-0 items-center gap-2">
-          <Users className="size-5 text-muted-foreground" />
-          <h1 className="text-2xl font-semibold tracking-tight text-balance md:text-3xl">名簿</h1>
-          <Button type="button" size="icon" className="ml-2 size-8" onClick={adding ? addMember : () => setAdding(true)} disabled={adding && (!draft.name.trim() || !draft.email.trim())} aria-label={adding ? "メンバーを追加" : "追加欄を開く"}>
-            <Plus className="size-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="ml-2"
-            onClick={() => exportToCsv(visibleMembers)}
-            disabled={visibleMembers.length === 0}
-          >
-            <Download className="size-4" />
-            CSV
-          </Button>
-      </header>
-
-      <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-card">
+    <>
+      <TablePageShell
+        icon={Users}
+        title="名簿"
+        count={visibleMembers.length}
+        actions={(
+          <>
+            <Button type="button" size="icon" className="ml-2 size-8" onClick={adding ? addMember : () => setAdding(true)} disabled={adding && (!draft.name.trim() || !draft.email.trim())} aria-label={adding ? "メンバーを追加" : "追加欄を開く"}>
+              <Plus className="size-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-2"
+              onClick={() => exportToCsv(visibleMembers)}
+              disabled={visibleMembers.length === 0}
+            >
+              <Download className="size-4" />
+              CSV
+            </Button>
+          </>
+        )}
+      >
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-card">
             <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -265,11 +269,7 @@ export function RosterManager({ members, departments = memberDepartments, roles 
             )}
           </TableBody>
         </Table>
-      </div>
-
-      <p className="mt-2 shrink-0 text-right text-xs text-muted-foreground">
-        {visibleMembers.length} 件表示中
-      </p>
+      </TablePageShell>
 
       <MemberDetailDialog
         draft={detailDraft}
@@ -279,6 +279,6 @@ export function RosterManager({ members, departments = memberDepartments, roles 
         onSave={saveDetailDraft}
         onClose={() => setDetailDraft(null)}
       />
-    </div>
+    </>
   )
 }

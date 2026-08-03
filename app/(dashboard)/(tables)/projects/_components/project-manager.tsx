@@ -20,6 +20,7 @@ import {
 import { EditableSelectCell, EditableTextCell } from "@/components/common/editable-cell"
 import { SearchHeader, SelectHeader } from "@/components/common/table-column-header"
 import { type EventDepartment, type EventProject, type ProjectStatus } from "@/lib/event-data"
+import { TablePageShell } from "../../_components/table-page-shell"
 import {
   EVENT_DEPARTMENTS,
   PROJECT_STATUSES,
@@ -51,27 +52,29 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
   } = useProjectTable(projects, onProjectsChange)
 
   return (
-    <div className="mx-auto flex h-[calc(100svh-5.5rem)] max-w-7xl flex-col px-4 py-5 md:py-6">
-      <header className="mb-4 flex shrink-0 items-center gap-2">
-        <ClipboardList className="size-5 text-muted-foreground" />
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">企画管理</h1>
-        <Button type="button" size="icon" className="ml-2 size-8" onClick={adding ? addProject : () => setAdding(true)} disabled={adding && !draft.title.trim()} aria-label={adding ? "企画を追加" : "追加欄を開く"}>
-          <Plus className="size-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="ml-2"
-          onClick={exportProjects}
-          disabled={visibleProjects.length === 0}
-        >
-          <Download className="size-4" />
-          CSV
-        </Button>
-      </header>
-
-      <div className="min-h-0 flex-1 overflow-auto rounded-lg border bg-card">
+    <TablePageShell
+      icon={ClipboardList}
+      title="企画管理"
+      count={visibleProjects.length}
+      actions={(
+        <>
+          <Button type="button" size="icon" className="ml-2 size-8" onClick={adding ? addProject : () => setAdding(true)} disabled={adding && !draft.title.trim()} aria-label={adding ? "企画を追加" : "追加欄を開く"}>
+            <Plus className="size-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="ml-2"
+            onClick={exportProjects}
+            disabled={visibleProjects.length === 0}
+          >
+            <Download className="size-4" />
+            CSV
+          </Button>
+        </>
+      )}
+    >
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-card">
             <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -223,8 +226,6 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
             ))}
           </TableBody>
         </Table>
-      </div>
-      <p className="mt-2 shrink-0 text-right text-xs text-muted-foreground">{visibleProjects.length} 件表示中</p>
-    </div>
+    </TablePageShell>
   )
 }
