@@ -62,7 +62,6 @@ export const initialMembers: Member[] = [
   { id: "19", name: "森 美月", email: "mori.mizuki@hoshihama.example", department: "財務局・第1部門", role: "1年新規" },
   { id: "20", name: "池田 蓮", email: "ikeda.ren@hoshihama.example", department: "広報局・第2部門", role: "1年新規" },
   { id: "21", name: "近藤 彩香", email: "kondo.ayaka@hoshihama.example", department: "執行部", role: "副委員長" },
-  { id: "22", name: "石井 航", email: "ishii.wataru@hoshihama.example", department: "執行部", role: "役員" },
   { id: "23", name: "阿部 颯太", email: "abe.sota@hoshihama.example", department: "運営局・第1部門", role: "役員" },
   { id: "24", name: "橋本 莉子", email: "hashimoto.riko@hoshihama.example", department: "運営局・第1部門", role: "3年会" },
   { id: "25", name: "石川 湊", email: "ishikawa.minato@hoshihama.example", department: "運営局・第2部門", role: "副局長" },
