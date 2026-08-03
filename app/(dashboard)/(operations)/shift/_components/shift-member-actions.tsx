@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react"
-import { CircleEllipsis, Pin } from "lucide-react"
+import { CircleEllipsis, Pin, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 const HOVER_CLOSE_DELAY_MS = 120
+const DESKTOP_VIEWPORT_QUERY = "(min-width: 768px)"
+
+function usesHoverInteraction() {
+  return window.matchMedia(DESKTOP_VIEWPORT_QUERY).matches
+}
 
 type ShiftMemberActionsProps = {
   memberName: string
@@ -34,11 +39,13 @@ export function ShiftMemberActions({
   }, [])
 
   const openOnHover = () => {
+    if (!usesHoverInteraction()) return
     cancelScheduledClose()
     setOpen(true)
   }
 
   const scheduleClose = useCallback(() => {
+    if (!usesHoverInteraction()) return
     cancelScheduledClose()
     closeTimerRef.current = window.setTimeout(() => {
       const focusedElement = document.activeElement
@@ -53,11 +60,21 @@ export function ShiftMemberActions({
 
   const togglePin = () => {
     onTogglePin()
-    setOpen(false)
+    if (usesHoverInteraction()) setOpen(false)
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen, eventDetails) => {
+        const keepsMobileCardOpen =
+          !nextOpen
+          && !usesHoverInteraction()
+          && eventDetails.reason !== "escape-key"
+          && eventDetails.reason !== "close-press"
+        if (!keepsMobileCardOpen) setOpen(nextOpen)
+      }}
+    >
       <span
         className="inline-flex"
         onPointerEnter={openOnHover}
@@ -86,6 +103,18 @@ export function ShiftMemberActions({
         onPointerEnter={cancelScheduledClose}
         onPointerLeave={scheduleClose}
       >
+        <div className="flex items-center justify-between border-b p-2 md:hidden">
+          <span className="pl-1 text-sm font-medium">メンバー操作</span>
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label={`${memberName}の操作を閉じる`}
+            onClick={() => setOpen(false)}
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
         <div className="p-3">
           <Label htmlFor={memoId}>メモ</Label>
           <Input
