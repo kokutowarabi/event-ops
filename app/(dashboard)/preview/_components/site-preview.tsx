@@ -16,13 +16,9 @@ import type { EventProject } from "@/lib/event-data"
 import { eventSchedule, formatJapaneseDate } from "@/lib/event-schedule"
 import { siteConfig } from "@/lib/site-config"
 import { getSitePreviewStatus } from "@/lib/site-preview"
+import { usePreviewVoting } from "./use-preview-voting"
 
-const votingDeviceStorageKey = "hoshihama-voting-device-id"
 const initialPreviewDateTime = `${eventSchedule.festivalDays[0].date}T12:00`
-
-function voteKey(projectId: string, votedOn: string) {
-  return `${votedOn}:${projectId}`
-}
 
 function currentLocalDateTime() {
   const now = new Date()
@@ -30,13 +26,6 @@ function currentLocalDateTime() {
   return new Date(now.getTime() - offset).toISOString().slice(0, 16)
 }
 
-function getVotingDeviceId() {
-  const existing = window.localStorage.getItem(votingDeviceStorageKey)
-  if (existing) return existing
-  const created = crypto.randomUUID()
-  window.localStorage.setItem(votingDeviceStorageKey, created)
-  return created
-}
 
 type SitePreviewProps = {
   projects: EventProject[]
@@ -56,12 +45,13 @@ export function SitePreview({
   const [previewDateTime, setPreviewDateTime] = useState(initialPreviewDateTime)
   const [page, setPage] = useState<"home" | "projects">("home")
   const [query, setQuery] = useState("")
-  const [submittingProjectId, setSubmittingProjectId] = useState("")
-  const [votedProjectKeys, setVotedProjectKeys] = useState<Set<string>>(
-    () => new Set(),
-  )
-  const [message, setMessage] = useState("")
   const status = getSitePreviewStatus(previewDateTime)
+  const { submittingProjectId, message, vote, isVoted } = usePreviewVoting({
+    votingOpen: status.votingOpen,
+    voteDate: status.voteDate,
+    votingConfigured,
+    onVote,
+  })
 
   const visibleProjects = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("ja")
@@ -75,30 +65,6 @@ export function SitePreview({
       ].some((value) => value.toLocaleLowerCase("ja").includes(normalized)),
     )
   }, [projects, query])
-
-  const vote = async (project: EventProject) => {
-    if (!status.votingOpen || !status.voteDate || !votingConfigured) return
-    const voteDate = status.voteDate
-    setSubmittingProjectId(project.id)
-    setMessage("")
-    try {
-      const accepted = await onVote(getVotingDeviceId(), project.id, voteDate)
-      setVotedProjectKeys((currentKeys) => {
-        const nextKeys = new Set(currentKeys)
-        nextKeys.add(voteKey(project.id, voteDate))
-        return nextKeys
-      })
-      setMessage(
-        accepted
-          ? `「${project.title}」へ${formatJapaneseDate(voteDate, false)}の票として投票しました`
-          : `「${project.title}」は${formatJapaneseDate(voteDate, false)}に投票済みです`,
-      )
-    } catch {
-      setMessage("投票を送信できませんでした。Supabaseの設定を確認してください。")
-    } finally {
-      setSubmittingProjectId("")
-    }
-  }
 
   return (
     <div className="mx-auto flex h-[calc(100svh-4rem)] max-w-7xl flex-col gap-3 overflow-hidden p-3 md:p-4">
@@ -194,9 +160,7 @@ export function SitePreview({
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {visibleProjects.map((project) => {
-                const voted = status.voteDate
-                  ? votedProjectKeys.has(voteKey(project.id, status.voteDate))
-                  : false
+                const voted = isVoted(project.id)
                 const voteEligible = /^project-(?:[1-9]|[1-3]\d|40)$/.test(project.id)
                 return (
                   <article key={project.id} className="flex flex-col rounded-2xl border border-slate-900/10 bg-white p-5 shadow-sm">
