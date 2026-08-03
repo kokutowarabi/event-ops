@@ -67,7 +67,7 @@ export function SitePreview({
   }, [projects, query])
 
   return (
-    <div className="mx-auto flex h-[calc(100svh-4rem)] max-w-7xl flex-col gap-3 overflow-hidden p-3 md:p-4">
+    <div className="mx-auto flex h-svh max-w-7xl flex-col gap-3 overflow-hidden p-3 md:p-4">
       <header className="flex shrink-0 flex-wrap items-center gap-2 rounded-xl border bg-card p-3">
         <MonitorSmartphone className="size-5 text-muted-foreground" />
         <div className="mr-auto">
