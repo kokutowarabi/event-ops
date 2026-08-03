@@ -1,28 +1,14 @@
-import { MonitorSmartphone } from "lucide-react"
 import { Skeleton } from "../../../_components/loading-primitives"
 import { siteConfig } from "@/lib/site-config"
 
 export function PreviewRouteLoading() {
   return (
-    <div className="mx-auto flex h-svh max-w-7xl flex-col gap-3 overflow-hidden p-3 md:p-4">
-      <header className="flex shrink-0 flex-wrap items-center gap-2 rounded-xl border bg-card p-3">
-        <MonitorSmartphone className="size-5 text-muted-foreground" aria-hidden="true" />
-        <div className="mr-auto">
-          <h1 className="font-semibold">サイトプレビュー</h1>
-          <p className="text-xs text-muted-foreground">
-            企画管理の変更内容と投票導線を、そのままサイト表示で確認できます。
-          </p>
-        </div>
-        <Skeleton className="h-6 w-40" />
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-8 w-20" />
-      </header>
-
-      <div
-        className="min-h-0 flex-1 overflow-hidden rounded-2xl border bg-[#f7f4ed] shadow-sm"
-        role="status"
-        aria-label="サイトプレビューを読み込み中"
-      >
+    <div
+      className="relative h-svh overflow-hidden bg-[#f7f4ed]"
+      role="status"
+      aria-label="サイトプレビューを読み込み中"
+    >
+      <div className="h-full overflow-hidden">
         <div className="flex h-16 items-center border-b border-slate-900/10 bg-[#fffdf8] px-4 md:px-8">
           <div className="mr-auto">
             <div className="text-[10px] font-black tracking-[0.2em] text-cyan-700">
@@ -50,6 +36,7 @@ export function PreviewRouteLoading() {
         </div>
         <span className="sr-only">読み込み中</span>
       </div>
+      <div className="fixed right-0 top-1/2 h-20 w-4 -translate-y-1/2 rounded-l-2xl border bg-popover shadow-lg" />
     </div>
   )
 }

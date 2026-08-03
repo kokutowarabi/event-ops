@@ -1,11 +1,9 @@
 import { useMemo, useState } from "react"
 import {
-  CalendarClock,
   Check,
   Clock3,
   Heart,
   Home,
-  MonitorSmartphone,
   Search,
   Sparkles,
 } from "lucide-react"
@@ -16,6 +14,7 @@ import type { EventProject } from "@/lib/event-data"
 import { eventSchedule, formatJapaneseDate } from "@/lib/event-schedule"
 import { siteConfig } from "@/lib/site-config"
 import { getSitePreviewStatus } from "@/lib/site-preview"
+import { PreviewControlDock } from "./preview-control-dock"
 import { usePreviewVoting } from "./use-preview-voting"
 
 const initialPreviewDateTime = `${eventSchedule.festivalDays[0].date}T12:00`
@@ -67,32 +66,8 @@ export function SitePreview({
   }, [projects, query])
 
   return (
-    <div className="mx-auto flex h-svh max-w-7xl flex-col gap-3 overflow-hidden p-3 md:p-4">
-      <header className="flex shrink-0 flex-wrap items-center gap-2 rounded-xl border bg-card p-3">
-        <MonitorSmartphone className="size-5 text-muted-foreground" />
-        <div className="mr-auto">
-          <h1 className="font-semibold">サイトプレビュー</h1>
-          <p className="text-xs text-muted-foreground">企画管理の変更内容と投票導線を、そのままサイト表示で確認できます。</p>
-        </div>
-        <Badge variant="outline" className="bg-primary/5">
-          企画管理と連動・{projects.length}企画
-        </Badge>
-        <label className="flex items-center gap-2 text-xs font-medium">
-          <CalendarClock className="size-4 text-muted-foreground" />
-          プレビュー日時
-          <Input
-            type="datetime-local"
-            value={previewDateTime}
-            onInput={(event) => setPreviewDateTime(event.currentTarget.value)}
-            className="h-8 w-48"
-          />
-        </label>
-        <Button type="button" size="sm" variant="outline" onClick={() => setPreviewDateTime(currentLocalDateTime())}>
-          現在日時
-        </Button>
-      </header>
-
-      <div className="min-h-0 flex-1 overflow-auto rounded-2xl border bg-[#f7f4ed] shadow-sm">
+    <div className="relative h-svh overflow-hidden bg-[#f7f4ed]">
+      <div className="h-full overflow-auto">
         <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-900/10 bg-[#fffdf8]/95 px-4 py-3 backdrop-blur md:px-8">
           <div className="mr-auto">
             <div className="text-[10px] font-black tracking-[0.2em] text-cyan-700">{siteConfig.universityNameEn}</div>
@@ -203,6 +178,12 @@ export function SitePreview({
           </div>
         )}
       </div>
+      <PreviewControlDock
+        previewDateTime={previewDateTime}
+        projectCount={projects.length}
+        onPreviewDateTimeChange={setPreviewDateTime}
+        onUseCurrentDateTime={() => setPreviewDateTime(currentLocalDateTime())}
+      />
     </div>
   )
 }
