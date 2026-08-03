@@ -41,4 +41,32 @@ describe("editable cells", () => {
 
     expect(onCommit).toHaveBeenCalledWith("運営局・第1部門")
   })
+
+  it("edits multiple values in a card outside the table cell", () => {
+    const onCommit = vi.fn()
+    render(
+      <table>
+        <tbody>
+          <tr>
+            <td>
+              <EditableMultiSelectCell
+                values={["局長"]}
+                options={["局長", "役員"]}
+                onCommit={onCommit}
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>,
+    )
+
+    const cell = screen.getByRole("cell")
+    fireEvent.click(screen.getByRole("button", { name: "局長" }))
+    const card = screen.getByRole("dialog", { name: "役職を選択" })
+    expect(cell.contains(card)).toBe(false)
+
+    fireEvent.click(screen.getByRole("button", { name: "役員" }))
+    fireEvent.click(screen.getByRole("button", { name: "役職を保存" }))
+    expect(onCommit).toHaveBeenCalledWith(["局長", "役員"])
+  })
 })

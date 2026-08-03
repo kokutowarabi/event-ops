@@ -2,6 +2,7 @@ import { type KeyboardEvent, type ReactNode, useState } from "react"
 import { Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import {
   Select,
@@ -136,7 +137,7 @@ export function EditableMultiSelectCell({
   optionClassName,
   onCommit,
 }: EditableMultiSelectCellProps) {
-  const [editing, setEditing] = useState(false)
+  const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(values)
   const availableOptions = Array.from(new Set([...options, ...values])).filter(Boolean)
 
@@ -150,56 +151,57 @@ export function EditableMultiSelectCell({
 
   const commit = () => {
     if (draft.join("\u0000") !== values.join("\u0000")) onCommit(draft)
-    setEditing(false)
+    setOpen(false)
   }
 
   const cancel = () => {
     setDraft(values)
-    setEditing(false)
-  }
-
-  if (editing) {
-    return (
-      <div className="flex min-w-72 flex-wrap items-center gap-1.5">
-        {availableOptions.map((option) => {
-          const selected = draft.includes(option)
-          return (
-            <button
-              key={option}
-              type="button"
-              aria-pressed={selected}
-              onClick={() => toggleOption(option)}
-              className={cn(
-                "h-7 cursor-pointer rounded-lg border px-2 text-xs transition-colors",
-                selected
-                  ? optionClassName?.(option) ?? "border-primary bg-primary/10 text-primary"
-                  : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              {option}
-            </button>
-          )
-        })}
-        <Button type="button" variant="ghost" size="icon-sm" onClick={commit} aria-label="役職を保存">
-          <Check className="size-4" />
-        </Button>
-        <Button type="button" variant="ghost" size="icon-sm" onClick={cancel} aria-label="編集をキャンセル">
-          <X className="size-4" />
-        </Button>
-      </div>
-    )
+    setOpen(false)
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => {
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
         setDraft(values)
-        setEditing(true)
+        setOpen(nextOpen)
       }}
-      className="block w-full min-w-0 max-w-full truncate cursor-text text-left"
     >
-      {children ?? values.join("・")}
-    </button>
+      <PopoverTrigger className="block w-full min-w-0 max-w-full truncate cursor-text text-left">
+        {children ?? values.join("・")}
+      </PopoverTrigger>
+      <PopoverContent role="dialog" aria-label="役職を選択" className="w-72 p-2">
+        <p className="mb-2 text-xs font-medium text-muted-foreground">役職を選択</p>
+        <div className="flex flex-wrap gap-1.5">
+          {availableOptions.map((option) => {
+            const selected = draft.includes(option)
+            return (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => toggleOption(option)}
+                className={cn(
+                  "h-7 cursor-pointer rounded-lg border px-2 text-xs transition-colors",
+                  selected
+                    ? optionClassName?.(option) ?? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                {option}
+              </button>
+            )
+          })}
+        </div>
+        <div className="mt-2 flex justify-end gap-1">
+          <Button type="button" variant="ghost" size="icon-sm" onClick={cancel} aria-label="編集をキャンセル">
+            <X className="size-4" />
+          </Button>
+          <Button type="button" variant="ghost" size="icon-sm" onClick={commit} aria-label="役職を保存">
+            <Check className="size-4" />
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
