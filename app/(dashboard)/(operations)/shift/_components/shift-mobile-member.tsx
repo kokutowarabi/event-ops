@@ -21,6 +21,7 @@ import {
   getMobileTimelineOffset,
 } from "./shift-layout"
 import { ShiftMemberActions } from "./shift-member-actions"
+import { MemberAvatar } from "@/components/common/member-avatar"
 
 type ShiftMobileMemberProps = {
   member: Member
@@ -73,7 +74,10 @@ export function ShiftMobileMember({
     >
       <div className="mb-3 flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="font-medium">{member.name}</div>
+          <div className="flex items-center gap-2">
+            <MemberAvatar member={member} size={40} />
+            <div className="font-medium">{member.name}</div>
+          </div>
           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             <Badge
               variant="outline"

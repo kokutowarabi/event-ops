@@ -3,6 +3,7 @@ import { MemberRoleBadges } from "@/components/common/member-role-badges"
 import { Badge } from "@/components/ui/badge"
 import { memberDepartmentBadgeClass } from "@/lib/member-department"
 import { ShiftMemberActions } from "./shift-member-actions"
+import { MemberAvatar } from "@/components/common/member-avatar"
 
 type ShiftDesktopMemberInfoProps = {
   member: Member
@@ -27,7 +28,10 @@ export function ShiftDesktopMemberInfo({
       style={pinned ? { top } : undefined}
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 font-medium">{member.name}</div>
+        <div className="flex items-center gap-2">
+          <MemberAvatar member={member} size={32} />
+          <div className="min-w-0 font-medium">{member.name}</div>
+        </div>
         <ShiftMemberActions
           memberName={member.name}
           memo={memo}

@@ -19,6 +19,7 @@ import { joinMemberRoles, memberRoleBadgeClass, parseMemberRoles } from "@/lib/m
 import type { Member, SortKey, SortOrder } from "@/lib/members"
 import { TablePageHeader } from "../../_components/table-page-header"
 import type { RosterFilters, RosterHeaderOptions } from "./roster-types"
+import { MemberAvatar } from "@/components/common/member-avatar"
 
 type RosterDesktopTableProps = {
   members: Member[]
@@ -181,7 +182,8 @@ export function RosterDesktopTable({
           ) : (
             members.map((member) => (
               <TableRow key={member.id}>
-                <TableCell className="font-medium">
+                <TableCell className="font-medium flex items-center gap-2">
+                  <MemberAvatar member={member} size={36} />
                   <EditableTextCell
                     value={member.name}
                     placeholder="氏名"

@@ -2,12 +2,10 @@ import Link from "next/link"
 import {
   BarChart3,
   Building2,
-  CalendarClock,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
-  MonitorCog,
   Users,
   type LucideIcon,
 } from "lucide-react"
@@ -17,11 +15,9 @@ import {
   useRef,
   useState,
 } from "react"
-import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import { PreviewDateTimePicker } from "./preview-date-time-picker"
 
 const PANEL_EDGE_OFFSET = 8
 
@@ -30,12 +26,12 @@ const managementRoutes: Array<{
   label: string
   icon: LucideIcon
 }> = [
-  { href: "/roster", label: "名簿", icon: Users },
-  { href: "/organizations", label: "参加団体", icon: Building2 },
-  { href: "/projects", label: "企画管理", icon: ClipboardList },
-  { href: "/shift", label: "シフト", icon: CalendarDays },
-  { href: "/vote", label: "投票結果", icon: BarChart3 },
-]
+    { href: "/roster", label: "名簿", icon: Users },
+    { href: "/organizations", label: "参加団体", icon: Building2 },
+    { href: "/projects", label: "企画管理", icon: ClipboardList },
+    { href: "/shift", label: "シフト", icon: CalendarDays },
+    { href: "/vote", label: "投票結果", icon: BarChart3 },
+  ]
 
 type DragState = {
   pointerId: number
@@ -48,19 +44,16 @@ type DragState = {
 
 type PreviewControlDockProps = {
   previewDateTime: string
-  projectCount: number
   onPreviewDateTimeChange: (value: string) => void
   onUseCurrentDateTime: () => void
 }
 
 export function PreviewControlDock({
   previewDateTime,
-  projectCount,
   onPreviewDateTimeChange,
   onUseCurrentDateTime,
 }: PreviewControlDockProps) {
   const panelId = useId()
-  const inputId = useId()
   const panelRef = useRef<HTMLElement>(null)
   const dragRef = useRef<DragState | null>(null)
   const ignoreClickRef = useRef(false)
@@ -112,6 +105,18 @@ export function PreviewControlDock({
     event.currentTarget.releasePointerCapture?.(event.pointerId)
   }
 
+  const cancelDrag = (event: PointerEvent<HTMLButtonElement>) => {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+
+    dragRef.current = null
+    ignoreClickRef.current = false
+    setDragOffset(null)
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
+
   const toggleFromHandle = () => {
     if (ignoreClickRef.current) {
       ignoreClickRef.current = false
@@ -140,19 +145,15 @@ export function PreviewControlDock({
           aria-label={open ? "プレビュー操作を収納" : "プレビュー操作を開く"}
           aria-controls={panelId}
           aria-expanded={open}
-          className="absolute right-full top-1/2 z-10 flex h-20 w-7 -translate-y-1/2 touch-none cursor-ew-resize items-center justify-center rounded-l-2xl border border-r-0 bg-white text-muted-foreground"
+          className="absolute -left-6.75 top-1/2 z-10 flex h-20 w-7 -translate-y-1/2 touch-none cursor-ew-resize items-center justify-center rounded-l-2xl border border-r-0 bg-white text-muted-foreground"
           onPointerDown={startDrag}
           onPointerMove={updateDrag}
           onPointerUp={finishDrag}
-          onPointerCancel={finishDrag}
+          onPointerCancel={cancelDrag}
           onClick={toggleFromHandle}
         >
-          {open ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
+          {open ? <ChevronRight className="size-5.5" /> : <ChevronLeft className="size-5.5" />}
         </button>
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute -left-px top-1/2 z-10 h-16 w-1 -translate-y-1/2 bg-white"
-        />
 
         <div
           id={panelId}
@@ -160,30 +161,12 @@ export function PreviewControlDock({
           aria-hidden={!open}
           className="max-h-[calc(100svh-2rem)] overflow-y-auto rounded-2xl border bg-white p-4 text-popover-foreground"
         >
-          <div className="flex items-start gap-3">
-            <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
-              <MonitorCog className="size-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="font-semibold">プレビュー操作</h2>
-              <p className="text-xs text-muted-foreground">日時テストと管理画面への移動</p>
-            </div>
-          </div>
-
-          <Badge variant="outline" className="mt-4 bg-primary/5">
-            企画管理と連動・{projectCount}企画
-          </Badge>
+          <h2 className="font-semibold">プレビュー操作</h2>
 
           <div className="mt-4 grid gap-2">
-            <Label htmlFor={inputId} className="flex items-center gap-2">
-              <CalendarClock className="size-4 text-muted-foreground" />
-              プレビュー日時
-            </Label>
-            <Input
-              id={inputId}
-              type="datetime-local"
+            <PreviewDateTimePicker
               value={previewDateTime}
-              onInput={(event) => onPreviewDateTimeChange(event.currentTarget.value)}
+              onChange={onPreviewDateTimeChange}
             />
             <Button type="button" variant="outline" onClick={onUseCurrentDateTime}>
               現在日時を使用

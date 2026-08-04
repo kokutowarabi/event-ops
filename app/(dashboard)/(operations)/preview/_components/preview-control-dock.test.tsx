@@ -10,7 +10,6 @@ function renderDock() {
   const view = render(
     <PreviewControlDock
       previewDateTime="2026-10-31T12:00"
-      projectCount={40}
       onPreviewDateTimeChange={onPreviewDateTimeChange}
       onUseCurrentDateTime={onUseCurrentDateTime}
     />,
@@ -39,7 +38,7 @@ describe("preview control dock", () => {
     const card = dock.querySelector("[id][aria-hidden]")
 
     expect(dock.className).toContain("drop-shadow-2xl")
-    expect(handle.className).toContain("right-full")
+    expect(handle.className).toContain("-left-6.75")
     expect(handle.className).not.toContain("shadow-lg")
     expect(handle.className).toContain("bg-white")
     expect(card?.className).toContain("bg-white")
@@ -63,16 +62,29 @@ describe("preview control dock", () => {
     expect(screen.getAllByRole("button", { name: "プレビュー操作を収納" })).toHaveLength(1)
   })
 
+  it("keeps its state when dragging is cancelled", () => {
+    renderDock()
+    const dock = screen.getByRole("complementary", { name: "サイトプレビュー操作" })
+    Object.defineProperty(dock, "offsetWidth", { configurable: true, value: 320 })
+    const handle = screen.getByRole("button", { name: "プレビュー操作を開く" })
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientX: 380 })
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 260 })
+    fireEvent.pointerCancel(handle, { pointerId: 1, clientX: 260 })
+
+    expect(dock.getAttribute("data-state")).toBe("closed")
+    expect(dock.style.transform).toBe("")
+  })
+
   it("updates the preview time and exposes management destinations", () => {
     const { onPreviewDateTimeChange, onUseCurrentDateTime } = renderDock()
     fireEvent.click(screen.getByRole("button", { name: "プレビュー操作を開く" }))
 
-    fireEvent.input(screen.getByLabelText("プレビュー日時"), {
-      target: { value: "2026-11-01T10:00" },
-    })
+    fireEvent.click(screen.getByRole("button", { name: "プレビュー日時を変更" }))
+    fireEvent.click(screen.getByRole("button", { name: "2026年10月15日を選択" }))
     fireEvent.click(screen.getByRole("button", { name: "現在日時を使用" }))
 
-    expect(onPreviewDateTimeChange).toHaveBeenCalledWith("2026-11-01T10:00")
+    expect(onPreviewDateTimeChange).toHaveBeenCalledWith("2026-10-15T12:00")
     expect(onUseCurrentDateTime).toHaveBeenCalledTimes(1)
     expect(screen.getByRole("link", { name: "名簿" }).getAttribute("href")).toBe("/roster")
     expect(screen.getByRole("link", { name: "投票結果" }).getAttribute("href")).toBe("/vote")

@@ -84,7 +84,7 @@ export function SitePreview({
         </div>
 
         {page === "home" ? (
-          <div className="grid min-h-full place-items-center bg-[radial-gradient(circle_at_top_left,_#cffafe,_transparent_45%),radial-gradient(circle_at_bottom_right,_#fef3c7,_transparent_45%)] px-5 py-16 text-center">
+          <div className="grid min-h-full place-items-center bg-[radial-gradient(circle_at_top_left,#cffafe,transparent_45%),radial-gradient(circle_at_bottom_right,#fef3c7,transparent_45%)] px-5 py-16 text-center">
             <section className="max-w-3xl">
               <Badge className="mb-5 bg-cyan-700 text-white hover:bg-cyan-700">{siteConfig.campusName}</Badge>
               <p className="text-sm font-bold tracking-[0.28em] text-cyan-800">{siteConfig.universityName}</p>
@@ -180,7 +180,6 @@ export function SitePreview({
       </div>
       <PreviewControlDock
         previewDateTime={previewDateTime}
-        projectCount={projects.length}
         onPreviewDateTimeChange={setPreviewDateTime}
         onUseCurrentDateTime={() => setPreviewDateTime(currentLocalDateTime())}
       />

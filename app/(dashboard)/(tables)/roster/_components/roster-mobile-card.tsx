@@ -10,16 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { memberDepartmentBadgeClass } from "@/lib/member-department"
 import { joinMemberRoles, memberRoleBadgeClass, parseMemberRoles } from "@/lib/member-role"
 import type { Member } from "@/lib/members"
-
-function getInitials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase()
-}
+import { MemberAvatar } from "@/components/common/member-avatar"
 
 export function RosterMobileMemberCard({
   member,
@@ -36,9 +27,7 @@ export function RosterMobileMemberCard({
       className="w-[min(82vw,20rem)] shrink-0 snap-start rounded-xl border bg-card p-4 shadow-sm"
     >
       <div className="flex items-center gap-3">
-        <div className="grid size-12 shrink-0 place-items-center rounded-full bg-muted text-sm font-semibold text-foreground">
-          {getInitials(member.name)}
-        </div>
+        <MemberAvatar member={member} size={48} />
         <div className="min-w-0">
           <h3 className="truncate font-semibold">{member.name}</h3>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">{member.email}</p>
