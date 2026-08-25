@@ -26,10 +26,10 @@ function getActiveCardIndex(scroller: HTMLDivElement) {
   const paddingRight = Number.parseFloat(styles.paddingRight) || 0
   const visibleLeft = scrollerRect.left + paddingLeft
   const visibleRight = scrollerRect.right - paddingRight
-  let fallbackIndex = 0
-  let fallbackVisibleWidth = 0
+  let firstVisibleIndex = 0
+  let foundVisibleCard = false
 
-  for (let index = cards.length - 1; index >= 0; index -= 1) {
+  for (let index = 0; index < cards.length; index += 1) {
     const card = cards[index]
     const cardRect = card.getBoundingClientRect()
     const visibleWidth = Math.max(
@@ -38,14 +38,19 @@ function getActiveCardIndex(scroller: HTMLDivElement) {
     )
     const cardWidth = cardRect.width || card.offsetWidth
 
-    if (visibleWidth > fallbackVisibleWidth) {
-      fallbackIndex = index
-      fallbackVisibleWidth = visibleWidth
+    if (visibleWidth === 0) continue
+    if (!foundVisibleCard) {
+      firstVisibleIndex = index
+      foundVisibleCard = true
     }
-    if (cardWidth > 0 && visibleWidth >= cardWidth / 2) return index
+
+    const clippedOnRight = cardRect.right > visibleRight
+    if (clippedOnRight && cardWidth > 0 && visibleWidth >= cardWidth / 2) {
+      return index
+    }
   }
 
-  return fallbackIndex
+  return firstVisibleIndex
 }
 
 export function MobileCardSection({

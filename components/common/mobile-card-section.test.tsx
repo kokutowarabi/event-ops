@@ -22,7 +22,7 @@ describe("mobile card section", () => {
     const scroller = screen.getByText("田中 太郎").parentElement!
     const cards = Array.from(scroller.children) as HTMLElement[]
     let scrollOffset = 0
-    vi.spyOn(scroller, "getBoundingClientRect").mockReturnValue({ left: 0, right: 300 } as DOMRect)
+    vi.spyOn(scroller, "getBoundingClientRect").mockReturnValue({ left: 0, right: 700 } as DOMRect)
     cards.forEach((card, index) => {
       vi.spyOn(card, "getBoundingClientRect").mockImplementation(
         () => {
@@ -32,9 +32,16 @@ describe("mobile card section", () => {
       )
     })
 
-    scrollOffset = 450
+    fireEvent.scroll(scroller)
+    expect(dots[0].getAttribute("aria-current")).toBe("true")
+
+    scrollOffset = 150
     fireEvent.scroll(scroller)
     expect(dots[2].getAttribute("aria-current")).toBe("true")
+
+    scrollOffset = 400
+    fireEvent.scroll(scroller)
+    expect(dots[1].getAttribute("aria-current")).toBe("true")
     expect(screen.getByText("3人")).toBeTruthy()
   })
 })
