@@ -115,6 +115,7 @@ export function ShiftDetailsDialog({
                 <ShiftTimeFields
                   start={shift.start}
                   end={shift.end}
+                  keyPrefix="detail"
                   onChange={(time) => onUpdate(shift.id, time)}
                 />
                 <div className="grid gap-1.5">

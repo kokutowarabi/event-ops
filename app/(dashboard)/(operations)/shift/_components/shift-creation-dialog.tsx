@@ -144,6 +144,7 @@ export function ShiftCreationDialog({
               <ShiftTimeFields
                 start={draft.start}
                 end={draft.end}
+                keyPrefix="draft"
                 onChange={(time) =>
                   setDraft((current) => (current ? { ...current, ...time } : current))
                 }

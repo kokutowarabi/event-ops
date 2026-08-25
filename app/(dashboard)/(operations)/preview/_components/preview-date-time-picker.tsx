@@ -2,10 +2,18 @@ import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { TimeWheelColumns } from "@/components/common/time-wheel-picker"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 
 const weekDays = ["日", "月", "火", "水", "木", "金", "土"]
+const hours = Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, "0"))
+const minutes = Array.from({ length: 60 }, (_, minute) => String(minute).padStart(2, "0"))
 
 type PreviewDateTimePickerProps = {
   value: string
@@ -49,8 +57,8 @@ export function PreviewDateTimePicker({ value, onChange }: PreviewDateTimePicker
     setVisibleMonth(new Date(year, month + offset, 1))
   }
 
-  const updateTime = (time: string) => {
-    onChange(`${selected.datePart}T${time}`)
+  const updateTime = (hour: string, minute: string) => {
+    onChange(`${selected.datePart}T${hour}:${minute}`)
   }
 
   return (
@@ -133,12 +141,27 @@ export function PreviewDateTimePicker({ value, onChange }: PreviewDateTimePicker
           })}
         </div>
 
-        <div className="mt-3 border-t pt-3">
-          <p className="mb-2 text-center text-xs font-medium text-muted-foreground">時刻</p>
-          <TimeWheelColumns
-            value={`${selected.hour}:${selected.minute}`}
-            onChange={updateTime}
-          />
+        <div className="mt-3 flex items-center gap-2 border-t pt-3">
+          <span className="mr-auto text-xs font-medium text-muted-foreground">時刻</span>
+          <Select
+            value={selected.hour}
+            onValueChange={(nextHour) => nextHour !== null && updateTime(nextHour, selected.minute)}
+          >
+            <SelectTrigger aria-label="時" className="w-18 bg-white">
+              <SelectValue>{selected.hour}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>{hours.map((hour) => <SelectItem key={hour} value={hour}>{hour}</SelectItem>)}</SelectContent>
+          </Select>
+          <span aria-hidden="true">:</span>
+          <Select
+            value={selected.minute}
+            onValueChange={(nextMinute) => nextMinute !== null && updateTime(selected.hour, nextMinute)}
+          >
+            <SelectTrigger aria-label="分" className="w-18 bg-white">
+              <SelectValue>{selected.minute}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>{minutes.map((minute) => <SelectItem key={minute} value={minute}>{minute}</SelectItem>)}</SelectContent>
+          </Select>
         </div>
       </PopoverContent>
     </Popover>

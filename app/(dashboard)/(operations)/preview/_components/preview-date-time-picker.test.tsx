@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { useState } from "react"
 import { afterEach, describe, expect, it } from "vitest"
 import { PreviewDateTimePicker } from "./preview-date-time-picker"
@@ -22,7 +22,7 @@ describe("preview date time picker", () => {
     fireEvent.click(screen.getByRole("button", { name: "プレビュー日時を変更" }))
     fireEvent.click(screen.getByRole("button", { name: "2026年10月15日を選択" }))
 
-    expect(screen.getByLabelText("選択中の日時").textContent)
+    expect(screen.getByRole("status", { name: "選択中の日時" }).textContent)
       .toBe("2026-10-15T12:00")
   })
 
@@ -30,17 +30,17 @@ describe("preview date time picker", () => {
     render(<PickerHarness />)
     fireEvent.click(screen.getByRole("button", { name: "プレビュー日時を変更" }))
 
-    const hourWheel = screen.getByRole("listbox", { name: "時" })
-    const hour = within(hourWheel).getByRole("option", { name: "13" })
+    fireEvent.click(screen.getByRole("combobox", { name: "時" }))
+    const hour = screen.getByRole("option", { name: "13" })
     fireEvent.pointerDown(hour, { pointerType: "mouse" })
     fireEvent.click(hour)
 
-    const minuteWheel = screen.getByRole("listbox", { name: "分" })
-    const minute = within(minuteWheel).getByRole("option", { name: "45" })
+    fireEvent.click(screen.getByRole("combobox", { name: "分" }))
+    const minute = screen.getByRole("option", { name: "45" })
     fireEvent.pointerDown(minute, { pointerType: "mouse" })
     fireEvent.click(minute)
 
-    expect(screen.getByLabelText("選択中の日時").textContent)
+    expect(screen.getByRole("status", { name: "選択中の日時" }).textContent)
       .toBe("2026-10-31T13:45")
     expect(document.querySelector('input[type="datetime-local"]')).toBeNull()
   })
