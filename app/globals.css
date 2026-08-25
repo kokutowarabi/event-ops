@@ -219,6 +219,45 @@ svg[data-icon-motion="trash"] {
   overflow: visible;
 }
 
+@keyframes icon-hover-edit-pen {
+  0% {
+    transform: translateX(-3px);
+  }
+  35% {
+    transform: translateX(-3px);
+  }
+  70% {
+    transform: translateX(3px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes icon-hover-edit-trail {
+  0%,
+  35% {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  55% {
+    opacity: 0.7;
+    transform: scaleX(1);
+  }
+  80% {
+    opacity: 0.45;
+    transform: scaleX(0.7);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+}
+
+svg[data-icon-motion="edit"] {
+  overflow: visible;
+}
+
 @keyframes icon-hover-pulse {
   0%,
   100% {
@@ -280,6 +319,18 @@ svg[data-icon-motion="trash"] {
     animation: icon-hover-trash-lid 460ms ease-out;
     transform-box: view-box;
     transform-origin: 21px 6px;
+  }
+
+  :is(button, a, [role="button"], [data-slot="select-trigger"]):hover svg[data-icon-motion="edit"] .edit-icon-pen,
+  svg[data-icon-motion="edit"]:hover .edit-icon-pen {
+    animation: icon-hover-edit-pen 520ms ease-out;
+  }
+
+  :is(button, a, [role="button"], [data-slot="select-trigger"]):hover svg[data-icon-motion="edit"] .edit-icon-trail,
+  svg[data-icon-motion="edit"]:hover .edit-icon-trail {
+    animation: icon-hover-edit-trail 520ms ease-out;
+    transform-box: fill-box;
+    transform-origin: left center;
   }
 
   :is(button, a, [role="button"], [data-slot="select-trigger"]):hover svg[data-icon-motion="pulse"],

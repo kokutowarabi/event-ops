@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react"
-import { Pencil } from "lucide-react"
+import { EditIcon } from "@/components/common/edit-icon"
 import { TrashIcon } from "@/components/common/trash-icon"
 import { EditableMultiSelectCell } from "@/components/common/editable-cell"
 import { MemberRoleBadges } from "@/components/common/member-role-badges"
@@ -52,7 +52,7 @@ export function RosterMobileMemberCard({
       </dl>
       <div className="mt-4 flex items-center justify-end gap-1 border-t pt-3">
         <Button type="button" variant="outline" size="sm" onClick={onEdit}>
-          <Pencil className="size-3.5" data-icon-motion="shake" />
+          <EditIcon className="size-3.5" />
           編集
         </Button>
         <Button
