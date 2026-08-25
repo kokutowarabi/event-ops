@@ -20,23 +20,32 @@ function getActiveCardIndex(scroller: HTMLDivElement) {
   const cards = Array.from(scroller.children) as HTMLElement[]
   if (cards.length === 0) return 0
 
-  const paddingLeft = Number.parseFloat(window.getComputedStyle(scroller).paddingLeft) || 0
-  const maxScrollLeft = Math.max(0, scroller.scrollWidth - scroller.clientWidth)
-  const currentScrollLeft = scroller.scrollLeft
+  const scrollerRect = scroller.getBoundingClientRect()
+  const styles = window.getComputedStyle(scroller)
+  const paddingLeft = Number.parseFloat(styles.paddingLeft) || 0
+  const paddingRight = Number.parseFloat(styles.paddingRight) || 0
+  const visibleLeft = scrollerRect.left + paddingLeft
+  const visibleRight = scrollerRect.right - paddingRight
+  let fallbackIndex = 0
+  let fallbackVisibleWidth = 0
 
-  return cards.reduce((closestIndex, card, index) => {
-    const closestSnapLeft = Math.min(
-      maxScrollLeft,
-      Math.max(0, cards[closestIndex].offsetLeft - paddingLeft),
+  for (let index = cards.length - 1; index >= 0; index -= 1) {
+    const card = cards[index]
+    const cardRect = card.getBoundingClientRect()
+    const visibleWidth = Math.max(
+      0,
+      Math.min(cardRect.right, visibleRight) - Math.max(cardRect.left, visibleLeft),
     )
-    const cardSnapLeft = Math.min(
-      maxScrollLeft,
-      Math.max(0, card.offsetLeft - paddingLeft),
-    )
-    const closestDistance = Math.abs(closestSnapLeft - currentScrollLeft)
-    const cardDistance = Math.abs(cardSnapLeft - currentScrollLeft)
-    return cardDistance < closestDistance ? index : closestIndex
-  }, 0)
+    const cardWidth = cardRect.width || card.offsetWidth
+
+    if (visibleWidth > fallbackVisibleWidth) {
+      fallbackIndex = index
+      fallbackVisibleWidth = visibleWidth
+    }
+    if (cardWidth > 0 && visibleWidth >= cardWidth / 2) return index
+  }
+
+  return fallbackIndex
 }
 
 export function MobileCardSection({
