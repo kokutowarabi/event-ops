@@ -17,6 +17,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { EditableSelectCell, EditableTextCell } from "@/components/common/editable-cell"
+import { EditableTimeCell } from "@/components/common/editable-time-cell"
+import { TimeWheelPicker } from "@/components/common/time-wheel-picker"
 import { SearchHeader, SelectHeader } from "@/components/common/table-column-header"
 import { type EventDepartment, type EventProject, type ProjectStatus } from "@/lib/event-data"
 import { TablePageHeader } from "../../_components/table-page-header"
@@ -120,8 +122,18 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
               <TableHead className="min-w-36">
                 {adding ? (
                   <div className="grid grid-cols-2 gap-1">
-                    <Input value={draft.startTime} onChange={(event) => setDraft((prev) => ({ ...prev, startTime: event.target.value }))} placeholder="開始" className="h-8 bg-background" />
-                    <Input value={draft.endTime} onChange={(event) => setDraft((prev) => ({ ...prev, endTime: event.target.value }))} placeholder="終了" className="h-8 bg-background" />
+                    <TimeWheelPicker
+                      value={draft.startTime}
+                      label="開始時刻"
+                      className="h-8 justify-center px-1 text-xs"
+                      onChange={(value) => setDraft((prev) => ({ ...prev, startTime: value }))}
+                    />
+                    <TimeWheelPicker
+                      value={draft.endTime}
+                      label="終了時刻"
+                      className="h-8 justify-center px-1 text-xs"
+                      onChange={(value) => setDraft((prev) => ({ ...prev, endTime: value }))}
+                    />
                   </div>
                 ) : (
                   <SearchHeader label="時間" column="startTime" value={filters.startTime} options={headerOptions.startTime} onChange={(value) => updateFilter("startTime", value)} sortKey={sortKey} sortOrder={sortOrder} onSort={toggleSort} />
@@ -187,9 +199,9 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
                 </TableCell>
                 <TableCell>
                   <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1">
-                    <EditableTextCell value={project.startTime} placeholder="開始" onCommit={(value) => updateProject(project.id, { startTime: value })} />
+                    <EditableTimeCell value={project.startTime} label="開始時刻" placeholder="開始" onCommit={(value) => updateProject(project.id, { startTime: value })} />
                     <span className="text-muted-foreground">-</span>
-                    <EditableTextCell value={project.endTime} placeholder="終了" onCommit={(value) => updateProject(project.id, { endTime: value })} />
+                    <EditableTimeCell value={project.endTime} label="終了時刻" placeholder="終了" onCommit={(value) => updateProject(project.id, { endTime: value })} />
                   </div>
                 </TableCell>
                 <TableCell className="hidden text-muted-foreground lg:table-cell">

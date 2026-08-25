@@ -1,40 +1,37 @@
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { TimeWheelPicker } from "@/components/common/time-wheel-picker"
 import {
   clampShiftEnd,
+  END_MINUTES,
   formatTime,
   parseTime,
   SLOT_MINUTES,
-  timeOptions,
+  START_MINUTES,
 } from "./shift-domain"
 
 type ShiftTimeFieldsProps = {
   start: number
   end: number
   onChange: (time: { start: number; end: number }) => void
-  keyPrefix: string
 }
 
 export function ShiftTimeFields({
   start,
   end,
   onChange,
-  keyPrefix,
 }: ShiftTimeFieldsProps) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <div className="grid gap-1.5">
         <Label>開始</Label>
-        <Select
+        <TimeWheelPicker
           value={formatTime(start)}
-          onValueChange={(value) => {
-            if (value === null) return
+          label="開始時刻"
+          minMinutes={START_MINUTES}
+          maxMinutes={END_MINUTES - SLOT_MINUTES}
+          minuteStep={SLOT_MINUTES}
+          className="w-full"
+          onChange={(value) => {
             const nextStart = parseTime(value)
             onChange({
               start: nextStart,
@@ -44,39 +41,19 @@ export function ShiftTimeFields({
               ),
             })
           }}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue>{formatTime(start)}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {timeOptions.slice(0, -1).map((option) => (
-              <SelectItem key={`${keyPrefix}-start-${option.value}`} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        />
       </div>
       <div className="grid gap-1.5">
         <Label>終了</Label>
-        <Select
+        <TimeWheelPicker
           value={formatTime(end)}
-          onValueChange={(value) => {
-            if (value === null) return
-            onChange({ start, end: clampShiftEnd(parseTime(value), start) })
-          }}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue>{formatTime(end)}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {timeOptions.slice(1).map((option) => (
-              <SelectItem key={`${keyPrefix}-end-${option.value}`} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          label="終了時刻"
+          minMinutes={START_MINUTES + SLOT_MINUTES}
+          maxMinutes={END_MINUTES}
+          minuteStep={SLOT_MINUTES}
+          className="w-full"
+          onChange={(value) => onChange({ start, end: clampShiftEnd(parseTime(value), start) })}
+        />
       </div>
     </div>
   )
