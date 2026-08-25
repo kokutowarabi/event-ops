@@ -238,19 +238,23 @@ svg[data-icon-motion="trash"] {
   0%,
   35% {
     opacity: 0;
-    transform: scaleX(0);
+    transform: translateX(-4px) scaleX(0);
   }
   55% {
     opacity: 0.7;
-    transform: scaleX(1);
+    transform: translateX(0.6px) scaleX(1);
+  }
+  70% {
+    opacity: 0.55;
+    transform: translateX(4px) scaleX(0.9);
   }
   80% {
     opacity: 0.45;
-    transform: scaleX(0.7);
+    transform: translateX(2.7px) scaleX(0.7);
   }
   100% {
     opacity: 0;
-    transform: scaleX(0);
+    transform: translateX(0) scaleX(0);
   }
 }
 
