@@ -20,13 +20,21 @@ function getActiveCardIndex(scroller: HTMLDivElement) {
   const cards = Array.from(scroller.children) as HTMLElement[]
   if (cards.length === 0) return 0
 
-  const scrollerLeft = scroller.getBoundingClientRect().left
   const paddingLeft = Number.parseFloat(window.getComputedStyle(scroller).paddingLeft) || 0
-  const snapLine = scrollerLeft + paddingLeft
+  const maxScrollLeft = Math.max(0, scroller.scrollWidth - scroller.clientWidth)
+  const currentScrollLeft = scroller.scrollLeft
 
   return cards.reduce((closestIndex, card, index) => {
-    const closestDistance = Math.abs(cards[closestIndex].getBoundingClientRect().left - snapLine)
-    const cardDistance = Math.abs(card.getBoundingClientRect().left - snapLine)
+    const closestSnapLeft = Math.min(
+      maxScrollLeft,
+      Math.max(0, cards[closestIndex].offsetLeft - paddingLeft),
+    )
+    const cardSnapLeft = Math.min(
+      maxScrollLeft,
+      Math.max(0, card.offsetLeft - paddingLeft),
+    )
+    const closestDistance = Math.abs(closestSnapLeft - currentScrollLeft)
+    const cardDistance = Math.abs(cardSnapLeft - currentScrollLeft)
     return cardDistance < closestDistance ? index : closestIndex
   }, 0)
 }
@@ -54,7 +62,12 @@ export function MobileCardSection({
     if (!scroller || !card) return
 
     const paddingLeft = Number.parseFloat(window.getComputedStyle(scroller).paddingLeft) || 0
-    scroller.scrollTo({ left: card.offsetLeft - paddingLeft, behavior: "smooth" })
+    const maxScrollLeft = Math.max(0, scroller.scrollWidth - scroller.clientWidth)
+    const targetScrollLeft = Math.min(
+      maxScrollLeft,
+      Math.max(0, card.offsetLeft - paddingLeft),
+    )
+    scroller.scrollTo({ left: targetScrollLeft, behavior: "smooth" })
     setActiveIndex(index)
   }
 
@@ -96,7 +109,7 @@ export function MobileCardSection({
       <div
         ref={scrollerRef}
         className={cn(
-          "flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 overscroll-x-contain",
+          "flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-2",
           scrollerClassName,
         )}
         onScroll={updateActiveCard}

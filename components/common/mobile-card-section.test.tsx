@@ -21,15 +21,20 @@ describe("mobile card section", () => {
 
     const scroller = screen.getByText("田中 太郎").parentElement!
     const cards = Array.from(scroller.children) as HTMLElement[]
+    Object.defineProperty(scroller, "clientWidth", { configurable: true, value: 300 })
+    Object.defineProperty(scroller, "scrollWidth", { configurable: true, value: 900 })
+    Object.defineProperty(scroller, "scrollLeft", { configurable: true, writable: true, value: 0 })
     let scrollOffset = 0
     vi.spyOn(scroller, "getBoundingClientRect").mockReturnValue({ left: 0 } as DOMRect)
     cards.forEach((card, index) => {
+      Object.defineProperty(card, "offsetLeft", { configurable: true, value: index * 300 })
       vi.spyOn(card, "getBoundingClientRect").mockImplementation(
         () => ({ left: index * 300 - scrollOffset }) as DOMRect,
       )
     })
 
     scrollOffset = 300
+    Object.defineProperty(scroller, "scrollLeft", { configurable: true, value: 300 })
     fireEvent.scroll(scroller)
     expect(dots[1].getAttribute("aria-current")).toBe("true")
     expect(screen.getByText("3人")).toBeTruthy()
