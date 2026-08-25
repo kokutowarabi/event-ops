@@ -84,7 +84,7 @@ export function RosterMobileView({
               key={group.department}
               title={group.department}
               titleId={`mobile-department-${group.department}`}
-              scrollerClassName="px-4"
+              scrollerClassName="px-3"
             >
               {group.members.map((member) => (
                 <RosterMobileMemberCard
