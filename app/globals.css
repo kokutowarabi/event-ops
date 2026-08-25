@@ -200,7 +200,7 @@
   }
   40%,
   65% {
-    transform: translateY(1.5px);
+    transform: translateY(2.5px);
   }
 }
 
@@ -211,8 +211,12 @@
   }
   40%,
   65% {
-    transform: rotate(12deg);
+    transform: rotate(22deg);
   }
+}
+
+svg[data-icon-motion="trash"] {
+  overflow: visible;
 }
 
 @keyframes icon-hover-pulse {
