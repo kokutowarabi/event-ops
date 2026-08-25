@@ -70,7 +70,7 @@ export function ShiftMobileMember({
   return (
     <article
       aria-label={`${member.name}のシフトカード`}
-      className="w-[min(86vw,22rem)] shrink-0 snap-start rounded-xl border bg-card p-3 shadow-sm"
+      className="w-[min(86vw,22rem)] shrink-0 rounded-xl border bg-card p-3 shadow-sm"
     >
       <div className="mb-3 flex items-start justify-between gap-2">
         <div className="min-w-0">

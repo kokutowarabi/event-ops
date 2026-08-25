@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react"
-import { Pencil, Trash2 } from "lucide-react"
+import { Pencil } from "lucide-react"
+import { TrashIcon } from "@/components/common/trash-icon"
 import { EditableMultiSelectCell } from "@/components/common/editable-cell"
 import { MemberRoleBadges } from "@/components/common/member-role-badges"
 import { Badge } from "@/components/ui/badge"
@@ -24,7 +25,7 @@ export function RosterMobileMemberCard({
   return (
     <article
       aria-label={`${member.name}のメンバーカード`}
-      className="w-[min(82vw,20rem)] shrink-0 snap-start rounded-xl border bg-card p-4 shadow-sm"
+      className="w-[min(82vw,20rem)] shrink-0 rounded-xl border bg-card p-4 shadow-sm"
     >
       <div className="flex items-center gap-3">
         <MemberAvatar member={member} size={48} />
@@ -62,7 +63,7 @@ export function RosterMobileMemberCard({
           onClick={onDelete}
           aria-label={`${member.name}を削除`}
         >
-          <Trash2 className="size-4" data-icon-motion="shake" />
+          <TrashIcon className="size-4" />
         </Button>
       </div>
     </article>

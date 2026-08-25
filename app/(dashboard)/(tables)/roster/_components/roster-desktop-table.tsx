@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react"
-import { Check, Trash2 } from "lucide-react"
+import { Check } from "lucide-react"
+import { TrashIcon } from "@/components/common/trash-icon"
 import { EditableMultiSelectCell, EditableSelectCell, EditableTextCell } from "@/components/common/editable-cell"
 import { MemberRoleBadges } from "@/components/common/member-role-badges"
 import { SearchHeader, SelectHeader } from "@/components/common/table-column-header"
@@ -233,7 +234,7 @@ export function RosterDesktopTable({
                       onClick={() => onDeleteMember(member.id)}
                       aria-label={`${member.name}を削除`}
                     >
-                      <Trash2 className="size-4" data-icon-motion="shake" />
+                      <TrashIcon className="size-4" />
                     </Button>
                   </div>
                 </TableCell>

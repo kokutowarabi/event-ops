@@ -32,7 +32,7 @@ function FilterOptions({
   return (
     <div className="grid gap-2">
       <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1">
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
         {values.map((value) => {
           const active = selected.includes(value)
           return (
@@ -41,7 +41,7 @@ function FilterOptions({
               type="button"
               size="xs"
               variant={active ? "default" : "outline"}
-              className="shrink-0 snap-start"
+              className="shrink-0"
               aria-pressed={active}
               onClick={() => onChange(
                 active

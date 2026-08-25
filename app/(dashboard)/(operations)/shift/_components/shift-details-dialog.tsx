@@ -1,4 +1,5 @@
-import { Eye, Trash2 } from "lucide-react"
+import { Eye } from "lucide-react"
+import { TrashIcon } from "@/components/common/trash-icon"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -153,7 +154,7 @@ export function ShiftDetailsDialog({
             <DialogFooter className="sm:justify-between">
               {editable ? (
                 <Button type="button" variant="destructive" onClick={onDelete}>
-                  <Trash2 className="size-4" data-icon-motion="shake" />
+                  <TrashIcon className="size-4" />
                   削除
                 </Button>
               ) : (

@@ -1,4 +1,5 @@
-import { ClipboardList, Download, Plus, Trash2 } from "lucide-react"
+import { ClipboardList, Download, Plus } from "lucide-react"
+import { TrashIcon } from "@/components/common/trash-icon"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -217,7 +218,7 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
                       onClick={() => onProjectsChange((prev) => prev.filter((item) => item.id !== project.id))}
                       aria-label={`${project.title}を削除`}
                     >
-                      <Trash2 className="size-4" data-icon-motion="shake" />
+                      <TrashIcon className="size-4" />
                     </Button>
                   </div>
                 </TableCell>

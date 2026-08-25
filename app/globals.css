@@ -193,6 +193,28 @@
   }
 }
 
+@keyframes icon-hover-trash {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40%,
+  65% {
+    transform: translateY(1.5px);
+  }
+}
+
+@keyframes icon-hover-trash-lid {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  40%,
+  65% {
+    transform: rotate(12deg);
+  }
+}
+
 @keyframes icon-hover-pulse {
   0%,
   100% {
@@ -242,6 +264,18 @@
   :is(button, a, [role="button"], [data-slot="select-trigger"]):hover svg[data-icon-motion="shake"],
   svg[data-icon-motion="shake"]:hover {
     animation: icon-hover-shake 420ms ease-out;
+  }
+
+  :is(button, a, [role="button"], [data-slot="select-trigger"]):hover svg[data-icon-motion="trash"],
+  svg[data-icon-motion="trash"]:hover {
+    animation: icon-hover-trash 460ms ease-out;
+  }
+
+  :is(button, a, [role="button"], [data-slot="select-trigger"]):hover svg[data-icon-motion="trash"] .trash-icon-lid,
+  svg[data-icon-motion="trash"]:hover .trash-icon-lid {
+    animation: icon-hover-trash-lid 460ms ease-out;
+    transform-box: view-box;
+    transform-origin: 21px 6px;
   }
 
   :is(button, a, [role="button"], [data-slot="select-trigger"]):hover svg[data-icon-motion="pulse"],

@@ -1,4 +1,5 @@
-import { Building2, Download, Plus, Trash2 } from "lucide-react"
+import { Building2, Download, Plus } from "lucide-react"
+import { TrashIcon } from "@/components/common/trash-icon"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -209,7 +210,7 @@ export function OrganizationManager({
                       onClick={() => onDeleteOrganization(organization)}
                       aria-label={`${organization.name}を削除`}
                     >
-                      <Trash2 className="size-4" data-icon-motion="shake" />
+                      <TrashIcon className="size-4" />
                     </Button>
                   </div>
                 </TableCell>
