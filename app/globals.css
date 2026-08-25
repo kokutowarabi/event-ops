@@ -213,7 +213,7 @@
   }
 }
 
-@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+@media (prefers-reduced-motion: no-preference) {
   :is(button, a, [role="button"], [data-slot="select-trigger"]):hover svg:not([data-icon-motion]),
   svg:not([data-icon-motion]):hover {
     animation: icon-hover-nudge 420ms ease-out;
