@@ -44,7 +44,7 @@ export function ProjectVote({
   return (
     <div className="mx-auto flex h-[calc(100svh-4rem)] max-w-7xl flex-col px-3 py-4 md:px-4 md:py-6">
       <header className="mb-4 flex shrink-0 flex-wrap items-center gap-2">
-        <BarChart3 className="size-5 text-muted-foreground" />
+        <BarChart3 className="size-5 text-muted-foreground" data-icon-motion="pulse" />
         <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">投票結果</h1>
         <Button
           type="button"
@@ -54,7 +54,7 @@ export function ProjectVote({
           disabled={loading || rankingStats.ranking.length === 0}
           title="選択中の日付・部門ランキングをCSV出力"
         >
-          <Download className="size-4" />
+          <Download className="size-4" data-icon-motion="bounce" />
           CSV
         </Button>
       </header>
@@ -77,7 +77,7 @@ export function ProjectVote({
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <section className="rounded-xl border bg-card p-4">
             <div className="mb-3 flex items-center gap-2">
-              <CalendarDays className="size-4 text-muted-foreground" />
+              <CalendarDays className="size-4 text-muted-foreground" data-icon-motion="bounce" />
               <h2 className="font-semibold">投票日ごとの投票数</h2>
             </div>
             <div className="grid gap-2">
@@ -92,7 +92,7 @@ export function ProjectVote({
 
           <section className="rounded-xl border bg-card p-4">
             <div className="mb-3 flex items-center gap-2">
-              <Trophy className="size-4 text-muted-foreground" />
+              <Trophy className="size-4 text-muted-foreground" data-icon-motion="pulse" />
               <h2 className="font-semibold">部門ごとの投票数</h2>
             </div>
             <div className="grid gap-2">
@@ -110,7 +110,7 @@ export function ProjectVote({
           <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
-                <Trophy className="size-4 text-muted-foreground" />
+                <Trophy className="size-4 text-muted-foreground" data-icon-motion="pulse" />
                 <h2 className="font-semibold">投票日・部門別ランキング</h2>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">

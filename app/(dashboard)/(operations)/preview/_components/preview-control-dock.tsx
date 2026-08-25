@@ -152,7 +152,11 @@ export function PreviewControlDock({
           onPointerCancel={cancelDrag}
           onClick={toggleFromHandle}
         >
-          {open ? <ChevronRight className="size-5.5" /> : <ChevronLeft className="size-5.5" />}
+          {open ? (
+            <ChevronRight className="size-5.5" data-icon-motion="slide-right" />
+          ) : (
+            <ChevronLeft className="size-5.5" data-icon-motion="slide-left" />
+          )}
         </button>
 
         <div

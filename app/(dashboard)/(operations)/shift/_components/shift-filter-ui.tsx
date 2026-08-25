@@ -64,7 +64,7 @@ export function ShiftFilterPicker({
         }}
       >
         <span className="truncate">{displayValue}</span>
-        <Search className="size-4 text-muted-foreground" />
+        <Search className="size-4 text-muted-foreground" data-icon-motion="slide-right" />
       </Button>
       {open && popupPosition
         ? createPortal(

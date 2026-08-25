@@ -122,7 +122,7 @@ export function RosterDesktopTable({
                   {departments.map((department) => (
                     <SelectItem key={department} value={department} hideIndicator className="pr-2 pl-2">
                       <span className="grid size-4 shrink-0 place-items-center">
-                        {department === draft.department ? <Check className="size-4" /> : null}
+                        {department === draft.department ? <Check className="size-4" data-icon-motion="pop" /> : null}
                       </span>
                       <span className={department === draft.department ? "font-semibold" : ""}>
                         {department}
@@ -233,7 +233,7 @@ export function RosterDesktopTable({
                       onClick={() => onDeleteMember(member.id)}
                       aria-label={`${member.name}を削除`}
                     >
-                      <Trash2 className="size-4" />
+                      <Trash2 className="size-4" data-icon-motion="shake" />
                     </Button>
                   </div>
                 </TableCell>

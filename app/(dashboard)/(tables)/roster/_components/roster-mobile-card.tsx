@@ -51,7 +51,7 @@ export function RosterMobileMemberCard({
       </dl>
       <div className="mt-4 flex items-center justify-end gap-1 border-t pt-3">
         <Button type="button" variant="outline" size="sm" onClick={onEdit}>
-          <Pencil className="size-3.5" />
+          <Pencil className="size-3.5" data-icon-motion="shake" />
           編集
         </Button>
         <Button
@@ -62,7 +62,7 @@ export function RosterMobileMemberCard({
           onClick={onDelete}
           aria-label={`${member.name}を削除`}
         >
-          <Trash2 className="size-4" />
+          <Trash2 className="size-4" data-icon-motion="shake" />
         </Button>
       </div>
     </article>

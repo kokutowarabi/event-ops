@@ -127,7 +127,7 @@ export function RosterManager({
               onClick={adding ? addMember : () => setAdding(true)}
               disabled={adding && (!draft.name.trim() || !draft.email.trim())}
             >
-              <Plus className="size-4" />
+              <Plus className="size-4" data-icon-motion="spin" />
               {adding ? "追加を確定" : "メンバーを追加"}
             </Button>
             <Button
@@ -137,7 +137,7 @@ export function RosterManager({
               onClick={() => exportToCsv(visibleMembers)}
               disabled={visibleMembers.length === 0}
             >
-              <Download className="size-4" />
+              <Download className="size-4" data-icon-motion="bounce" />
               CSV
             </Button>
           </>

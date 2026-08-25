@@ -25,7 +25,7 @@ function SortButton<T extends string>({ label, column, sortKey, sortOrder, onSor
       onClick={() => onSort(column)}
       aria-label={`${label}を並べ替え`}
     >
-      <Icon className={`size-3.5 ${active ? "" : "opacity-45"}`} />
+      <Icon className={`size-3.5 ${active ? "" : "opacity-45"}`} data-icon-motion="spin" />
     </Button>
   )
 }
@@ -88,7 +88,7 @@ function FilterHeader<T extends string>({
         aria-label={`${label}を絞り込み`}
         aria-expanded={open}
       >
-        <ListFilter className="size-3.5" />
+        <ListFilter className="size-3.5" data-icon-motion="spin" />
       </Button>
       <SortButton label={label} column={column} sortKey={sortKey} sortOrder={sortOrder} onSort={onSort} />
 
@@ -133,7 +133,7 @@ function FilterHeader<T extends string>({
                         className="mr-1 grid size-6 shrink-0 place-items-center rounded hover:bg-primary/15"
                         aria-label={`${option}の絞り込みを解除`}
                       >
-                        <X className="size-3.5" />
+                        <X className="size-3.5" data-icon-motion="pop" />
                       </button>
                     ) : null}
                   </div>

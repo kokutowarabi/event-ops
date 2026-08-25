@@ -70,7 +70,7 @@ export function ShiftFilterPanel({
           onClick={onClose}
           aria-label="絞り込みカードを閉じる"
         >
-          <X className="size-4" />
+          <X className="size-4" data-icon-motion="pop" />
         </Button>
       </div>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">

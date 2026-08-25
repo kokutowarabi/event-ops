@@ -19,15 +19,16 @@ type DashboardRoute = {
   href: string
   label: string
   icon: LucideIcon
+  iconMotion: "bounce" | "pulse" | "spin"
 }
 
 const dashboardRoutes: DashboardRoute[] = [
-  { href: "/roster", label: "名簿", icon: Users },
-  { href: "/organizations", label: "参加団体", icon: Building2 },
-  { href: "/projects", label: "企画", icon: ClipboardList },
-  { href: "/shift", label: "シフト", icon: CalendarDays },
-  { href: "/preview", label: "サイトプレビュー", icon: MonitorSmartphone },
-  { href: "/vote", label: "投票結果", icon: BarChart3 },
+  { href: "/roster", label: "名簿", icon: Users, iconMotion: "bounce" },
+  { href: "/organizations", label: "参加団体", icon: Building2, iconMotion: "bounce" },
+  { href: "/projects", label: "企画", icon: ClipboardList, iconMotion: "bounce" },
+  { href: "/shift", label: "シフト", icon: CalendarDays, iconMotion: "spin" },
+  { href: "/preview", label: "サイトプレビュー", icon: MonitorSmartphone, iconMotion: "pulse" },
+  { href: "/vote", label: "投票結果", icon: BarChart3, iconMotion: "pulse" },
 ]
 
 function isCurrentRoute(pathname: string, href: string) {
@@ -55,7 +56,7 @@ function DashboardRouteLink({
         }),
       )}
     >
-      <Icon className="size-4" aria-hidden="true" />
+      <Icon className="size-4" data-icon-motion={route.iconMotion} aria-hidden="true" />
       {route.label}
     </Link>
   )

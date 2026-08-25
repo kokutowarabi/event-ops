@@ -71,7 +71,7 @@ export function PreviewDateTimePicker({ value, onChange }: PreviewDateTimePicker
           />
         }
       >
-        <CalendarDays className="size-4 text-muted-foreground" />
+        <CalendarDays className="size-4 text-muted-foreground" data-icon-motion="bounce" />
         {formatDateTime(value)}
       </PopoverTrigger>
       <PopoverContent
@@ -88,7 +88,7 @@ export function PreviewDateTimePicker({ value, onChange }: PreviewDateTimePicker
             aria-label="前の月"
             onClick={() => changeMonth(-1)}
           >
-            <ChevronLeft className="size-4" />
+            <ChevronLeft className="size-4" data-icon-motion="slide-left" />
           </Button>
           <p className="text-sm font-semibold" aria-live="polite">
             {year}年{month + 1}月
@@ -100,7 +100,7 @@ export function PreviewDateTimePicker({ value, onChange }: PreviewDateTimePicker
             aria-label="次の月"
             onClick={() => changeMonth(1)}
           >
-            <ChevronRight className="size-4" />
+            <ChevronRight className="size-4" data-icon-motion="slide-right" />
           </Button>
         </div>
 

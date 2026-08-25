@@ -227,7 +227,7 @@ export function TimeWheelPicker({
           />
         }
       >
-        <Clock3 className="size-4 text-muted-foreground" />
+        <Clock3 className="size-4 text-muted-foreground" data-icon-motion="bounce" />
         {value}
       </PopoverTrigger>
       <PopoverContent role="dialog" aria-label={`${label}を選択`} className="w-56 p-3">

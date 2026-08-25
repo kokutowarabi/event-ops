@@ -61,7 +61,7 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
       actions={(
         <>
           <Button type="button" size="sm" className="ml-2" onClick={adding ? addProject : () => setAdding(true)} disabled={adding && !draft.title.trim()}>
-            <Plus className="size-4" />
+            <Plus className="size-4" data-icon-motion="spin" />
             {adding ? "追加を確定" : "企画を追加"}
           </Button>
           <Button
@@ -72,7 +72,7 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
             onClick={exportProjects}
             disabled={visibleProjects.length === 0}
           >
-            <Download className="size-4" />
+            <Download className="size-4" data-icon-motion="bounce" />
             CSV
           </Button>
         </>
@@ -229,7 +229,7 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
                       onClick={() => onProjectsChange((prev) => prev.filter((item) => item.id !== project.id))}
                       aria-label={`${project.title}を削除`}
                     >
-                      <Trash2 className="size-4" />
+                      <Trash2 className="size-4" data-icon-motion="shake" />
                     </Button>
                   </div>
                 </TableCell>

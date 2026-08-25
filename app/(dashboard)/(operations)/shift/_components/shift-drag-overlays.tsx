@@ -83,7 +83,7 @@ function InvalidDropIndicator({ size }: { size: "small" }) {
       className="absolute inset-0 z-10 grid place-items-center"
       aria-hidden="true"
     >
-      <X className={size === "small" ? "size-5 text-destructive drop-shadow-sm" : "size-6 text-destructive drop-shadow-sm"} strokeWidth={3} />
+      <X className={size === "small" ? "size-5 text-destructive drop-shadow-sm" : "size-6 text-destructive drop-shadow-sm"} data-icon-motion="pop" strokeWidth={3} />
     </span>
   )
 }

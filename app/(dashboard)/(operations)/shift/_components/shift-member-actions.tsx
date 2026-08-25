@@ -87,7 +87,7 @@ export function ShiftMemberActions({
             />
           }
         >
-          <CircleEllipsis className="size-4" />
+          <CircleEllipsis className="size-4" data-icon-motion="pulse" />
         </PopoverTrigger>
       </span>
       <PopoverContent
@@ -107,7 +107,7 @@ export function ShiftMemberActions({
           aria-label={`${memberName}の操作を閉じる`}
           onClick={() => setOpen(false)}
         >
-          <X className="size-4" />
+          <X className="size-4" data-icon-motion="pop" />
         </Button>
         <div className="p-3">
           <Label htmlFor={memoId}>メモ</Label>
@@ -126,7 +126,7 @@ export function ShiftMemberActions({
             className="w-full justify-start"
             onClick={togglePin}
           >
-            <Pin className={`size-4 ${pinned ? "fill-current" : ""}`} />
+            <Pin className={`size-4 ${pinned ? "fill-current" : ""}`} data-icon-motion="bounce" />
             {pinned ? "固定を解除" : "固定する"}
           </Button>
         </div>

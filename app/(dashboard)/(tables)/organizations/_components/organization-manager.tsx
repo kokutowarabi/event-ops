@@ -64,7 +64,7 @@ export function OrganizationManager({
       actions={(
         <>
           <Button type="button" size="sm" className="ml-2" onClick={adding ? addOrganization : () => setAdding(true)} disabled={adding && !draft.name.trim()}>
-            <Plus className="size-4" />
+            <Plus className="size-4" data-icon-motion="spin" />
             {adding ? "追加を確定" : "団体を追加"}
           </Button>
           <Button
@@ -75,7 +75,7 @@ export function OrganizationManager({
             onClick={exportOrganizations}
             disabled={visibleOrganizations.length === 0}
           >
-            <Download className="size-4" />
+            <Download className="size-4" data-icon-motion="bounce" />
             CSV
           </Button>
         </>
@@ -209,7 +209,7 @@ export function OrganizationManager({
                       onClick={() => onDeleteOrganization(organization)}
                       aria-label={`${organization.name}を削除`}
                     >
-                      <Trash2 className="size-4" />
+                      <Trash2 className="size-4" data-icon-motion="shake" />
                     </Button>
                   </div>
                 </TableCell>

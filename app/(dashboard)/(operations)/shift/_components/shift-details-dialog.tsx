@@ -152,12 +152,12 @@ export function ShiftDetailsDialog({
             <DialogFooter className="sm:justify-between">
               {editable ? (
                 <Button type="button" variant="destructive" onClick={onDelete}>
-                  <Trash2 className="size-4" />
+                  <Trash2 className="size-4" data-icon-motion="shake" />
                   削除
                 </Button>
               ) : (
                 <Badge variant="secondary">
-                  <Eye className="size-3" />
+                  <Eye className="size-3" data-icon-motion="bounce" />
                   閲覧のみ
                 </Badge>
               )}

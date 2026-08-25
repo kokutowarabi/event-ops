@@ -127,3 +127,130 @@
     @apply font-sans;
   }
 }
+
+@keyframes icon-hover-nudge {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes icon-hover-bounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  45% {
+    transform: translateY(-3px) scale(1.08);
+  }
+}
+
+@keyframes icon-hover-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  70% {
+    transform: rotate(90deg);
+  }
+  100% {
+    transform: rotate(90deg);
+  }
+}
+
+@keyframes icon-hover-slide-left {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-3px);
+  }
+}
+
+@keyframes icon-hover-slide-right {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes icon-hover-shake {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-8deg);
+  }
+  75% {
+    transform: rotate(8deg);
+  }
+}
+
+@keyframes icon-hover-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.14);
+  }
+}
+
+@keyframes icon-hover-pop {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.16) rotate(-8deg);
+  }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  :is(button, a, [role="button"], [data-slot="select-trigger"]):hover svg:not([data-icon-motion]),
+  svg:not([data-icon-motion]):hover {
+    animation: icon-hover-nudge 420ms ease-out;
+  }
+
+  :is(button, a, [role="button"], [data-slot="select-trigger"]):hover svg[data-icon-motion="bounce"],
+  svg[data-icon-motion="bounce"]:hover {
+    animation: icon-hover-bounce 460ms ease-out;
+  }
+
+  :is(button, a, [role="button"], [data-slot="select-trigger"]):hover svg[data-icon-motion="spin"],
+  svg[data-icon-motion="spin"]:hover {
+    animation: icon-hover-spin 460ms ease-out;
+  }
+
+  :is(button, a, [role="button"], [data-slot="select-trigger"]):hover svg[data-icon-motion="slide-left"],
+  svg[data-icon-motion="slide-left"]:hover {
+    animation: icon-hover-slide-left 420ms ease-out;
+  }
+
+  :is(button, a, [role="button"], [data-slot="select-trigger"]):hover svg[data-icon-motion="slide-right"],
+  svg[data-icon-motion="slide-right"]:hover {
+    animation: icon-hover-slide-right 420ms ease-out;
+  }
+
+  :is(button, a, [role="button"], [data-slot="select-trigger"]):hover svg[data-icon-motion="shake"],
+  svg[data-icon-motion="shake"]:hover {
+    animation: icon-hover-shake 420ms ease-out;
+  }
+
+  :is(button, a, [role="button"], [data-slot="select-trigger"]):hover svg[data-icon-motion="pulse"],
+  svg[data-icon-motion="pulse"]:hover {
+    animation: icon-hover-pulse 420ms ease-out;
+  }
+
+  :is(button, a, [role="button"], [data-slot="select-trigger"]):hover svg[data-icon-motion="pop"],
+  svg[data-icon-motion="pop"]:hover {
+    animation: icon-hover-pop 420ms ease-out;
+  }
+}

@@ -27,7 +27,7 @@ export function ShiftHeader({
 }: ShiftHeaderProps) {
   return (
     <header className="mb-4 flex shrink-0 flex-wrap items-center gap-2">
-      <CalendarDays className="size-5 text-muted-foreground" />
+      <CalendarDays className="size-5 text-muted-foreground" data-icon-motion="bounce" />
       <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">シフト管理</h1>
       {hasSchedule ? (
         <>
@@ -39,7 +39,7 @@ export function ShiftHeader({
               className="h-7 px-2.5"
               onClick={() => onViewModeChange("member")}
             >
-              <Users className="size-3.5" />
+              <Users className="size-3.5" data-icon-motion="bounce" />
               個人別
             </Button>
             <Button
@@ -49,14 +49,14 @@ export function ShiftHeader({
               className="h-7 px-2.5"
               onClick={() => onViewModeChange("assignment")}
             >
-              <Layers3 className="size-3.5" />
+              <Layers3 className="size-3.5" data-icon-motion="pulse" />
               担当業務別
             </Button>
           </div>
           <Select value={selectedDate} onValueChange={(value) => value !== null && onDateChange(value)}>
             <SelectTrigger className="h-8 w-auto max-w-full bg-background">
               <div className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
-                <CalendarDays className="size-3.5 text-muted-foreground" />
+                <CalendarDays className="size-3.5 text-muted-foreground" data-icon-motion="bounce" />
                 <span>{formatCompactDate(selectedDate)}</span>
               </div>
             </SelectTrigger>
@@ -64,7 +64,7 @@ export function ShiftHeader({
               {dates.map((date) => (
                 <SelectItem key={date} value={date} hideIndicator className="pr-2 pl-2">
                   <span className="grid size-4 shrink-0 place-items-center">
-                    {date === selectedDate ? <Check className="size-4" /> : null}
+                    {date === selectedDate ? <Check className="size-4" data-icon-motion="pop" /> : null}
                   </span>
                   <span className={date === selectedDate ? "font-semibold" : ""}>
                     {formatCompactDate(date)}
@@ -88,7 +88,7 @@ export function ShiftHeader({
             disabled={exportDisabled}
             title="表示中の日付と絞り込み条件でCSV出力"
           >
-            <Download className="size-4" />
+            <Download className="size-4" data-icon-motion="bounce" />
             CSV
           </Button>
         </>

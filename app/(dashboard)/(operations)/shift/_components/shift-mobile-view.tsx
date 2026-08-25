@@ -73,7 +73,7 @@ export function ShiftMobileView({
         title={filterSummary || "絞り込み"}
         aria-expanded={filtersOpen}
       >
-        <ListFilter className="size-4" />
+        <ListFilter className="size-4" data-icon-motion="spin" />
         <span className="shrink-0">絞り込み</span>
         {filterSummary ? (
           <span className="min-w-0 truncate border-l pl-2 text-xs font-normal text-muted-foreground">
@@ -94,7 +94,7 @@ export function ShiftMobileView({
                 aria-label={`${member.name}のピン留めを解除`}
                 onClick={() => onTogglePin(member.id)}
               >
-                <Pin className="size-3 fill-current" />
+                <Pin className="size-3 fill-current" data-icon-motion="bounce" />
                 {member.name}
               </Button>
             ))}

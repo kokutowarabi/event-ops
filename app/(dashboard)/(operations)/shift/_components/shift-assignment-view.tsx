@@ -69,7 +69,7 @@ export function ShiftAssignmentView({
                   className="ml-auto"
                   onClick={() => onOpenDraft(group.templateId)}
                 >
-                  <Plus className="size-3.5" />
+                  <Plus className="size-3.5" data-icon-motion="spin" />
                   割り当て追加
                 </Button>
               ) : null}

@@ -74,11 +74,11 @@ export function SitePreview({
             <div className="font-black text-slate-900">{siteConfig.festivalEdition}</div>
           </div>
           <Button type="button" size="sm" variant={page === "home" ? "default" : "ghost"} onClick={() => setPage("home")}>
-            <Home className="size-4" />
+            <Home className="size-4" data-icon-motion="bounce" />
             トップ
           </Button>
           <Button type="button" size="sm" variant={page === "projects" ? "default" : "ghost"} onClick={() => setPage("projects")}>
-            <Sparkles className="size-4" />
+            <Sparkles className="size-4" data-icon-motion="spin" />
             企画
           </Button>
         </div>
@@ -91,7 +91,7 @@ export function SitePreview({
               <h2 className="mt-3 text-5xl font-black tracking-tight text-slate-950 md:text-7xl">{siteConfig.festivalName}</h2>
               <div className="mx-auto mt-8 max-w-xl rounded-3xl border border-white/70 bg-white/80 p-6 shadow-xl shadow-cyan-950/10">
                 <div className="flex items-center justify-center gap-2 text-cyan-800">
-                  <Clock3 className="size-5" />
+                  <Clock3 className="size-5" data-icon-motion="bounce" />
                   <span className="text-sm font-bold">{previewDateTime.replace("T", " ")}</span>
                 </div>
                 <p className="mt-3 text-2xl font-black text-slate-950">{status.headline}</p>
@@ -106,7 +106,7 @@ export function SitePreview({
               </div>
               <Button type="button" size="lg" className="mt-9" onClick={() => setPage("projects")}>
                 企画を見て投票する
-                <Heart className="size-4" />
+                <Heart className="size-4" data-icon-motion="pulse" />
               </Button>
             </section>
           </div>
@@ -119,7 +119,7 @@ export function SitePreview({
                 <p className="mt-1 text-sm text-slate-600">{status.headline} — {status.detail}</p>
               </div>
               <label className="relative block">
-                <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-slate-400" />
+                <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-slate-400" data-icon-motion="slide-right" />
                 <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="企画・団体・会場を検索" className="w-64 bg-white pl-9" />
               </label>
             </div>
@@ -160,7 +160,7 @@ export function SitePreview({
                       disabled={voted || !status.votingOpen || !votingConfigured || !voteEligible || Boolean(submittingProjectId)}
                       onClick={() => vote(project)}
                     >
-                      {voted ? <Check className="size-4" /> : <Heart className="size-4" />}
+                      {voted ? <Check className="size-4" data-icon-motion="pop" /> : <Heart className="size-4" data-icon-motion="pulse" />}
                       {voted
                         ? "投票済み"
                         : submittingProjectId === project.id

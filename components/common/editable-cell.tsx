@@ -195,10 +195,10 @@ export function EditableMultiSelectCell({
         </div>
         <div className="mt-2 flex justify-end gap-1">
           <Button type="button" variant="ghost" size="icon-sm" onClick={cancel} aria-label="編集をキャンセル">
-            <X className="size-4" />
+          <X className="size-4" data-icon-motion="pop" />
           </Button>
           <Button type="button" variant="ghost" size="icon-sm" onClick={commit} aria-label="役職を保存">
-            <Check className="size-4" />
+            <Check className="size-4" data-icon-motion="pop" />
           </Button>
         </div>
       </PopoverContent>

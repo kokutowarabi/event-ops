@@ -57,7 +57,7 @@ export function ShiftHandles({
         onPointerCancel={onCancelResize}
         aria-hidden="true"
       >
-        <GripVertical className="size-4" />
+        <GripVertical className="size-4" data-icon-motion="pulse" />
       </span>
       <span
         data-shift-handle-for={shift.id}
@@ -73,7 +73,7 @@ export function ShiftHandles({
         onPointerCancel={onCancelResize}
         aria-hidden="true"
       >
-        <GripVertical className="size-4" />
+        <GripVertical className="size-4" data-icon-motion="pulse" />
       </span>
       <span
         data-shift-handle-for={shift.id}
@@ -92,7 +92,7 @@ export function ShiftHandles({
         onPointerCancel={onCancelCopy}
         aria-hidden="true"
       >
-        <GripHorizontal className="size-4" />
+        <GripHorizontal className="size-4" data-icon-motion="pulse" />
       </span>
       <span
         data-shift-handle-for={shift.id}
@@ -111,7 +111,7 @@ export function ShiftHandles({
         onPointerCancel={onCancelCopy}
         aria-hidden="true"
       >
-        <GripHorizontal className="size-4" />
+        <GripHorizontal className="size-4" data-icon-motion="pulse" />
       </span>
     </>
   )

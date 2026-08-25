@@ -83,7 +83,7 @@ export function RosterMobileFilters({
         onClick={() => onOpenChange(!open)}
         aria-expanded={open}
       >
-        <ListFilter className="size-4" />
+        <ListFilter className="size-4" data-icon-motion="spin" />
         <span>絞り込み</span>
         {activeCount > 0 ? (
           <span className="grid size-5 place-items-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
@@ -136,7 +136,7 @@ export function RosterMobileFilters({
               onClick={() => onQueryChange("")}
             >
               検索: {query}
-              <X className="size-3" />
+              <X className="size-3" data-icon-motion="pop" />
             </Button>
           ) : null}
           {selectedEntries.map(({ key, value }) => (
@@ -152,7 +152,7 @@ export function RosterMobileFilters({
               )}
             >
               {value}
-              <X className="size-3" />
+              <X className="size-3" data-icon-motion="pop" />
             </Button>
           ))}
         </div>
