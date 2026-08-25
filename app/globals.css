@@ -221,13 +221,13 @@ svg[data-icon-motion="trash"] {
 
 @keyframes icon-hover-edit-pen {
   0% {
-    transform: translateX(-3px);
+    transform: translateX(-4px);
   }
   35% {
-    transform: translateX(-3px);
+    transform: translateX(-4px);
   }
   70% {
-    transform: translateX(3px);
+    transform: translateX(4px);
   }
   100% {
     transform: translateX(0);
@@ -256,6 +256,12 @@ svg[data-icon-motion="trash"] {
 
 svg[data-icon-motion="edit"] {
   overflow: visible;
+}
+
+svg[data-icon-motion="edit"] .edit-icon-pen {
+  fill: none;
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
 @keyframes icon-hover-pulse {

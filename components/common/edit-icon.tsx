@@ -15,7 +15,7 @@ export function EditIcon({ className, ...props }: ComponentProps<"svg">) {
       {...props}
     >
       <path className="edit-icon-trail" d="M3 21h10" />
-      <g className="edit-icon-pen">
+      <g className="edit-icon-pen" fill="none">
         <path d="m4 16 10-10 4 4L8 20H4v-4Z" />
         <path d="m13 7 4 4" />
       </g>
