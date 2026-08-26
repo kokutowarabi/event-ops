@@ -40,13 +40,15 @@ export function ProjectMobileCard({
         >
           <span className="block truncate">{project.title}</span>
         </EditableTextCell>
-        <EditableSelectCell
-          value={project.status}
-          options={PROJECT_STATUSES}
-          onCommit={(value) => onUpdate({ status: value })}
-        >
-          <Badge variant={projectStatusVariants[project.status]}>{project.status}</Badge>
-        </EditableSelectCell>
+        <div className="shrink-0">
+          <EditableSelectCell
+            value={project.status}
+            options={PROJECT_STATUSES}
+            onCommit={(value) => onUpdate({ status: value })}
+          >
+            <Badge variant={projectStatusVariants[project.status]}>{project.status}</Badge>
+          </EditableSelectCell>
+        </div>
       </header>
 
       <dl className="mt-4 grid gap-3 text-sm">

@@ -40,13 +40,15 @@ export function OrganizationMobileCard({
         >
           <span className="block truncate">{organization.name}</span>
         </EditableTextCell>
-        <EditableSelectCell
-          value={organization.status}
-          options={ORGANIZATION_STATUSES}
-          onCommit={(value) => onUpdate({ status: value })}
-        >
-          <Badge variant={organizationStatusVariants[organization.status]}>{organization.status}</Badge>
-        </EditableSelectCell>
+        <div className="shrink-0">
+          <EditableSelectCell
+            value={organization.status}
+            options={ORGANIZATION_STATUSES}
+            onCommit={(value) => onUpdate({ status: value })}
+          >
+            <Badge variant={organizationStatusVariants[organization.status]}>{organization.status}</Badge>
+          </EditableSelectCell>
+        </div>
       </header>
 
       <dl className="mt-4 grid gap-3 text-sm">
