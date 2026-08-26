@@ -220,15 +220,11 @@ svg[data-icon-motion="trash"] {
 }
 
 @keyframes icon-hover-edit-pen {
-  0% {
-    transform: translateX(-4px);
-  }
+  0%,
   35% {
     transform: translateX(-4px);
   }
-  70% {
-    transform: translateX(4px);
-  }
+  70%,
   100% {
     transform: translateX(0);
   }
