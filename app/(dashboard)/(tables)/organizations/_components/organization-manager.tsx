@@ -28,6 +28,7 @@ import {
   organizationStatusVariants,
 } from "./organization-config"
 import { OrganizationsMobileView } from "./organizations-mobile-view"
+import { OrganizationLogo } from "./organization-logo"
 import { useOrganizationTable } from "./use-organization-table"
 
 type OrganizationManagerProps = {
@@ -94,6 +95,7 @@ export function OrganizationManager({
       <div className="hidden md:block">
         <Table>
           <TablePageHeader>
+              <TableHead className="w-14" aria-label="ロゴ" />
               <TableHead className="min-w-60">
                 {adding ? (
                   <Input value={draft.name} onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))} placeholder="参加団体名" className="h-8 bg-background" />
@@ -170,6 +172,9 @@ export function OrganizationManager({
           <TableBody>
             {visibleOrganizations.map((organization) => (
               <TableRow key={organization.id}>
+                <TableCell className="w-14">
+                  <OrganizationLogo organization={organization} className="size-10" />
+                </TableCell>
                 <TableCell className="font-medium">
                   <EditableTextCell value={organization.name} placeholder="参加団体名" onCommit={(value) => updateOrganization(organization.id, { name: value })}>
                     <>

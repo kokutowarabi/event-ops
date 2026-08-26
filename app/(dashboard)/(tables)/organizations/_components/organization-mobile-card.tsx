@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { EventOrganization } from "@/lib/event-data"
 import { EVENT_DEPARTMENTS, ORGANIZATION_STATUSES, organizationStatusVariants } from "./organization-config"
+import { OrganizationLogo } from "./organization-logo"
 
 type OrganizationUpdate = (update: Partial<Omit<EventOrganization, "id">>) => void
 
@@ -32,14 +33,17 @@ export function OrganizationMobileCard({
   return (
     <article className="w-[min(84vw,24rem)] shrink-0 rounded-xl border bg-card p-4 shadow-sm">
       <header className="flex items-start justify-between gap-3">
-        <EditableTextCell
-          value={organization.name}
-          placeholder="参加団体名"
-          className="min-w-0 flex-1 font-semibold"
-          onCommit={(value) => onUpdate({ name: value })}
-        >
-          <span className="block truncate">{organization.name}</span>
-        </EditableTextCell>
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <OrganizationLogo organization={organization} className="size-16" />
+          <EditableTextCell
+            value={organization.name}
+            placeholder="参加団体名"
+            className="min-w-0 flex-1 font-semibold"
+            onCommit={(value) => onUpdate({ name: value })}
+          >
+            <span className="block truncate">{organization.name}</span>
+          </EditableTextCell>
+        </div>
         <div className="shrink-0">
           <EditableSelectCell
             value={organization.status}
