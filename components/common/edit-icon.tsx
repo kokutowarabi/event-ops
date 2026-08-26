@@ -9,7 +9,7 @@ export function EditIcon({ className, ...props }: ComponentProps<"span">) {
       aria-hidden="true"
       {...props}
     >
-      <Pencil className="edit-icon-pen relative z-10 size-full" data-icon-motion="shake" />
+      <Pencil className="edit-icon-pen relative z-10 size-full" data-icon-motion="edit-pen" />
     </span>
   )
 }
