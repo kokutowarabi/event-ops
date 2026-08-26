@@ -8,6 +8,7 @@ type MobileCardSectionProps = {
   title: string
   titleId: string
   children: ReactNode
+  countLabel?: string
   className?: string
   headerClassName?: string
   scrollerClassName?: string
@@ -17,6 +18,7 @@ export function MobileCardSection({
   title,
   titleId,
   children,
+  countLabel = "人",
   className,
   headerClassName,
   scrollerClassName,
@@ -30,7 +32,7 @@ export function MobileCardSection({
           {title}
         </h2>
         <span className="shrink-0 text-xs text-muted-foreground">
-          {cards.length}人
+          {cards.length}{countLabel}
         </span>
       </div>
       <div

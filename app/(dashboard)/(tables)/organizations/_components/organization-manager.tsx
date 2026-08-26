@@ -27,6 +27,7 @@ import {
   ORGANIZATION_STATUSES,
   organizationStatusVariants,
 } from "./organization-config"
+import { OrganizationsMobileView } from "./organizations-mobile-view"
 import { useOrganizationTable } from "./use-organization-table"
 
 type OrganizationManagerProps = {
@@ -82,6 +83,15 @@ export function OrganizationManager({
         </>
       )}
     >
+      <OrganizationsMobileView
+        organizations={visibleOrganizations}
+        adding={adding}
+        draft={draft}
+        onDraftChange={setDraft}
+        onUpdateOrganization={updateOrganization}
+        onDeleteOrganization={onDeleteOrganization}
+      />
+      <div className="hidden md:block">
         <Table>
           <TablePageHeader>
               <TableHead className="min-w-60">
@@ -218,6 +228,7 @@ export function OrganizationManager({
             ))}
           </TableBody>
         </Table>
+      </div>
     </TablePageShell>
   )
 }

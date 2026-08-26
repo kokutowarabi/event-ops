@@ -27,6 +27,7 @@ import {
   PROJECT_STATUSES,
   projectStatusVariants,
 } from "./project-config"
+import { ProjectsMobileView } from "./projects-mobile-view"
 import { useProjectTable } from "./use-project-table"
 
 type ProjectManagerProps = {
@@ -77,6 +78,15 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
         </>
       )}
     >
+      <ProjectsMobileView
+        projects={visibleProjects}
+        adding={adding}
+        draft={draft}
+        onDraftChange={setDraft}
+        onUpdateProject={updateProject}
+        onDeleteProject={(project) => onProjectsChange((current) => current.filter((item) => item.id !== project.id))}
+      />
+      <div className="hidden md:block">
         <Table>
           <TablePageHeader>
               <TableHead className="min-w-60">
@@ -226,6 +236,7 @@ export function ProjectManager({ projects, onProjectsChange }: ProjectManagerPro
             ))}
           </TableBody>
         </Table>
+      </div>
     </TablePageShell>
   )
 }
