@@ -177,6 +177,12 @@ span[data-icon-motion="edit"] .edit-icon-pen {
   transform-origin: center;
 }
 
+/* Only the edit pencil and trash icon are animated. */
+svg:not([data-icon-motion]),
+svg[data-icon-motion]:not([data-icon-motion="trash"]):not([data-icon-motion="edit-pen"]) {
+  animation: none !important;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   :is(button, a, [role="button"], [data-slot="select-trigger"]):hover svg[data-icon-motion="trash"],
   svg[data-icon-motion="trash"]:hover {
